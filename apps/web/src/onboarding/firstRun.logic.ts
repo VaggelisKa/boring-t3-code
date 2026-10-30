@@ -144,10 +144,3 @@ export function resolveFirstRunDecision(input: FirstRunDecisionInput): {
     ? { decision: "wizard", persistCompletion: false }
     : { decision: "app", persistCompletion: input.workspaceAuthoritative };
 }
-
-export function resolveHostedFirstRunDecision(hydrated: boolean): {
-  readonly decision: FirstRunDecision;
-  readonly persistCompletion: boolean;
-} {
-  return { decision: hydrated ? "app" : "pending", persistCompletion: false };
-}

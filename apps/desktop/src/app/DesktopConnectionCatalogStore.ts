@@ -2,7 +2,6 @@ import {
   BearerConnectionCredential,
   BearerConnectionProfile,
   BearerConnectionTarget,
-  RelayConnectionTarget,
 } from "@t3tools/client-runtime/connection";
 import {
   ConnectionCatalogDocument as RuntimeConnectionCatalogDocument,
@@ -297,15 +296,8 @@ const migrateSavedEnvironmentRecords = Effect.fn(
   const credentials: Array<RuntimeConnectionCatalogDocumentType["credentials"][number]> = [];
 
   for (const record of records) {
-    if (record.relayManaged !== undefined) {
-      targets.push(
-        new RelayConnectionTarget({
-          environmentId: record.environmentId,
-          label: record.label,
-        }),
-      );
-      continue;
-    }
+    // A relay-managed record has no credential of its own, so nothing can connect to it.
+    if (record.relayManaged !== undefined) continue;
 
     const id = connectionId("bearer", record.environmentId);
     targets.push(
@@ -348,7 +340,6 @@ const migrateSavedEnvironmentRecords = Effect.fn(
     targets,
     profiles,
     credentials,
-    remoteDpopTokens: [],
     disabledEnvironmentIds: [],
   };
 });

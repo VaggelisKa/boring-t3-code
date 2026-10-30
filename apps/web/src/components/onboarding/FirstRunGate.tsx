@@ -14,7 +14,6 @@ import {
   isFirstRunWorkspaceProvenanceAuthoritative,
   isFreshFirstRunWorkspace,
   resolveFirstRunDecision,
-  resolveHostedFirstRunDecision,
   transitionFirstRunGateState,
   type FirstRunGateState,
 } from "../../onboarding/firstRun.logic";
@@ -66,11 +65,9 @@ const soleThreadAtom = Atom.make((get) => {
 
 export function FirstRunGate({
   enabled,
-  hostedStatic,
   children,
 }: {
   readonly enabled: boolean;
-  readonly hostedStatic: boolean;
   readonly children: React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -88,10 +85,7 @@ export function FirstRunGate({
   const primaryShellLive = useAtomValue(primaryShellLiveAtom);
   const workspaceEvidenceLive = useAtomValue(workspaceEvidenceLiveAtom);
   const [gateState, setGateState] = useState<FirstRunGateState>(() => ({
-    decision:
-      (!enabled && !hostedStatic) || (hydrated && onboardingCompletedAt !== null)
-        ? "app"
-        : "pending",
+    decision: !enabled || (hydrated && onboardingCompletedAt !== null) ? "app" : "pending",
     stalled: false,
   }));
   const { decision, stalled } = gateState;
@@ -112,25 +106,23 @@ export function FirstRunGate({
       threads: soleThread === null ? [] : [soleThread],
     });
 
-  const { decision: nextDecision, persistCompletion } = hostedStatic
-    ? resolveHostedFirstRunDecision(hydrated)
-    : resolveFirstRunDecision({
-        enabled,
-        hydrated,
-        completed: onboardingCompletedAt !== null,
-        bootstrapped,
-        authoritative: primaryShellLive,
-        workspaceAuthoritative: workspaceEvidenceLive,
-        workspaceProvenanceAuthoritative: isFirstRunWorkspaceProvenanceAuthoritative({
-          welcomeReceived: serverWelcome !== null,
-          bootstrapStatus: serverWelcome?.bootstrapStatus ?? null,
-        }),
-        catalogReady: environmentCatalogReady,
-        serverConfigAvailable: serverConfig !== null,
-        workspaceFresh,
-        projectCount: projects.length,
-        threadCount,
-      });
+  const { decision: nextDecision, persistCompletion } = resolveFirstRunDecision({
+    enabled,
+    hydrated,
+    completed: onboardingCompletedAt !== null,
+    bootstrapped,
+    authoritative: primaryShellLive,
+    workspaceAuthoritative: workspaceEvidenceLive,
+    workspaceProvenanceAuthoritative: isFirstRunWorkspaceProvenanceAuthoritative({
+      welcomeReceived: serverWelcome !== null,
+      bootstrapStatus: serverWelcome?.bootstrapStatus ?? null,
+    }),
+    catalogReady: environmentCatalogReady,
+    serverConfigAvailable: serverConfig !== null,
+    workspaceFresh,
+    projectCount: projects.length,
+    threadCount,
+  });
 
   if (hydrated) {
     const transitioned = transitionFirstRunGateState(gateState, {

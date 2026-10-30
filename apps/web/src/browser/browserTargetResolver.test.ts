@@ -11,8 +11,8 @@ vi.mock("~/env", () => env);
 describe("browser target resolver", () => {
   beforeEach(() => readPreparedConnection.mockReset());
 
-  it("refuses public relay hosts until the authenticated gateway exists", async () => {
-    readPreparedConnection.mockReturnValue({ httpBaseUrl: "https://relay.example.com" });
+  it("refuses public hosts until the authenticated gateway exists", async () => {
+    readPreparedConnection.mockReturnValue({ httpBaseUrl: "https://remote.example.com" });
     const { resolveDiscoveredServerUrl } = await import("./browserTargetResolver");
     expect(
       resolveDiscoveredServerUrl(EnvironmentId.make("environment-1"), "http://localhost:5173"),

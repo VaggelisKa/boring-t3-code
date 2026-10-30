@@ -1,4 +1,7 @@
-import { PrimaryConnectionTarget, RelayConnectionTarget } from "@t3tools/client-runtime/connection";
+import {
+  BearerConnectionTarget,
+  PrimaryConnectionTarget,
+} from "@t3tools/client-runtime/connection";
 import { buildRemoteOpenUrl, EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -37,7 +40,7 @@ describe("resolveRemoteOpenState", () => {
   it("reports unavailable for a remote environment", () => {
     expect(
       resolveRemoteOpenState({
-        target: new RelayConnectionTarget({ environmentId, label: "sol" }),
+        target: new BearerConnectionTarget({ environmentId, label: "sol", connectionId: "sol" }),
         isDesktopRenderer: false,
       }),
     ).toEqual({ mode: "remote-unavailable" });

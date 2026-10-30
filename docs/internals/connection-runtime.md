@@ -37,17 +37,15 @@ attempt; a short one leaves it alone.
 The [registry](../../packages/client-runtime/src/connection/registry.ts) scopes
 connections by environment. An involuntary disconnect retains the registration
 and cached data. Explicit removal closes the scope and clears credentials,
-projections, and platform-owned state such as drafts. Cloud-account changes apply
-to relay registrations; they must not discard directly paired environments.
+projections, and platform-owned state such as drafts.
 
 ## HTTP authorization
 
-RPC sessions authenticate at socket upgrade, while HTTP requests need current
-credentials from the
-[authorization service](../../packages/client-runtime/src/authorization/service.ts).
-Replacing a healthy socket for HTTP renewal would interrupt conversations and
-change the transport generation without a transport failure. Credential expiry
-does not close the socket, and refresh failure belongs to the HTTP operation.
+RPC sessions authenticate at socket upgrade through the
+[authorization service](../../packages/client-runtime/src/authorization/service.ts),
+while HTTP requests reuse the prepared connection's bearer credential. Credential
+expiry does not close the socket, and a rejected HTTP request belongs to that
+operation, never to the transport.
 
 Session listings must retain unrevoked connected sessions after credential expiry
 so an open connection does not disappear from connection management. This does

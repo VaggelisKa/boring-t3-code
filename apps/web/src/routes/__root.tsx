@@ -42,22 +42,12 @@ import {
 import { useUiStateStore } from "../uiStateStore";
 import { configureClientTracing } from "../observability/clientTracing";
 import { resolveInitialServerAuthGateState } from "../environments/primary";
-import { isHostedStaticApp } from "../hostedPairing";
-import { useHostedPromptLinkLanding } from "../components/promptLinks/HostedPromptLinkLanding";
 import { useAtomValue } from "@effect/atom-react";
 import { primaryServerConfigAtom, primaryServerWelcomeAtom } from "../state/server";
 import { readProject } from "../state/entities";
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    if (isHostedStaticApp(new URL(window.location.href))) {
-      return {
-        authGateState: {
-          status: "hosted-static",
-        } as const,
-      };
-    }
-
     const authGateState = await resolveInitialServerAuthGateState();
     if (authGateState.status === "authenticated") {
       // Idempotent, so every navigation can ask for it.
@@ -109,17 +99,9 @@ function RootRouteBranch() {
   // Once true, stays true: a visit to /welcome means the bootstrap already chose a route.
   const [returningFromWelcome, setReturningFromWelcome] = useState(pathname === "/welcome");
   if (pathname === "/welcome" && !returningFromWelcome) setReturningFromWelcome(true);
-  const hostedPromptLinkLanding = useHostedPromptLinkLanding(
-    authGateState.status === "hosted-static",
-  );
 
   if (pathname === "/pair" || pathname === "/connect-agent") {
     return <Outlet />;
-  }
-
-  // Handle links before onboarding redirects lose them.
-  if (hostedPromptLinkLanding !== null) {
-    return hostedPromptLinkLanding;
   }
 
   if (pathname === "/welcome") {
@@ -135,7 +117,7 @@ function RootRouteBranch() {
     );
   }
 
-  if (authGateState.status !== "authenticated" && authGateState.status !== "hosted-static") {
+  if (authGateState.status !== "authenticated") {
     return <Outlet />;
   }
 
@@ -149,10 +131,7 @@ function RootRouteBranch() {
 
   return (
     <>
-      <FirstRunGate
-        enabled={primaryEnvironmentAuthenticated}
-        hostedStatic={authGateState.status === "hosted-static"}
-      >
+      <FirstRunGate enabled={primaryEnvironmentAuthenticated}>
         {primaryEnvironmentAuthenticated ? <DesktopAppActivationCoordinator /> : null}
         {primaryEnvironmentAuthenticated ? <DesktopWebLinkCoordinator /> : null}
         {isElectron ? <RunningThreadKeepAlive /> : null}
