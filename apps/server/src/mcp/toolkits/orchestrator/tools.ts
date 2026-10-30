@@ -2,16 +2,10 @@ import {
   OrchestratorMcpCapabilitiesInput,
   OrchestratorMcpCapabilitiesResult,
   OrchestrationV2StopWorkflowInput,
-  OrchestratorMcpEnvironmentLinkInput,
-  OrchestratorMcpEnvironmentLinkResult,
-  OrchestratorMcpEnvironmentLinksResult,
-  OrchestratorMcpEnvironmentUnlinkInput,
-  OrchestratorMcpEnvironmentUnlinkResult,
   OrchestratorMcpCreateThreadsInput,
   OrchestratorMcpCreateThreadsResult,
   OrchestratorMcpDelegateTaskInput,
   OrchestratorMcpDelegateTaskResult,
-  OrchestratorMcpEnvironmentTarget,
   OrchestratorMcpRequestSecretInput,
   OrchestratorMcpRequestSecretResult,
   OrchestratorMcpFailure,
@@ -32,14 +26,10 @@ import {
   ThreadMetadataMcpUpdateResult,
   TrimmedNonEmptyString,
 } from "@t3tools/contracts";
-import { McpSchema, Tool, Toolkit } from "effect/ai";
+import { Tool, Toolkit } from "effect/ai";
 import * as Schema from "effect/Schema";
-import * as Struct from "effect/Struct";
 
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as PeerForwarding from "../../../peer/PeerForwarding.ts";
-import * as PeerLinkRequests from "../../../peer/PeerLinkRequests.ts";
-import * as PeerLinks from "../../../peer/PeerLinks.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
 import * as ThreadMetadataMcpService from "../../ThreadMetadataMcpService.ts";
@@ -48,14 +38,6 @@ const dependencies = [
   McpInvocationContext.McpInvocationContext,
   ThreadManagementService.ThreadManagementService,
   OrchestratorMcpService.OrchestratorMcpService,
-];
-/** Listing this environment's links. */
-const linkDependencies = [...dependencies, PeerForwarding.PeerForwarding];
-/** Making and forgetting links. */
-const linkingDependencies = [
-  ...dependencies,
-  PeerLinkRequests.PeerLinkRequests,
-  PeerLinks.PeerLinks,
 ];
 const threadMetadataDependencies = [
   McpInvocationContext.McpInvocationContext,
@@ -119,10 +101,7 @@ const TaskCancelTool = Tool.make("task_cancel", {
 const WorkflowStopTool = Tool.make("t3_workflow_stop", {
   description:
     "Stop a running Claude workflow in a thread. `subagentId`: coordinator from `t3_thread_read` 'activity'. Stops only the workflow, not the thread.",
-  parameters: Schema.Struct({
-    environmentId: OrchestratorMcpEnvironmentTarget,
-    ...OrchestrationV2StopWorkflowInput.fields,
-  }),
+  parameters: OrchestrationV2StopWorkflowInput,
   success: Schema.Struct({}),
   failure: OrchestratorMcpFailure,
   failureMode: "return",
@@ -207,11 +186,7 @@ const ThreadReadTool = Tool.make("t3_thread_read", {
 const ThreadUpdateTool = Tool.make("t3_thread_update", {
   description:
     "Rename a thread (`action:'rename'` with `title`) or regenerate its title. Omit `threadId` for this thread. Workspace and branch cannot change here.",
-  // Keeps the input's action/field check, which rebuilding the struct would drop.
-  parameters: ThreadMetadataMcpUpdateInput.mapFields(
-    Struct.assign({ environmentId: OrchestratorMcpEnvironmentTarget }),
-    { unsafePreserveChecks: true },
-  ),
+  parameters: ThreadMetadataMcpUpdateInput,
   success: ThreadMetadataMcpUpdateResult,
   failure: OrchestratorMcpFailure,
   failureMode: "return",
@@ -260,48 +235,6 @@ const ThreadInterruptTool = Tool.make("t3_thread_interrupt", {
   .annotate(Tool.Title, "Interrupt a T3 thread")
   .annotate(Tool.Destructive, true);
 
-const EnvironmentLinksTool = Tool.make("t3_environment_links", {
-  description:
-    "List linked environments (the user's other machines) and whether each answers now. Pass one's `environmentId` to a tool to act there; `delegate_task` takes `target.environmentId`. Expired: link it again with `t3_environment_link`.",
-  success: OrchestratorMcpEnvironmentLinksResult,
-  failure: OrchestratorMcpFailure,
-  failureMode: "return",
-  dependencies: linkDependencies,
-})
-  .annotate(Tool.Title, "List linked environments")
-  .annotate(Tool.Readonly, true)
-  .annotate(Tool.Destructive, false)
-  .annotate(Tool.Idempotent, true)
-  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenWhileLinksOff);
-
-const EnvironmentLinkTool = Tool.make("t3_environment_link", {
-  description:
-    "Ask the user to link another machine, in a card. For a machine the user names that is not linked. Pass `hint` from their words, `environmentId` when one names it (already linked: returns `linked`), `url` only when the user gave an address. Returns `pending`; the outcome arrives as a message in this thread. Do not wait, poll, or call it again to check. Never ask for a pairing code in chat.",
-  parameters: OrchestratorMcpEnvironmentLinkInput,
-  success: OrchestratorMcpEnvironmentLinkResult,
-  failure: OrchestratorMcpFailure,
-  failureMode: "return",
-  dependencies: linkingDependencies,
-})
-  .annotate(Tool.Title, "Link another environment")
-  .annotate(Tool.Destructive, false)
-  .annotate(Tool.OpenWorld, true)
-  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenWhileLinksOff);
-
-const EnvironmentUnlinkTool = Tool.make("t3_environment_unlink", {
-  description:
-    "Forget a linked environment. That machine's Connections list its session until revoked there.",
-  parameters: OrchestratorMcpEnvironmentUnlinkInput,
-  success: OrchestratorMcpEnvironmentUnlinkResult,
-  failure: OrchestratorMcpFailure,
-  failureMode: "return",
-  dependencies: linkingDependencies,
-})
-  .annotate(Tool.Title, "Forget a linked environment")
-  .annotate(Tool.Destructive, true)
-  .annotate(Tool.Idempotent, true)
-  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenWhileLinksOff);
-
 export const OrchestratorToolkit = Toolkit.make(
   OrchestratorCapabilitiesTool,
   DelegateTaskTool,
@@ -317,7 +250,4 @@ export const OrchestratorToolkit = Toolkit.make(
   ThreadSendTool,
   ThreadWaitTool,
   ThreadInterruptTool,
-  EnvironmentLinksTool,
-  EnvironmentLinkTool,
-  EnvironmentUnlinkTool,
 );

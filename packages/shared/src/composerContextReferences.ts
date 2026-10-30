@@ -289,7 +289,7 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
       return [
         `label: ${record.label}`,
         `environmentId: ${record.environmentId}`,
-        "The user means this machine. Not linked here yet: call t3_environment_link with this environmentId. Linked: pass it as environmentId, or target.environmentId for delegate_task.",
+        "The user means this machine.",
       ].join("\n");
   }
 }
@@ -348,7 +348,6 @@ export function threadContextsOutsideEnvironment(input: {
   text: string;
   records: ReadonlyArray<ComposerContextRecord>;
   environmentId: EnvironmentId;
-  linkedEnvironments: ReadonlyMap<EnvironmentId, string>;
 }): ThreadContextRecord[] {
   const referenced = new Set(
     collectComposerContextReferences(input.text).map((occurrence) => occurrence.contextId),
@@ -358,8 +357,7 @@ export function threadContextsOutsideEnvironment(input: {
       record.kind === "thread" &&
       "threadId" in record &&
       referenced.has(record.contextId) &&
-      record.environmentId !== input.environmentId &&
-      !input.linkedEnvironments.has(record.environmentId),
+      record.environmentId !== input.environmentId,
   );
 }
 

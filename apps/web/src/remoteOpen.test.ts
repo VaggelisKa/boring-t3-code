@@ -18,11 +18,6 @@ const primaryTarget = (httpBaseUrl: string) =>
     wsBaseUrl: httpBaseUrl.replace("http", "ws"),
   });
 
-const TAILSCALE_TARGETS = [
-  { kind: "tailscale", host: "sol.tail1234.ts.net" },
-  { kind: "mdns", host: "sol.local" },
-] as const;
-
 describe("resolveRemoteOpenState", () => {
   it("keeps exec behavior for a loopback primary target", () => {
     expect(
@@ -30,23 +25,8 @@ describe("resolveRemoteOpenState", () => {
         target: primaryTarget("http://127.0.0.1:8000"),
         sshTarget: null,
         isDesktopRenderer: false,
-        remoteOpenTargets: TAILSCALE_TARGETS,
       }),
     ).toEqual({ mode: "local-exec" });
-  });
-
-  it("uses deep links for a primary target reached over the network", () => {
-    expect(
-      resolveRemoteOpenState({
-        target: primaryTarget("https://sol.tail1234.ts.net"),
-        sshTarget: null,
-        isDesktopRenderer: false,
-        remoteOpenTargets: TAILSCALE_TARGETS,
-      }),
-    ).toEqual({
-      mode: "remote-links",
-      host: { kind: "tailscale", host: "sol.tail1234.ts.net" },
-    });
   });
 
   it("keeps exec behavior for the desktop app's own primary even on a NAT URL", () => {
@@ -56,7 +36,6 @@ describe("resolveRemoteOpenState", () => {
         target: primaryTarget("http://172.29.112.1:14369"),
         sshTarget: null,
         isDesktopRenderer: true,
-        remoteOpenTargets: TAILSCALE_TARGETS,
       }),
     ).toEqual({ mode: "local-exec" });
   });
@@ -66,9 +45,6 @@ describe("resolveRemoteOpenState", () => {
       target: new SshConnectionTarget({ environmentId, label: "sol", connectionId: "ssh-1" }),
       sshTarget: { alias: "sol", username: null },
       isDesktopRenderer: true,
-      remoteOpenTargets: [
-        { kind: "tailscale", host: "sol.tail1234.ts.net", username: "server-user" },
-      ],
     });
     expect(state).toEqual({ mode: "remote-links", host: { kind: "ssh-alias", host: "sol" } });
     if (state.mode !== "remote-links") throw new Error("Expected a remote link");
@@ -96,7 +72,6 @@ describe("resolveRemoteOpenState", () => {
       target: new SshConnectionTarget({ environmentId, label: "server", connectionId: "ssh-1" }),
       sshTarget,
       isDesktopRenderer: true,
-      remoteOpenTargets: TAILSCALE_TARGETS,
     });
     expect(state.mode).toBe("remote-links");
     if (state.mode !== "remote-links") throw new Error("Expected a remote link");
@@ -113,33 +88,14 @@ describe("resolveRemoteOpenState", () => {
     );
   });
 
-  it("uses the advertised login username in editor links over a relay", () => {
-    const state = resolveRemoteOpenState({
-      target: new RelayConnectionTarget({ environmentId, label: "server" }),
-      sshTarget: null,
-      isDesktopRenderer: false,
-      remoteOpenTargets: [
-        { kind: "tailscale", host: "server.tail1234.ts.net", username: "admin-user" },
-      ],
-    });
-    expect(state.mode).toBe("remote-links");
-    if (state.mode !== "remote-links") throw new Error("Expected a remote link");
+  it("reports unavailable for a remote environment without an SSH alias", () => {
     expect(
-      buildRemoteOpenUrl({ editor: "cursor", ...state.host, absolutePath: "/work/project" }),
-    ).toBe("cursor://vscode-remote/ssh-remote+admin-user%40server.tail1234.ts.net/work/project");
-  });
-
-  it("reports unavailable when a remote environment advertises no hosts", () => {
-    for (const remoteOpenTargets of [[], undefined] as const) {
-      expect(
-        resolveRemoteOpenState({
-          target: new RelayConnectionTarget({ environmentId, label: "sol" }),
-          sshTarget: null,
-          isDesktopRenderer: false,
-          remoteOpenTargets,
-        }),
-      ).toEqual({ mode: "remote-unavailable" });
-    }
+      resolveRemoteOpenState({
+        target: new RelayConnectionTarget({ environmentId, label: "sol" }),
+        sshTarget: null,
+        isDesktopRenderer: false,
+      }),
+    ).toEqual({ mode: "remote-unavailable" });
   });
 });
 

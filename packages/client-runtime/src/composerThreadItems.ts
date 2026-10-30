@@ -31,8 +31,6 @@ export interface ComposerThreadItem {
 export function matchComposerThreadItems(input: {
   shells: ReadonlyArray<ComposerThreadCandidate>;
   environmentId: EnvironmentId;
-  /** The machines the composer's environment links to, by name. */
-  linkedEnvironments: ReadonlyMap<EnvironmentId, string>;
   excludeThreadId: ThreadId | null;
   query: string;
   /** Recency is measured against this time. */
@@ -42,8 +40,7 @@ export function matchComposerThreadItems(input: {
   if (query.length === 0) return [];
   const candidates = input.shells.filter(
     (shell) =>
-      (shell.environmentId === input.environmentId ||
-        input.linkedEnvironments.has(shell.environmentId)) &&
+      shell.environmentId === input.environmentId &&
       shell.id !== input.excludeThreadId &&
       shell.archivedAt === null &&
       shell.lineage.relationshipToParent !== "subagent",
@@ -55,19 +52,13 @@ export function matchComposerThreadItems(input: {
     }),
   )
     .slice(0, COMPOSER_THREAD_RESULT_LIMIT)
-    .map(({ item: shell }) => {
-      const machine =
-        shell.environmentId === input.environmentId
-          ? undefined
-          : input.linkedEnvironments.get(shell.environmentId);
-      return {
-        id: `thread:${shell.environmentId}:${shell.id}`,
-        type: "thread",
-        thread: { environmentId: shell.environmentId, threadId: shell.id },
-        label: shell.title,
-        description: machine === undefined ? "Thread" : `Thread on ${machine}`,
-      };
-    });
+    .map(({ item: shell }) => ({
+      id: `thread:${shell.environmentId}:${shell.id}`,
+      type: "thread",
+      thread: { environmentId: shell.environmentId, threadId: shell.id },
+      label: shell.title,
+      description: "Thread",
+    }));
 }
 
 export interface ComposerEnvironmentCandidate {

@@ -1,10 +1,5 @@
 import type { ConnectionTarget } from "@t3tools/client-runtime/connection";
-import {
-  REMOTE_CAPABLE_EDITOR_IDS,
-  type EditorId,
-  type EnvironmentId,
-  type RemoteOpenTarget,
-} from "@t3tools/contracts";
+import { REMOTE_CAPABLE_EDITOR_IDS, type EditorId, type EnvironmentId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { Atom } from "effect/reactivity";
@@ -16,7 +11,7 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { environmentPresentations } from "~/state/presentation";
 
 export interface RemoteOpenHost {
-  readonly kind: "ssh-alias" | RemoteOpenTarget["kind"];
+  readonly kind: "ssh-alias";
   readonly host: string;
   readonly username?: string;
 }
@@ -51,7 +46,6 @@ function parseHostname(url: string): string | null {
 export function resolveRemoteOpenState(input: {
   readonly target: ConnectionTarget | null;
   readonly sshTarget: { readonly alias: string; readonly username: string | null } | null;
-  readonly remoteOpenTargets: ReadonlyArray<RemoteOpenTarget> | undefined;
   readonly isDesktopRenderer: boolean;
 }): RemoteOpenState {
   const { target } = input;
@@ -87,10 +81,6 @@ export function resolveRemoteOpenState(input: {
       },
     };
   }
-  const advertised = input.remoteOpenTargets?.[0];
-  if (advertised !== undefined) {
-    return { mode: "remote-links", host: advertised };
-  }
   return REMOTE_UNAVAILABLE;
 }
 
@@ -118,7 +108,6 @@ const remoteOpenResolutionAtom = Atom.family((environmentId: EnvironmentId) =>
         target: entry.target,
         sshTarget:
           profile !== null && profile._tag === "SshConnectionProfile" ? profile.target : null,
-        remoteOpenTargets: presentation?.serverConfig?.remoteOpenTargets,
         isDesktopRenderer: window.desktopBridge !== undefined,
       }),
       isResolved: true,

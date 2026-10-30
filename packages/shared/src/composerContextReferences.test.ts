@@ -273,7 +273,7 @@ describe("provider projection", () => {
     expect(projected).toContain('<context kind="environment" id="env_vps">');
     expect(projected).toContain("label: vps");
     expect(projected).toContain("environmentId: environment-vps");
-    expect(projected).toContain("t3_environment_link with this environmentId");
+    expect(projected).toContain("The user means this machine.");
     expect(projected).not.toMatch(/https?:/);
   });
 
@@ -318,7 +318,6 @@ describe("threadContextsOutsideEnvironment", () => {
         text: `${localReference} [Foreign](t3-context://v1/thread/thread_foreign)`,
         records,
         environmentId: local.environmentId,
-        linkedEnvironments: new Map(),
       }),
     ).toEqual([foreign]);
     expect(
@@ -326,38 +325,8 @@ describe("threadContextsOutsideEnvironment", () => {
         text: localReference,
         records,
         environmentId: local.environmentId,
-        linkedEnvironments: new Map(),
       }),
     ).toEqual([]);
-  });
-
-  it("lets a thread on a linked machine through, since the agent reads it there", () => {
-    const thread = {
-      version: 1 as const,
-      kind: "thread" as const,
-      label: "Thread",
-      threadId: ThreadId.make("thread"),
-      title: "Thread",
-    };
-    const linked = {
-      ...thread,
-      contextId: ctx("thread_linked"),
-      environmentId: EnvironmentId.make("env-linked"),
-    };
-    const unlinked = {
-      ...thread,
-      contextId: ctx("thread_unlinked"),
-      environmentId: EnvironmentId.make("env-unlinked"),
-    };
-
-    expect(
-      threadContextsOutsideEnvironment({
-        text: "[A](t3-context://v1/thread/thread_linked) [B](t3-context://v1/thread/thread_unlinked)",
-        records: [linked, unlinked],
-        environmentId: EnvironmentId.make("env-local"),
-        linkedEnvironments: new Map([[linked.environmentId, "VPS"]]),
-      }),
-    ).toEqual([unlinked]);
   });
 });
 

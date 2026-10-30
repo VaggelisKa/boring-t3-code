@@ -219,16 +219,6 @@ export const buildRemoteOpenUrl = (input: {
   return `${scheme}://vscode-remote/ssh-remote+${encodeURIComponent(destination)}${encodedPath}${input.isFile ? ":1:1" : ""}`;
 };
 
-export const RemoteOpenTargetKind = Schema.Literals(["tailscale", "mdns"]);
-export type RemoteOpenTargetKind = typeof RemoteOpenTargetKind.Type;
-
-export const RemoteOpenTarget = Schema.Struct({
-  kind: RemoteOpenTargetKind,
-  host: TrimmedNonEmptyString,
-  username: Schema.optionalKey(TrimmedNonEmptyString),
-});
-export type RemoteOpenTarget = typeof RemoteOpenTarget.Type;
-
 export class ExternalLauncherUnknownEditorError extends Schema.TaggedError<ExternalLauncherUnknownEditorError>()(
   "ExternalLauncherUnknownEditorError",
   {
