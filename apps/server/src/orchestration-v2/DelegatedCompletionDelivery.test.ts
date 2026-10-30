@@ -60,8 +60,8 @@ const layerServerConfig = ServerConfig.layerTest(process.cwd(), {
 });
 
 const modelSelection = {
-  instanceId: ProviderInstanceId.make("codex"),
-  model: "gpt-5.4",
+  instanceId: ProviderInstanceId.make("antigravity"),
+  model: "antigravity-default",
 } satisfies ModelSelection;
 
 const layerVcsDriverRegistryTest = VcsDriverRegistry.layer.pipe(
@@ -74,7 +74,7 @@ const layerCheckpointStoreTest = CheckpointStore.layer.pipe(
   Layer.provide(layerVcsDriverRegistryTest),
 );
 
-const driver = ProviderDriverKind.make("codex");
+const driver = ProviderDriverKind.make("antigravity");
 const orchestrationAdapter = {
   instanceId: modelSelection.instanceId,
   driver,

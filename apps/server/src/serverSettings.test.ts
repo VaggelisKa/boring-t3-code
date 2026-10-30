@@ -62,27 +62,6 @@ const layerFailingSecretStore = (cause: ServerSecretStore.SecretStoreError) =>
     }),
   );
 
-const recordProviderUsage = (provider: string, instanceId: string | null = provider) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`
-      INSERT INTO projection_thread_sessions (
-        thread_id,
-        status,
-        provider_name,
-        provider_instance_id,
-        updated_at
-      )
-      VALUES (
-        ${`thread-${instanceId ?? provider}`},
-        ${"ready"},
-        ${provider},
-        ${instanceId},
-        ${"2026-08-25T00:00:00.000Z"}
-      )
-    `;
-  });
-
 it.layer(NodeServices.layer)("server settings", (it) => {
   it.effect("serializes concurrent model preference edits without cancelling duplicate adds", () =>
     Effect.gen(function* () {
@@ -339,10 +318,10 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       yield* serverSettings.updateSettings({
         observability: { otlpTracesUrl: "http://localhost:4318/v1/traces" },
         textGenerationModelSelection: {
-          instanceId: ProviderInstanceId.make("codex"),
+          instanceId: ProviderInstanceId.make("antigravity"),
           model: DEFAULT_SERVER_SETTINGS.textGenerationModelSelection.model,
           options: createModelSelection(
-            ProviderInstanceId.make("codex"),
+            ProviderInstanceId.make("antigravity"),
             DEFAULT_SERVER_SETTINGS.textGenerationModelSelection.model,
             [
               { id: "reasoningEffort", value: "high" },
@@ -364,7 +343,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       assert.deepEqual(
         next.textGenerationModelSelection,
         createModelSelection(
-          ProviderInstanceId.make("codex"),
+          ProviderInstanceId.make("antigravity"),
           DEFAULT_SERVER_SETTINGS.textGenerationModelSelection.model,
           [
             { id: "reasoningEffort", value: "high" },
@@ -584,9 +563,9 @@ it.layer(NodeServices.layer)("server settings", (it) => {
 
       const next = yield* serverSettings.updateSettings({
         textGenerationModelSelection: {
-          instanceId: ProviderInstanceId.make("codex"),
+          instanceId: ProviderInstanceId.make("antigravity"),
           model: "gpt-5.4",
-          options: createModelSelection(ProviderInstanceId.make("codex"), "gpt-5.4", [
+          options: createModelSelection(ProviderInstanceId.make("antigravity"), "gpt-5.4", [
             { id: "reasoningEffort", value: "high" },
           ]).options!,
         },
@@ -594,7 +573,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
 
       assert.deepEqual(
         next.textGenerationModelSelection,
-        createModelSelection(ProviderInstanceId.make("codex"), "gpt-5.4", [
+        createModelSelection(ProviderInstanceId.make("antigravity"), "gpt-5.4", [
           { id: "reasoningEffort", value: "high" },
         ]),
       );
@@ -698,62 +677,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       ).pipe(Effect.provide(layerServerSettings())),
   );
 
-  it.effect("skips explicitly disabled default instances when choosing a fallback", () =>
-    Effect.gen(function* () {
-      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
-      const next = yield* serverSettings.updateSettings({
-        providerInstances: {
-          [ProviderInstanceId.make("codex")]: {
-            driver: ProviderDriverKind.make("codex"),
-            enabled: false,
-            config: {},
-          },
-        },
-      });
-
-      assert.equal(next.textGenerationModelSelection.instanceId, "claudeAgent");
-      assert.equal(next.textGenerationModelSelection.model, "claude-haiku-5-5");
-    }).pipe(Effect.provide(layerServerSettings())),
-  );
-
   // A backend behind a custom model may refuse the built-in default.
-  it.effect("falls back to the thread default when it is a custom model on that instance", () =>
-    Effect.gen(function* () {
-      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
-      const claude = ProviderInstanceId.make("claudeAgent");
-      const providerInstances = {
-        [ProviderInstanceId.make("codex")]: {
-          driver: ProviderDriverKind.make("codex"),
-          enabled: false,
-          config: {},
-        },
-        [claude]: {
-          driver: ProviderDriverKind.make("claudeAgent"),
-          config: { customModels: ["z-ai/glm-5.3-flash"] },
-        },
-      };
-
-      const custom = yield* serverSettings.updateSettings({
-        providerInstances,
-        defaultModelSelection: {
-          instanceId: claude,
-          model: "z-ai/glm-5.3-flash",
-          options: [{ id: "thinking", value: false }],
-        },
-      });
-      assert.deepEqual(custom.textGenerationModelSelection, {
-        instanceId: claude,
-        model: "z-ai/glm-5.3-flash",
-        options: [{ id: "thinking", value: false }],
-      });
-
-      const builtIn = yield* serverSettings.updateSettings({
-        defaultModelSelection: { instanceId: claude, model: "claude-fable-5-1" },
-      });
-      assert.equal(builtIn.textGenerationModelSelection.model, "claude-haiku-5-5");
-    }).pipe(Effect.provide(layerServerSettings())),
-  );
-
   it.effect(
     "preserves the source control writer selection when its provider instance is disabled",
     () =>
@@ -832,9 +756,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
           providers: {
             codex: { binaryPath: "/opt/guard/bin/codex" },
             claudeAgent: { enabled: false },
-            cursor: { enabled: false },
-            grok: { enabled: false },
-            opencode: { enabled: false },
           },
         }),
       );
@@ -888,64 +809,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
     }).pipe(Effect.provide(layerServerSettings())),
   );
 
-  it.effect("enables previously used optional providers while migrating legacy settings", () =>
-    Effect.gen(function* () {
-      const serverConfig = yield* ServerConfig.ServerConfig;
-      const fileSystem = yield* FileSystem.FileSystem;
-      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
-      yield* fileSystem.writeFileString(
-        serverConfig.settingsPath,
-        JSON.stringify({
-          providers: { opencode: { serverUrl: "http://127.0.0.1:4096" }, cursor: {} },
-          providerInstances: {
-            cursor_work: { driver: "cursor", config: {} },
-            opencode_unused: { driver: "opencode", config: {} },
-          },
-        }),
-      );
-      yield* recordProviderUsage("opencode");
-      yield* recordProviderUsage("grok", null);
-      yield* recordProviderUsage("cursor", "cursor_work");
-
-      const settings = yield* serverSettings.getSettings;
-
-      assert.deepEqual(settings.providerInstances[ProviderInstanceId.make("opencode")], {
-        driver: ProviderDriverKind.make("opencode"),
-        enabled: true,
-        config: { serverUrl: "http://127.0.0.1:4096" },
-      });
-
-      assert.isTrue(settings.providerInstances[ProviderInstanceId.make("grok")]?.enabled);
-      assert.isTrue(settings.providerInstances[ProviderInstanceId.make("cursor_work")]?.enabled);
-
-      assert.isTrue(settings.providerInstances[ProviderInstanceId.make("cursor")]?.enabled);
-      const unused = settings.providerInstances[ProviderInstanceId.make("opencode_unused")];
-      assert.isDefined(unused);
-      assert.isFalse(resolveProviderInstanceEnabled(unused));
-    }).pipe(Effect.provide(layerServerSettings())),
-  );
-
-  it.effect("keeps explicit legacy disables even when provider history shows use", () =>
-    Effect.gen(function* () {
-      const serverConfig = yield* ServerConfig.ServerConfig;
-      const fileSystem = yield* FileSystem.FileSystem;
-      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
-      yield* fileSystem.writeFileString(
-        serverConfig.settingsPath,
-        JSON.stringify({ providers: { grok: { enabled: false, binaryPath: "/opt/grok" } } }),
-      );
-      yield* recordProviderUsage("grok");
-
-      const settings = yield* serverSettings.getSettings;
-
-      assert.deepEqual(settings.providerInstances[ProviderInstanceId.make("grok")], {
-        driver: ProviderDriverKind.make("grok"),
-        enabled: false,
-        config: { binaryPath: "/opt/grok" },
-      });
-    }).pipe(Effect.provide(layerServerSettings())),
-  );
-
   it.effect("migrates legacy providers from an invalid file without rewriting it", () =>
     Effect.gen(function* () {
       const serverConfig = yield* ServerConfig.ServerConfig;
@@ -964,30 +827,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
 
       assert.isFalse(settings.continueThreadsAfterServerUpdate);
       assert.equal(yield* fileSystem.readFileString(serverConfig.settingsPath), raw);
-    }).pipe(Effect.provide(layerServerSettings())),
-  );
-
-  it.effect("keeps a default-off provider's new instance disabled and sparse on disk", () =>
-    Effect.gen(function* () {
-      const serverConfig = yield* ServerConfig.ServerConfig;
-      const fileSystem = yield* FileSystem.FileSystem;
-      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
-
-      const next = yield* serverSettings.updateSettings({
-        providerInstances: {
-          [ProviderInstanceId.make("grok")]: {
-            driver: ProviderDriverKind.make("grok"),
-            config: {},
-          },
-        },
-      });
-
-      const grok = next.providerInstances[ProviderInstanceId.make("grok")];
-      assert.isDefined(grok);
-      assert.isFalse(resolveProviderInstanceEnabled(grok));
-      const persisted = JSON.parse(yield* fileSystem.readFileString(serverConfig.settingsPath));
-      assert.isUndefined(persisted.providers);
-      assert.isUndefined(persisted.providerInstances.grok.enabled);
     }).pipe(Effect.provide(layerServerSettings())),
   );
 
@@ -1357,42 +1196,27 @@ it.layer(NodeServices.layer)("server settings", (it) => {
         JSON.stringify({
           providerInstances: {
             antigravity: { driver: "antigravity", config: { apiKey: "legacy-api-key" } },
-            opencode: {
-              driver: "opencode",
-              config: { serverUrl: "http://127.0.0.1:4096", serverPassword: "legacy-password" },
-            },
           },
         }),
       );
       const saved = yield* service.getSettings;
-      const opencode = ProviderInstanceId.make("opencode");
-      assert.propertyVal(
-        saved.providerInstances[ProviderInstanceId.make("antigravity")]?.config,
-        "apiKey",
-        "legacy-api-key",
-      );
-      assert.propertyVal(
-        saved.providerInstances[opencode]?.config,
-        "serverPassword",
-        "legacy-password",
-      );
+      const antigravity = ProviderInstanceId.make("antigravity");
+      assert.propertyVal(saved.providerInstances[antigravity]?.config, "apiKey", "legacy-api-key");
       const client = ServerSettingsModule.redactServerSettingsForClient(saved);
-      for (const value of ["legacy-api-key", "legacy-password"]) {
-        assert.notInclude(yield* fs.readFileString(config.settingsPath), value);
-        assert.notInclude(JSON.stringify(client), value);
-      }
-      const clientConfig = client.providerInstances[opencode]?.config as Record<string, unknown>;
+      assert.notInclude(yield* fs.readFileString(config.settingsPath), "legacy-api-key");
+      assert.notInclude(JSON.stringify(client), "legacy-api-key");
+      const clientConfig = client.providerInstances[antigravity]?.config as Record<string, unknown>;
       const edited = yield* service.updateProviderInstance({
         operation: "upsert",
-        instanceId: opencode,
+        instanceId: antigravity,
         instance: {
-          ...client.providerInstances[opencode]!,
-          config: { ...clientConfig, serverUrl: "http://127.0.0.1:4097" },
+          ...client.providerInstances[antigravity]!,
+          config: { ...clientConfig, binaryPath: "/opt/antigravity" },
         },
       });
-      assert.deepInclude(edited.providerInstances[opencode]?.config, {
-        serverUrl: "http://127.0.0.1:4097",
-        serverPassword: "legacy-password",
+      assert.deepInclude(edited.providerInstances[antigravity]?.config, {
+        binaryPath: "/opt/antigravity",
+        apiKey: "legacy-api-key",
       });
     }).pipe(Effect.provide(layerServerSettings())),
   );
