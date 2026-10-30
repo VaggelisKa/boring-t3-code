@@ -69,7 +69,7 @@ import {
   type ProviderReplayGate,
 } from "@t3tools/provider-testing/replayGate";
 
-export function makeReplayServerConfig(
+function makeReplayServerConfig(
   scenario: string,
 ): Effect.Effect<
   ServerConfig.ServerConfig["Service"],

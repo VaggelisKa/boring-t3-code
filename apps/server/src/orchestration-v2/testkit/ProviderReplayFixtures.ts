@@ -186,10 +186,6 @@ export function runReplayFixture<
   return runFixtureProvider(input).pipe(Effect.mapError(normalizeTestError), Effect.scoped);
 }
 
-export function findReplayFixture(name: string) {
-  return ORCHESTRATOR_REPLAY_FIXTURES.find((fixture) => fixture.name === name);
-}
-
 /**
  * Registers one test per recorded fixture variant of `driver`. Call it inside the
  * provider file's `describe`. `run` picks the harness for each variant.

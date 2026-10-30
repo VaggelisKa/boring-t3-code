@@ -60,26 +60,11 @@ function getProviderOptionStringSelectionValue(
   return typeof value === "string" ? value : undefined;
 }
 
-function getProviderOptionBooleanSelectionValue(
-  selections: ReadonlyArray<ProviderOptionSelection> | null | undefined,
-  id: string,
-): boolean | undefined {
-  const value = getProviderOptionSelectionValue(selections, id);
-  return typeof value === "boolean" ? value : undefined;
-}
-
 export function getModelSelectionStringOptionValue(
   modelSelection: ModelSelection | null | undefined,
   id: string,
 ): string | undefined {
   return getProviderOptionStringSelectionValue(modelSelection?.options, id);
-}
-
-export function getModelSelectionBooleanOptionValue(
-  modelSelection: ModelSelection | null | undefined,
-  id: string,
-): boolean | undefined {
-  return getProviderOptionBooleanSelectionValue(modelSelection?.options, id);
 }
 
 function canonicalModelSelectionOptions(
@@ -323,11 +308,7 @@ export function isClaudeUltrathinkPrompt(text: string | null | undefined): boole
   return typeof text === "string" && /\bultrathink\b/i.test(text);
 }
 
-export function codexModelFamily(slug: string): string {
-  return slug.startsWith("openai.gpt-") ? slug.slice("openai.".length) : slug;
-}
-
-export function formatCodexModelName(name: string): string {
+function formatCodexModelName(name: string): string {
   return name.replace(/^gpt/i, "GPT").replace(/-([a-z])/g, (_, c) => "-" + c.toUpperCase());
 }
 

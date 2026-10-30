@@ -95,7 +95,7 @@ export class EnvironmentRpcSubscriptionObserver extends Context.Reference<{
   }),
 }) {}
 
-export const isRpcClientError = Schema.is(RpcClientError.RpcClientError);
+const isRpcClientError = Schema.is(RpcClientError.RpcClientError);
 const isEnvironmentAuthorizationError = Schema.is(EnvironmentAuthorizationError);
 
 const MAX_EXPECTED_FAILURE_RETRY_DELAY_MS = 30_000;
@@ -428,10 +428,3 @@ export const request = <TTag extends Exclude<EnvironmentUnaryRpcTag, ClientGuard
   tag: TTag,
   input: EnvironmentRpcInput<TTag>,
 ) => requestGuarded(tag, input);
-
-export const runStream = <
-  TTag extends Exclude<EnvironmentStreamCommandRpcTag, ClientGuardedRpcTag>,
->(
-  tag: TTag,
-  input: EnvironmentRpcInput<TTag>,
-) => runStreamGuarded(tag, input);

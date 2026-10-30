@@ -143,7 +143,7 @@ async function guardMatches(
 }
 
 // Match markers in one latin1 alternation; one character per byte preserves exact ASCII offsets.
-export function transcriptLineGate(markers: readonly [string, ...string[]]) {
+function transcriptLineGate(markers: readonly [string, ...string[]]) {
   if (markers.length === 1) {
     const marker = Buffer.from(markers[0]);
     return (line: Buffer) => line.includes(marker);

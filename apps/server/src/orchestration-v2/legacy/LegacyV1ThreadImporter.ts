@@ -5,7 +5,7 @@ import {
 import {
   ChatAttachment,
   OrchestrationMessageContext,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   EventId,
   MessageId,
   ModelSelection,
@@ -145,7 +145,7 @@ function modelSelectionFor(row: LegacyThreadRow) {
       : decodeModelSelection(parseJson(row.model_selection_json));
   return Option.getOrElse(decoded, () => ({
     instanceId: ProviderInstanceId.make("codex"),
-    model: DEFAULT_MODEL,
+    model: ANTIGRAVITY_DEFAULT_MODEL,
   }));
 }
 

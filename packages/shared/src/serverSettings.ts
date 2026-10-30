@@ -1,7 +1,7 @@
 import type { ModelPreferences } from "@t3tools/contracts/settings";
 import {
   DEFAULT_MODEL_BY_PROVIDER,
-  DEFAULT_TEXT_GENERATION_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   globalIdleCompaction,
@@ -99,7 +99,7 @@ export function defaultTextGenerationModel(driver: ProviderDriverKind): string {
   return (
     DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER[driver] ??
     DEFAULT_MODEL_BY_PROVIDER[driver] ??
-    DEFAULT_TEXT_GENERATION_MODEL
+    ANTIGRAVITY_DEFAULT_MODEL
   );
 }
 

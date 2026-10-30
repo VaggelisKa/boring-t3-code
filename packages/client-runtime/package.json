@@ -203,10 +203,6 @@
       "types": "./src/state/deviceHubAccess.ts",
       "default": "./src/state/deviceHubAccess.ts"
     },
-    "./state/peerPairingCode": {
-      "types": "./src/state/peerPairingCode.ts",
-      "default": "./src/state/peerPairingCode.ts"
-    },
     "./state/preview": {
       "types": "./src/state/preview.ts",
       "default": "./src/state/preview.ts"
@@ -250,10 +246,6 @@
     "./state/server": {
       "types": "./src/state/server.ts",
       "default": "./src/state/server.ts"
-    },
-    "./state/outdatedServerUpdate": {
-      "types": "./src/state/outdatedServerUpdate.ts",
-      "default": "./src/state/outdatedServerUpdate.ts"
     },
     "./state/session": {
       "types": "./src/state/session.ts",

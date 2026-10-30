@@ -162,13 +162,6 @@ export const stripPairingTokenFromUrl = (url: URL): URL => {
   return next;
 };
 
-export const setPairingTokenOnUrl = (url: URL, credential: string): URL => {
-  const next = new URL(url.toString());
-  next.searchParams.delete(PAIRING_TOKEN_PARAM);
-  next.hash = new URLSearchParams([[PAIRING_TOKEN_PARAM, credential]]).toString();
-  return next;
-};
-
 const readHostedPairingRequest = (url: URL): HostedPairingRequest | null => {
   const host = url.searchParams.get(HOSTED_PAIRING_HOST_PARAM)?.trim() ?? "";
   const token = getPairingTokenFromUrl(url)?.trim() ?? "";

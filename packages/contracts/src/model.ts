@@ -117,8 +117,6 @@ const ACP_REGISTRY_DRIVER_KIND = ProviderDriverKind.make("acpRegistry");
 
 /** Keep the official Antigravity session's current model. Never send this ID to ACP. */
 export const ANTIGRAVITY_DEFAULT_MODEL = "antigravity-default";
-export const DEFAULT_MODEL = ANTIGRAVITY_DEFAULT_MODEL;
-export const DEFAULT_TEXT_GENERATION_MODEL = ANTIGRAVITY_DEFAULT_MODEL;
 
 export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, string>> = {
   [ACP_REGISTRY_DRIVER_KIND]: "default",

@@ -2,8 +2,6 @@ import type {
   AuthBrowserSessionResult,
   AuthClientMetadata,
   AuthEnvironmentScope,
-  AuthGrantScope,
-  AuthPairingCredentialResult,
   ServerAuthSessionMethod,
   AuthSessionId,
   AuthSessionState,
@@ -345,33 +343,6 @@ export async function submitServerAuthCredential(credential: string): Promise<vo
   bootstrapPromise = null;
   explicitPairingRequested = false;
   stripPairingTokenFromUrl();
-}
-
-export async function createServerPairingCredential(input?: {
-  readonly label?: string;
-  readonly scopes?: ReadonlyArray<AuthGrantScope>;
-}): Promise<AuthPairingCredentialResult> {
-  const trimmedLabel = input?.label?.trim();
-  try {
-    return await runPrimaryHttp(
-      PrimaryEnvironmentHttpClient.pipe(
-        Effect.flatMap((client) =>
-          client.auth.pairingCredential({
-            headers: {},
-            payload: {
-              ...(trimmedLabel ? { label: trimmedLabel } : {}),
-              ...(input?.scopes ? { scopes: input.scopes } : {}),
-            },
-          }),
-        ),
-      ),
-    );
-  } catch (error) {
-    throw PrimaryEnvironmentRequestError.fromCause({
-      operation: "create-pairing-credential",
-      cause: error,
-    });
-  }
 }
 
 export async function revokeServerPairingLink(id: string): Promise<void> {

@@ -1,6 +1,6 @@
 import {
   CommandId,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_PROVIDER_INTERACTION_MODE,
   DEFAULT_SERVER_SETTINGS,
   type ModelSelection,
@@ -145,7 +145,7 @@ export const makeCommandGate = Effect.gen(function* () {
 
 const getAutoBootstrapThreadModelSelection = (): ModelSelection => ({
   instanceId: ProviderInstanceId.make("codex"),
-  model: DEFAULT_MODEL,
+  model: ANTIGRAVITY_DEFAULT_MODEL,
 });
 
 interface AutoBootstrapWelcomeTargets {

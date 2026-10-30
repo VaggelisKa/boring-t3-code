@@ -112,7 +112,7 @@ export function usesChatGptSharing(provider: ServerProvider | null | undefined):
   return provider?.auth.status === "authenticated" && provider.auth.subscriptionSharing === true;
 }
 
-export const CURSOR_USAGE_WINDOWS = [
+const CURSOR_USAGE_WINDOWS = [
   {
     id: "totalPercentUsed",
     label: "Overall",
@@ -636,9 +636,7 @@ export function hasProviderUsageLimits(
 }
 
 /** Advertise on workspace catalogs too, which replace the global command list. */
-export function withUsageLimitsCommands(
-  providers: readonly ServerProvider[],
-): ServerProvider[] {
+export function withUsageLimitsCommands(providers: readonly ServerProvider[]): ServerProvider[] {
   return providers.map((provider) => {
     if (!hasProviderUsageLimits(provider.driver, providers)) return provider;
     const commands = (items: readonly ServerProviderSlashCommand[]) => [

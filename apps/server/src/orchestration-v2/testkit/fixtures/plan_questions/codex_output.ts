@@ -18,7 +18,7 @@ import {
   projectionFor,
 } from "../shared.ts";
 
-export function assertPlanQuestionsOutputBase(
+function assertPlanQuestionsOutputBase(
   result: OrchestratorV2ScenarioResult,
   transcript: ProviderReplayTranscript,
 ) {
@@ -54,12 +54,4 @@ export function assertPlanQuestionsOutput(
 ) {
   assertPlanQuestionsOutputBase(result, transcript);
   assertPlanQuestionId(result, transcript, "schema_vs_ui_flexibility");
-}
-
-export function assertCodexPlanQuestionsOutput(
-  result: OrchestratorV2ScenarioResult,
-  transcript: ProviderReplayTranscript,
-) {
-  assertPlanQuestionsOutputBase(result, transcript);
-  assertPlanQuestionId(result, transcript, "schema_preference");
 }

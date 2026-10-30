@@ -62,29 +62,3 @@ function newerRecordedMigrations(databasePath: string): ReadonlyArray<string> | 
     ? null
     : recorded.filter(({ id }) => id > BUILD_MIGRATION_HEAD).map(({ id, name }) => `${id}_${name}`);
 }
-
-export function decodeServicePreflightResult(value: unknown): ServicePreflightResult | undefined {
-  if (typeof value !== "object" || value === null) {
-    return undefined;
-  }
-  const record = value as Record<string, unknown>;
-  if (
-    record.status === "ready" &&
-    record.launcherProtocol === SERVICE_LAUNCHER_PROTOCOL &&
-    typeof record.version === "string"
-  ) {
-    return {
-      status: "ready",
-      version: record.version,
-      launcherProtocol: SERVICE_LAUNCHER_PROTOCOL,
-    };
-  }
-  if (
-    record.status === "blocked" &&
-    typeof record.version === "string" &&
-    typeof record.reason === "string"
-  ) {
-    return { status: "blocked", version: record.version, reason: record.reason };
-  }
-  return undefined;
-}

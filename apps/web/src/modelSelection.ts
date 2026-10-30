@@ -1,6 +1,5 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
-  DEFAULT_TEXT_GENERATION_MODEL,
   DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   type ModelSelection,
@@ -338,7 +337,7 @@ export function resolveAppModelSelectionState(
 ): ModelSelection {
   const selection = settings.textGenerationModelSelection ?? {
     instanceId: DEFAULT_TEXT_GENERATION_INSTANCE_ID,
-    model: DEFAULT_TEXT_GENERATION_MODEL,
+    model: ANTIGRAVITY_DEFAULT_MODEL,
   };
   const supportedProviders = providers.filter(
     (provider) => provider.supportsTextGeneration !== false,

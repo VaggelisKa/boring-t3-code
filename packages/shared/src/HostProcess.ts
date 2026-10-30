@@ -1,6 +1,5 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
-import * as NodeDns from "node:dns";
 import * as NodeOS from "node:os";
 import * as NodeSea from "node:sea";
 
@@ -17,16 +16,6 @@ export const Architecture = Context.Reference<NodeJS.Architecture>(
 
 export const Hostname = Context.Reference<string>("@t3tools/shared/HostProcess/Hostname", {
   defaultValue: () => NodeOS.hostname(),
-});
-
-export const Username = Context.Reference<string | null>("@t3tools/shared/HostProcess/Username", {
-  defaultValue: () => {
-    try {
-      return NodeOS.userInfo().username.trim() || null;
-    } catch {
-      return null;
-    }
-  },
 });
 
 export const HomeDirectory = Context.Reference<string>(
@@ -72,26 +61,6 @@ export const InvokedAs = Context.Reference<string>("@t3tools/shared/HostProcess/
 export const IsExecutable = Context.Reference<boolean>("@t3tools/shared/HostProcess/IsExecutable", {
   defaultValue: () => NodeSea.isSea(),
 });
-
-/** Includes hostname-resolved addresses absent from interfaces, such as Debian's 127.0.1.1 used by Firefox locks. */
-export const Addresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(
-  "@t3tools/shared/HostProcess/Addresses",
-  {
-    // The enclosing operation owns the span for this inline handler.
-    defaultValue: Effect.fnUntraced(function* () {
-      const interfaces = Object.values(NodeOS.networkInterfaces())
-        .flat()
-        .flatMap((entry) => (entry ? [entry.address] : []));
-      const resolved = yield* Effect.tryPromise(() =>
-        NodeDns.promises.lookup(NodeOS.hostname(), { all: true }),
-      ).pipe(
-        Effect.map((entries) => entries.map((entry) => entry.address)),
-        Effect.orElseSucceed(() => [] as ReadonlyArray<string>),
-      );
-      return new Set([...interfaces, ...resolved]);
-    }),
-  },
-);
 
 export const UserId = Context.Reference<number | undefined>("@t3tools/shared/HostProcess/UserId", {
   defaultValue: () => process.getuid?.(),

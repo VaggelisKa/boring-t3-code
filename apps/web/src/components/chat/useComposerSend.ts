@@ -17,7 +17,7 @@ import {
 import { isUsageLimitsCommand } from "@t3tools/shared/usageLimits";
 import {
   AuthOrchestrationOperateScope,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   type EnvironmentId,
   type ModelSelection,
   type PreviewAnnotationPayload,
@@ -1182,7 +1182,7 @@ export function useComposerSend(input: ComposerSendInput) {
     });
     const threadCreateModelSelection = createModelSelection(
       ctxSelectedModelSelection.instanceId,
-      ctxSelectedModel || activeProjectDefaultModelSelection?.model || DEFAULT_MODEL,
+      ctxSelectedModel || activeProjectDefaultModelSelection?.model || ANTIGRAVITY_DEFAULT_MODEL,
       ctxSelectedModelSelection.options,
     );
 

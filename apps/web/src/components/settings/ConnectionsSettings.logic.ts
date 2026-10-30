@@ -1,6 +1,5 @@
 import * as DateTime from "effect/DateTime";
 
-import { setPairingTokenOnUrl } from "@t3tools/shared/remote";
 import {
   type ServerClientSessionRecord,
   type ServerPairingLinkRecord,
@@ -132,9 +131,4 @@ export function toDesktopClientSessionRecord(
         ? null
         : DateTime.formatIso(clientSession.lastConnectedAt),
   };
-}
-
-export function resolveCurrentOriginPairingUrl(credential: string): string {
-  const url = new URL("/pair", window.location.href);
-  return setPairingTokenOnUrl(url, credential).toString();
 }

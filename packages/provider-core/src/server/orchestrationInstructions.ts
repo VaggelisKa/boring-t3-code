@@ -1,7 +1,7 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
 
 // Codex truncates entries over 4,000 bytes; keep each section self-contained and below that limit.
-export const T3_CODE_ORCHESTRATION_SECTIONS: ReadonlyArray<string> = [
+const T3_CODE_ORCHESTRATION_SECTIONS: ReadonlyArray<string> = [
   `## T3 Code orchestration
 
 Ordinary coding tasks need no T3 tools.
@@ -27,7 +27,7 @@ export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
 ${T3_CODE_ORCHESTRATION_SECTIONS.join("\n\n")}
 `;
 
-export const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `
+const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `
 
 ## T3 Code browser
 

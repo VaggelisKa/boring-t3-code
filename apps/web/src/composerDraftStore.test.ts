@@ -19,7 +19,7 @@ import {
 import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
 import {
   defaultInstanceIdForDriver,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   EnvironmentId,
   ProjectId,
   ProviderDriverKind,
@@ -1620,7 +1620,7 @@ describe("composerDraftStore modelSelection", () => {
       { id: "fastMode", value: true },
     ]);
     // A remembered primary pick is the visible fallback while the secondary is unavailable.
-    const primary = modelSelection(CODEX_DRIVER, DEFAULT_MODEL);
+    const primary = modelSelection(CODEX_DRIVER, ANTIGRAVITY_DEFAULT_MODEL);
     store.setModelSelection(threadRef, primary);
     store.setModelSelection(threadRef, pick, { explicit: true });
     const before = draftFor(threadId, TEST_ENVIRONMENT_ID);

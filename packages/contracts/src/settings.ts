@@ -21,7 +21,7 @@ import {
 import { EnvironmentMachineKind, ThreadEnvMode, WorktreeSubmodules } from "./environment.ts";
 import {
   CustomModelSetting,
-  DEFAULT_TEXT_GENERATION_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   ProviderOptionSelections,
 } from "./model.ts";
 import { ModelSelection } from "./modelSelection.ts";
@@ -458,18 +458,6 @@ export const UsageModelPriceOverride = Schema.Struct({
   cacheWriteCostPerMillionTokens: Schema.optionalKey(UsageModelTokenPrice),
 });
 export type UsageModelPriceOverride = typeof UsageModelPriceOverride.Type;
-
-export const makeBinaryPathSetting = (fallback: string) =>
-  TrimmedString.pipe(
-    Schema.decodeTo(
-      Schema.String,
-      SchemaTransformation.transformEffect({
-        decode: (value) => Effect.succeed(value || fallback),
-        encode: (value) => Effect.succeed(value),
-      }),
-    ),
-    Schema.withDecodingDefault(Effect.succeed(fallback)),
-  );
 
 export type ProviderSettingsFormControl = "text" | "password" | "textarea" | "switch" | "select";
 
@@ -1113,7 +1101,7 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(
       Effect.succeed({
         instanceId: ProviderInstanceId.make("antigravity"),
-        model: DEFAULT_TEXT_GENERATION_MODEL,
+        model: ANTIGRAVITY_DEFAULT_MODEL,
       }),
     ),
   ),

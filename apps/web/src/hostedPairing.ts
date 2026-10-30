@@ -39,11 +39,3 @@ export function isHostedStaticApp(url?: URL): boolean {
   const hostedOrigin = originFromUrl(configuredHostedAppUrl());
   return hostedOrigin !== null && (url ?? new URL(window.location.href)).origin === hostedOrigin;
 }
-
-export function buildHostedChannelSelectionUrl(input: {
-  readonly channel: HostedAppChannel;
-}): string {
-  const url = new URL("/__t3code/channel", configuredHostedAppUrl());
-  url.searchParams.set("channel", input.channel);
-  return url.toString();
-}

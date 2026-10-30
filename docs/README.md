@@ -11,17 +11,14 @@
 - [Project settings](./user/project-settings.md)
 - [Appearance and themes](./user/appearance.md)
 - [Keyboard shortcuts](./user/keybindings.md)
-- [SnapShots](./user/snap-shot.md)
 - [Visual replies](./user/html-renders.md)
-- [Import browser sessions](./user/browser-import.md)
 - [Use T3 Code as your default browser](./user/default-browser.md)
 - [Usage and limits](./user/usage.md)
 - [Product usage data](./user/telemetry.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
 - [Running in the background](./user/background-service.md)
-- [Updating T3 Code](./user/updating.md)
 - [Triage an issue](./user/triage.md)
-- Provider guides: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Pi](./user/providers-pi.md) · [Muse Code](./user/providers-muse.md) · [fx](./user/providers-fx.md)
+- Provider guides: [Antigravity](./user/providers-antigravity.md) · [ACP providers (GitHub Copilot)](./user/providers-acp.md)
 
 ---
 
@@ -40,7 +37,6 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Adding a provider](./internals/adding-a-provider.md)
 - [Pull request file revisions](./internals/pull-request-file-revisions.md)
 - [Model classification](./internals/model-manifest.md)
-- [Server updates](./internals/server-updates.md)
 - [Resource telemetry](./internals/resource-telemetry.md)
 - [Product analytics](./internals/product-analytics.md)
 - [Environment auth](./internals/environment-auth.md)

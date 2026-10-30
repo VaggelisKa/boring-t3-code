@@ -80,9 +80,7 @@ describe("acpRegistrySnapshotReadiness", () => {
     expect(applyAcpRegistryAvailableCommands(provider, Option.none()).slashCommands).toEqual([
       { name: "stale" },
     ]);
-    expect(provider.iconUrl).toBe(
-      "https://cdn.agentclientprotocol.com/registry/v1/latest/test-agent.svg",
-    );
+    expect(provider.iconUrl).toBeUndefined();
     expect(provider.setup).toMatchObject({
       canAuthenticate: false,
       documentationUrl: "https://example.test/agent/setup",

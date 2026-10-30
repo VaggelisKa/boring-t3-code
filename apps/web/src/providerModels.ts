@@ -1,5 +1,5 @@
 import {
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   ProviderDriverKind,
@@ -94,6 +94,6 @@ export function getDefaultServerModel(
     models.find((model) => !model.isCustom)?.slug ??
     models[0]?.slug ??
     DEFAULT_MODEL_BY_PROVIDER[provider] ??
-    DEFAULT_MODEL
+    ANTIGRAVITY_DEFAULT_MODEL
   );
 }

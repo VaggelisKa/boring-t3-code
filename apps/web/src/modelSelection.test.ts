@@ -1,6 +1,5 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
-  DEFAULT_TEXT_GENERATION_MODEL,
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
@@ -633,7 +632,7 @@ describe("instance-scoped model selection", () => {
     const antigravity = provider({
       provider: ProviderDriverKind.make("antigravity"),
       instanceId: "antigravity",
-      models: ["gemini-3-pro", DEFAULT_TEXT_GENERATION_MODEL],
+      models: ["gemini-3-pro", ANTIGRAVITY_DEFAULT_MODEL],
     });
     const providers = [
       {
@@ -650,7 +649,7 @@ describe("instance-scoped model selection", () => {
     };
 
     expect(resolveAppModelSelectionState(settings, providers).model).toBe(
-      DEFAULT_TEXT_GENERATION_MODEL,
+      ANTIGRAVITY_DEFAULT_MODEL,
     );
   });
 

@@ -28,7 +28,7 @@ export class DesktopServerExposure extends Context.Service<
   }
 >()("@t3tools/desktop/backend/DesktopServerExposure") {}
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const configRef = yield* Ref.make(backendConfigForPort(0));
   return DesktopServerExposure.of({
     backendConfig: Ref.get(configRef),

@@ -346,9 +346,6 @@ importers:
       electron:
         specifier: 44.10.0
         version: 44.10.0(supports-color@7.2.0)
-      electron-updater:
-        specifier: ^6.8.9
-        version: 6.8.9(supports-color@7.2.0)
       electron-webauthn:
         specifier: 'catalog:'
         version: 1.3.1(@tsc-rs/typescript@0.8.0)
@@ -941,9 +938,6 @@ importers:
       '@t3tools/provider-core':
         specifier: workspace:*
         version: link:../provider-core
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../shared
       effect:
         specifier: 4.0.5
         version: 4.0.5
@@ -4898,9 +4892,6 @@ packages:
   electron-to-chromium@1.5.430:
     resolution: {integrity: sha512-e1QEj72Y4zd8RlNZVmoTg+iCOSVwpk05IOiiQwdrkwCSVlZfPthevErhE+nckGd2YbsXfp1SkisznhGVIXP2NQ==}
 
-  electron-updater@6.8.9:
-    resolution: {integrity: sha512-ZhVxM9iGONUpZGI1FxdMRgJjUFXi7AYGVa5PwKlO1tV1/4zDxQmfKpXOHVztKrd6L9rLcFjERvi1Mf2vxyTkig==}
-
   electron-webauthn@1.3.1:
     resolution: {integrity: sha512-I8/SOjPfnIiVjN38eTX3BRZfuFDGzLWtlByh4OecmlVkfxQt9R/zCwEm4PquyvaqP+xtGgkFrBxwOuJ+DhWlDg==}
     peerDependencies:
@@ -5585,13 +5576,6 @@ packages:
 
   lodash.debounce@4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
-
-  lodash.escaperegexp@4.1.2:
-    resolution: {integrity: sha512-TM9YBvyC84ZxE3rgfefxUWiQKLilstD6k7PTGt6wfbtXF8ixIJLOL3VYyV/z+ZiPLsVxAsKAFVwWlWeb2Y8Yyw==}
-
-  lodash.isequal@4.5.0:
-    resolution: {integrity: sha512-pDo3lu8Jhfjqls6GkMgpahsF9kCyayhgykjyLMNFTKWrpVdAQtYyB4muAMWozBB4ig/dtWAmsMxLEI8wuz+DYQ==}
-    deprecated: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
 
   lodash.throttle@4.1.1:
     resolution: {integrity: sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==}
@@ -6857,9 +6841,6 @@ packages:
 
   tiny-async-pool@1.3.0:
     resolution: {integrity: sha512-01EAw5EDrcVrdgyCLgoSPvqznC0sVxDSVeiOz09FUpjh71G79VCqneOr+xvt7T1r76CF6ZZfPjHorN2+d+3mqA==}
-
-  tiny-typed-emitter@2.1.0:
-    resolution: {integrity: sha512-qVtvMxeXbVej0cQWKqVSSAHmKZEHAvxdF8HEUBFWts8h+xEo5m/lEiPakuyZ3BnCBjOD8i24kzNOiOLLgsSxhA==}
 
   tinybench@6.2.2:
     resolution: {integrity: sha512-nIZ2N2dFpjBsg2hgitKu7mA+FvsIJuGJOwysRngmVRRmWgR/UyPjwJj8c/fT/dhm8EkHnF5EOogRf+0Z2qrimA==}
@@ -10850,19 +10831,6 @@ snapshots:
 
   electron-to-chromium@1.5.430: {}
 
-  electron-updater@6.8.9(supports-color@7.2.0):
-    dependencies:
-      builder-util-runtime: 9.7.0(supports-color@7.2.0)
-      fs-extra: 10.1.0
-      js-yaml: 4.3.2
-      lazy-val: 1.0.5
-      lodash.escaperegexp: 4.1.2
-      lodash.isequal: 4.5.0
-      semver: 7.7.4
-      tiny-typed-emitter: 2.1.0
-    transitivePeerDependencies:
-      - supports-color
-
   electron-webauthn@1.3.1(@tsc-rs/typescript@0.8.0):
     dependencies:
       '@electron-webauthn/types': 1.3.1
@@ -11678,10 +11646,6 @@ snapshots:
 
   lodash.debounce@4.0.8:
     optional: true
-
-  lodash.escaperegexp@4.1.2: {}
-
-  lodash.isequal@4.5.0: {}
 
   lodash.throttle@4.1.1:
     optional: true
@@ -13713,8 +13677,6 @@ snapshots:
   tiny-async-pool@1.3.0:
     dependencies:
       semver: 5.7.2
-
-  tiny-typed-emitter@2.1.0: {}
 
   tinybench@6.2.2: {}
 

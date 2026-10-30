@@ -1,12 +1,10 @@
 # ACP providers
 
-T3 Code can run installed ACP commands or coding agents from the official
+T3 Code can run installed ACP commands and GitHub Copilot through ACP. Its registry list holds a
+single pinned GitHub Copilot entry, so T3 Code never fetches the public
 [ACP Registry](https://agentclientprotocol.com/get-started/registry). Registry agents bring their
 own models, tools, and sign-in, while T3 Code provides projects, threads, checkpoints, and task
-delegation.
-
-Agents that T3 Code supports as their own providers, such as Codex, Claude, Cursor, Grok, OpenCode,
-Pi, and [Antigravity](./providers-antigravity.md), don't appear in the Registry list. Enable them in
+delegation. [Antigravity](./providers-antigravity.md) is a built-in provider and is enabled in
 **Settings → Providers** instead.
 
 T3 Code prefers the current ACP v2 preview protocol and uses its richer messages, usage, plans,
@@ -14,15 +12,11 @@ configuration, compaction, and agent-terminal updates when the agent supports th
 negotiates ACP v1 for Registry agents that have not migrated yet, so they continue to work through
 the same generic integration.
 
-Claude Agent uses the ACP v2 preview by default for Registry and local `claude-agent-acp`
-commands. If you encounter preview issues, set `CLAUDE_AGENT_ACP_EXPERIMENTAL_V2=0` in the
-provider instance's environment overrides to use ACP v1.
-
 ## Add an agent
 
 1. Open **Settings → Providers**.
 2. Select **Add provider**, then **Show more**.
-3. Search the ACP Registry for the agent and select **Add** on its result.
+3. Select **Add** on the GitHub Copilot result.
 4. Confirm the name and instance ID, then complete the agent's sign-in step.
 
 Search only shows agents that can run on the connected server. Registry agents are third-party
@@ -41,8 +35,7 @@ without expanding shell expressions.
 
 ## Where agents run
 
-Registry agents always run on the machine that hosts your T3 Code server. That stays true when you
-connect through `app.t3.codes`, T3 Connect, or a relay.
+Registry agents always run on the machine that hosts your T3 Code server.
 
 Agents install under `tools/<agent-id>/<version>/` inside T3 home. T3 Code verifies SHA-256 when the Registry entry
 provides one; entries without a checksum retain the Registry's HTTPS distribution guarantee.
@@ -54,13 +47,11 @@ but keeps package installs. To use an existing local binary, set **Executable ov
 ## Signing in
 
 Open the agent's account section in **Settings → Providers** on web or desktop. Choose
-**Sign in** and, if the agent offers several methods, select one. For an installed, configured
-provider, mobile also offers **Settings → Providers**.
+**Sign in** and, if the agent offers several methods, select one.
 
 Browser sign-in shows the agent's URL and waits for you to open or copy it before telling the
 agent to proceed. The page opens on your device, while the agent runs on the environment.
-Terminal methods run in an in-app terminal on that environment. On mobile, send responses
-through the terminal response field. T3 Code reconnects after terminal login and waits for the
+Terminal methods run in an in-app terminal on that environment. T3 Code reconnects after terminal login and waits for the
 agent to confirm sign-in before reporting success. You can cancel or retry an expired attempt.
 
 Browser and terminal sign-in leave credentials in the agent's own store. Agents that use API keys
@@ -71,10 +62,6 @@ If the agent advertises logout, choose **Sign out**. Changing a shared agent log
 threads for instances of that same agent on the environment. Thread history and workspace files
 are kept. ACP does not describe account isolation, so adding another instance does not guarantee
 a separate account; use the agent's own configuration to isolate accounts when supported.
-
-If an agent cannot complete its advertised flow remotely, its CLI remains available on the
-server. For example, Codex supports `codex login --device-auth`, and Grok Build supports
-`grok login --device-auth`.
 
 ## Models and options
 
@@ -116,9 +103,8 @@ When a registry agent asks for approval, T3 Code answers by the thread's
 **Auto-accept edits** approves edits and shows the rest, and **Auto** and **Full access** approve
 automatically. File reads and searches never wait for approval.
 
-Devin runs its commands through T3 Code's terminals, and those commands follow the thread's
-permission mode. For other agents, T3 Code shows the command, output, and exit status the agent
-reports but does not run or stop their terminals.
+T3 Code shows the command, output, and exit status the agent reports but does not run or stop
+the agent's terminals.
 
 Registry agents can schedule work and use T3's MCP tools. Child-task presentation depends on what
 the agent exposes: ACP has no portable native subagent-lineage contract, so richer delegation views
