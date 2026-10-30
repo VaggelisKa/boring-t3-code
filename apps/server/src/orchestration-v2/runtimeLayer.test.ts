@@ -73,7 +73,7 @@ import * as ProjectStore from "./ProjectStore.ts";
 import * as ProviderSessionManager from "./ProviderSessionManager.ts";
 import * as RuntimeLayer from "./runtimeLayer.ts";
 import { shellStreamItemFromThreadShell } from "./ShellStream.ts";
-import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
+import { FullProviderCapabilitiesV2 } from "./testkit/ProviderCapabilitiesFixtures.ts";
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "../project/ScratchThreadPromotion.ts";
@@ -121,7 +121,7 @@ const driver = ProviderDriverKind.make("codex");
 const orchestrationAdapter = {
   instanceId: modelSelection.instanceId,
   driver,
-  getCapabilities: () => Effect.succeed(CodexProviderCapabilitiesV2),
+  getCapabilities: () => Effect.succeed(FullProviderCapabilitiesV2),
   planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" }),
   openSession: () => Effect.die("sessions are not used by lifecycle tests"),
 } as ProviderAdapter.ProviderAdapterV2["Service"];
@@ -807,7 +807,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive", (it) => {
         status: "running" as const,
         cwd: process.cwd(),
         model: modelSelection.model,
-        capabilities: CodexProviderCapabilitiesV2,
+        capabilities: FullProviderCapabilitiesV2,
         createdAt: now,
         updatedAt: now,
         lastError: null,
@@ -1352,7 +1352,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive", (it) => {
               status: "running",
               cwd: process.cwd(),
               model: modelSelection.model,
-              capabilities: CodexProviderCapabilitiesV2,
+              capabilities: FullProviderCapabilitiesV2,
               createdAt: now,
               updatedAt: now,
               lastError: null,
@@ -4984,7 +4984,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
               status: "error",
               cwd: process.cwd(),
               model: queuedSelection.model,
-              capabilities: CodexProviderCapabilitiesV2,
+              capabilities: FullProviderCapabilitiesV2,
               createdAt: now,
               updatedAt: now,
               lastError: "Unrelated session error on the other provider",

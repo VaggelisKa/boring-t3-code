@@ -37,7 +37,7 @@ import * as SqlClient from "effect/sql/SqlClient";
 import { projectThreadAwarenessV2 } from "@t3tools/shared/agentAwareness";
 
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
-import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
+import { FullProviderCapabilitiesV2 } from "./testkit/ProviderCapabilitiesFixtures.ts";
 import * as ProjectionStore from "./ProjectionStore.ts";
 import {
   buildBoundedThreadProjection,
@@ -2758,7 +2758,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
             status: "running",
             cwd: "/workspace",
             model: modelSelection.model,
-            capabilities: CodexProviderCapabilitiesV2,
+            capabilities: FullProviderCapabilitiesV2,
             createdAt: now,
             updatedAt: now,
             lastError: null,
@@ -4468,7 +4468,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
         status: "ready" as const,
         cwd: "/workspace",
         model: modelSelection.model,
-        capabilities: CodexProviderCapabilitiesV2,
+        capabilities: FullProviderCapabilitiesV2,
         createdAt: now,
         updatedAt: now,
         lastError: null,
@@ -4587,7 +4587,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
         status: "error" as const,
         cwd: "/workspace",
         model: modelSelection.model,
-        capabilities: CodexProviderCapabilitiesV2,
+        capabilities: FullProviderCapabilitiesV2,
         createdAt: now,
         updatedAt: now,
         lastError: "provider process exited",
@@ -4724,7 +4724,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
             status: "error",
             cwd: "/workspace",
             model: modelSelection.model,
-            capabilities: CodexProviderCapabilitiesV2,
+            capabilities: FullProviderCapabilitiesV2,
             createdAt: updatedAt,
             updatedAt,
             lastError,

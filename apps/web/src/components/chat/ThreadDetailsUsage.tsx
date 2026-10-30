@@ -2,7 +2,6 @@ import type {
   ProviderInstanceId,
   ServerProvider,
   ServerProviderUsageWindow,
-  UsageLimitSourceSnapshots,
 } from "@t3tools/contracts";
 import {
   collectProviderUsageLimits,
@@ -31,7 +30,6 @@ const PACE_LABEL: Record<LimitPace, string> = {
 export interface ThreadDetailsUsageInput {
   readonly providerInstanceId: ProviderInstanceId | null;
   readonly providers: readonly ServerProvider[];
-  readonly sources: UsageLimitSourceSnapshots;
   readonly contextWindow: ContextWindowSnapshot | null;
 }
 
@@ -42,14 +40,13 @@ export interface ThreadDetailsUsageInput {
 export function ThreadDetailsUsage({
   providerInstanceId,
   providers,
-  sources,
   contextWindow,
 }: ThreadDetailsUsageInput) {
   const nowMinute = useNowMinute();
   const now = Date.parse(`${nowMinute}:00Z`);
   const report =
     providerInstanceId !== null
-      ? collectProviderUsageLimits(providerInstanceId, providers, sources, now)
+      ? collectProviderUsageLimits(providerInstanceId, providers, now)
       : null;
   // Only this instance's data: the report keeps one instance per login, and any other entry may be
   // a different login or workspace, so fall back to the instance's own snapshot.

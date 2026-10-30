@@ -27,11 +27,6 @@ import {
   PeerLinkSummary,
 } from "./peerLink.ts";
 import {
-  ChatGptReconnectProfileInput,
-  ChatGptReconnectProfile,
-  ChatGptImportProfileInput,
-  ChatGptHandoffInput,
-  ChatGptHandoffState,
 } from "./providerSetup.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
@@ -89,15 +84,6 @@ import {
   FilesystemBrowseResult,
   FilesystemBrowseError,
 } from "./filesystem.ts";
-import {
-  AgentSessionImportInput,
-  AgentSessionImportProjectChangedError,
-  AgentSessionImportProjectNotFoundError,
-  AgentSessionImportResult,
-  AgentSessionScanInput,
-  AgentSessionScanResult,
-  AgentSessionScanError,
-} from "./agentSessions.ts";
 import {
   AssetAccessError,
   AssetCreateUrlInput,
@@ -331,7 +317,6 @@ import {
   ResourceTelemetrySnapshot,
 } from "./resourceTelemetry.ts";
 import {
-  UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
   ProviderConsumeResetCreditResult,
 } from "./providerUsageLimits.ts";
@@ -387,8 +372,6 @@ export const WS_METHODS = {
 
   filesystemBrowse: "filesystem.browse",
   filesystemGetMetadata: "filesystem.getMetadata",
-  agentSessionsScan: "agentSessions.scan",
-  agentSessionsImport: "agentSessions.import",
   assetsCreateUrl: "assets.createUrl",
   assetsPersistChatAttachments: "assets.persistChatAttachments",
   attachmentsCreateUploadUrl: "attachments.createUploadUrl",
@@ -403,9 +386,6 @@ export const WS_METHODS = {
   providerAuthStart: "provider.auth.start",
   providerConsumeResetCredit: "provider.consumeResetCredit",
   providerAuthComplete: "provider.auth.complete",
-  chatGptReconnectProfile: "provider.chatgpt.reconnect-profile",
-  chatGptImportProfile: "provider.chatgpt.import-profile",
-  chatGptHandoffSubscribe: "provider.chatgpt.handoff.subscribe",
   providerAuthRespond: "provider.auth.respond",
   providerAuthCancel: "provider.auth.cancel",
   providerAuthLogout: "provider.auth.logout",
@@ -619,7 +599,7 @@ const ProviderSetupRpcError = Schema.Union([ProviderSetupError, EnvironmentAutho
 const WsProviderConsumeResetCreditRpc = Rpc.make(WS_METHODS.providerConsumeResetCredit, {
   payload: ProviderConsumeResetCreditInput,
   success: ProviderConsumeResetCreditResult,
-  error: Schema.Union([ProviderSetupError, UsageLimitSourceError, EnvironmentAuthorizationError]),
+  error: Schema.Union([ProviderSetupError, EnvironmentAuthorizationError]),
 });
 
 const WsProviderAuthStartRpc = Rpc.make(WS_METHODS.providerAuthStart, {
@@ -640,22 +620,6 @@ const WsProviderAuthCompleteRpc = Rpc.make(WS_METHODS.providerAuthComplete, {
   error: ProviderSetupRpcError,
 });
 
-const WsChatGptReconnectProfileRpc = Rpc.make(WS_METHODS.chatGptReconnectProfile, {
-  payload: ChatGptReconnectProfileInput,
-  success: Schema.NullOr(ChatGptReconnectProfile),
-  error: ProviderSetupRpcError,
-});
-const WsChatGptImportProfileRpc = Rpc.make(WS_METHODS.chatGptImportProfile, {
-  payload: ChatGptImportProfileInput,
-  success: ProviderAuthState,
-  error: ProviderSetupRpcError,
-});
-const WsChatGptHandoffSubscribeRpc = Rpc.make(WS_METHODS.chatGptHandoffSubscribe, {
-  payload: ChatGptHandoffInput,
-  success: ChatGptHandoffState,
-  error: ProviderSetupRpcError,
-  stream: true,
-});
 
 const WsProviderAuthCancelRpc = Rpc.make(WS_METHODS.providerAuthCancel, {
   payload: ProviderAuthCancelInput,
@@ -1288,23 +1252,6 @@ const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
   error: Schema.Union([FilesystemBrowseError, EnvironmentAuthorizationError]),
 });
 
-const WsAgentSessionsScanRpc = Rpc.make(WS_METHODS.agentSessionsScan, {
-  payload: AgentSessionScanInput,
-  success: AgentSessionScanResult,
-  error: Schema.Union([AgentSessionScanError, EnvironmentAuthorizationError]),
-});
-
-const WsAgentSessionsImportRpc = Rpc.make(WS_METHODS.agentSessionsImport, {
-  payload: AgentSessionImportInput,
-  success: AgentSessionImportResult,
-  error: Schema.Union([
-    AgentSessionImportProjectChangedError,
-    AgentSessionImportProjectNotFoundError,
-    AgentSessionScanError,
-    EnvironmentAuthorizationError,
-  ]),
-});
-
 const WsAssetsCreateUrlRpc = Rpc.make(WS_METHODS.assetsCreateUrl, {
   payload: AssetCreateUrlInput,
   success: AssetCreateUrlResult,
@@ -1781,7 +1728,6 @@ export const WsSubscribeServerConfigRpc = Rpc.make(WS_METHODS.subscribeServerCon
   payload: Schema.Struct({
     /** Opt-in protects older clients that reject unknown theme event types. */
     environmentThemes: Schema.optional(Schema.Boolean),
-    usageLimitSources: Schema.optional(Schema.Boolean),
     /** Advertise client handling before the server offers /usage-limits, or older clients send it as a prompt. */
     usageLimitsCommand: Schema.optional(Schema.Boolean),
     /** Omit per-cwd provider snapshots; the client fetches its cwd through `server.refreshProviders`. */
@@ -1831,9 +1777,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderConsumeResetCreditRpc,
   WsProviderAuthStartRpc,
   WsProviderAuthCompleteRpc,
-  WsChatGptReconnectProfileRpc,
-  WsChatGptImportProfileRpc,
-  WsChatGptHandoffSubscribeRpc,
   WsProviderAuthRespondRpc,
   WsProviderAuthCancelRpc,
   WsProviderAuthLogoutRpc,
@@ -1938,8 +1881,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsShellOpenInEditorRpc,
   WsFilesystemBrowseRpc,
   WsFilesystemGetMetadataRpc,
-  WsAgentSessionsScanRpc,
-  WsAgentSessionsImportRpc,
   WsAssetsCreateUrlRpc,
   WsAssetsPersistChatAttachmentsRpc,
   WsAttachmentsCreateUploadUrlRpc,

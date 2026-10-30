@@ -30,7 +30,7 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
-import { CodexProviderCapabilitiesV2 } from "../orchestration-v2/Adapters/CodexAdapterV2.ts";
+import { FullProviderCapabilitiesV2 } from "../orchestration-v2/testkit/ProviderCapabilitiesFixtures.ts";
 import * as CommandReceiptStore from "../orchestration-v2/CommandReceiptStore.ts";
 import * as EffectWorker from "../orchestration-v2/EffectWorker.ts";
 import * as LegacyV1ThreadImporter from "../orchestration-v2/legacy/LegacyV1ThreadImporter.ts";
@@ -1747,7 +1747,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             [codexInstanceId, altInstanceId].map((instanceId) => ({
               instanceId,
               driver,
-              getCapabilities: () => Effect.succeed(CodexProviderCapabilitiesV2),
+              getCapabilities: () => Effect.succeed(FullProviderCapabilitiesV2),
               planSelectionTransition: () =>
                 Effect.succeed({ type: "apply_on_next_turn" as const }),
               openSession: () =>
@@ -2520,7 +2520,7 @@ describe("OrchestratorMcpService thread stop", () => {
   const liveAdapter = (cwd: string): ProviderAdapter.ProviderAdapterV2["Service"] => ({
     instanceId,
     driver,
-    getCapabilities: () => Effect.succeed(CodexProviderCapabilitiesV2),
+    getCapabilities: () => Effect.succeed(FullProviderCapabilitiesV2),
     planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" }),
     openSession: (input) =>
       Effect.gen(function* () {
@@ -2537,7 +2537,7 @@ describe("OrchestratorMcpService thread stop", () => {
             status: "ready",
             cwd,
             model: modelSelection.model,
-            capabilities: CodexProviderCapabilitiesV2,
+            capabilities: FullProviderCapabilitiesV2,
             createdAt: now,
             updatedAt: now,
             lastError: null,

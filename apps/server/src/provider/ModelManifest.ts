@@ -17,7 +17,6 @@ import { HttpClient, HttpClientResponse } from "effect/http";
 import { writeFileStringAtomically } from "@t3tools/shared/atomicWrite";
 import { ServerConfig } from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import { hasValidClaudeManifestAdapters } from "./ClaudeModelManifest.ts";
 import bundledManifestJson from "./model-manifest.json" with { type: "json" };
 import { ProviderCompatibilityPolicy } from "./providerCompatibility.ts";
 import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
@@ -91,9 +90,6 @@ const ModelManifestSchema = ModelManifestEnvelopeSchema.pipe(
   Schema.check(
     Schema.makeFilter(hasValidProviderCatalogReferences, {
       expected: "unique model slugs and existing model and profile references",
-    }),
-    Schema.makeFilter(hasValidClaudeManifestAdapters, {
-      expected: "valid Claude adapter metadata",
     }),
   ),
 );

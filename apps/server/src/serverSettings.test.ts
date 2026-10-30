@@ -1,15 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import {
-  DEFAULT_SERVER_SETTINGS,
-  ModelSelection,
-  ProjectId,
-  ProjectScript,
-  ProviderDriverKind,
-  ProviderInstanceId,
-  resolveProviderInstanceEnabled,
-  ServerSettings,
-  UsageLimitSourceId,
-} from "@t3tools/contracts";
+import { DEFAULT_SERVER_SETTINGS, ModelSelection, ProjectId, ProjectScript, ProviderDriverKind, ProviderInstanceId, resolveProviderInstanceEnabled, ServerSettings } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { assert, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
@@ -557,27 +547,15 @@ it.layer(NodeServices.layer)("server settings", (it) => {
 
         yield* serverSettings.updateSettings({ usagePriceOverrides: { "example-model": prices } });
         const usageModelAliases = { "example-preview": "example-model" };
-        const sourceId = UsageLimitSourceId.make("hub");
-        const usageLimitSources = {
-          [sourceId]: {
-            kind: "cliproxy" as const,
-            url: "https://hub.example.test",
-            managementKey: "",
-            enabled: true,
-          },
-        };
         const saved = yield* serverSettings.updateSettings({
           usageModelAliases,
-          usageLimitSources,
         });
         const updated = yield* serverSettings.updateSettings({
           storageCleanup: { worktreeSettledAfterDays: 0, worktreeKeepWhen: "any-local-files" },
         });
-        assert.deepStrictEqual(updated.usageLimitSources, saved.usageLimitSources);
         const persisted = yield* readPersisted;
         assert.deepStrictEqual(persisted.usagePriceOverrides, { "example-model": prices });
         assert.deepStrictEqual(persisted.usageModelAliases, usageModelAliases);
-        assert.deepStrictEqual(persisted.usageLimitSources, usageLimitSources);
         assert.equal(persisted.storageCleanup.worktreeSettledAfterDays, 0);
         assert.equal(persisted.storageCleanup.worktreeKeepWhen, "any-local-files");
 
@@ -1246,7 +1224,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
   );
 
   it.effect(
-    "uses the same secret lifecycle for provider config, environment, host tokens, and quota keys",
+    "uses the same secret lifecycle for provider config, environment, and host tokens",
     () =>
       Effect.gen(function* () {
         const service = yield* ServerSettingsModule.ServerSettingsService;
@@ -1270,14 +1248,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
             bitbucket: { email: "me@example.test", accessToken: "bitbucket-secret" },
             gitcafe: { token: "gitcafe-secret" },
           },
-          usageLimitSources: {
-            [UsageLimitSourceId.make("hub")]: {
-              kind: "cliproxy",
-              url: "https://hub.example.test",
-              managementKey: "quota-secret",
-              enabled: true,
-            },
-          },
           easDeviceHosts: [
             {
               kind: "eas",
@@ -1296,7 +1266,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
           "github-secret",
           "bitbucket-secret",
           "gitcafe-secret",
-          "quota-secret",
           "expo-secret",
         ];
         const client = ServerSettingsModule.redactServerSettingsForClient(saved);
@@ -1311,7 +1280,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
         const echoed = yield* service.updateSettings({
           providerInstances: client.providerInstances,
           sourceControlHosts: client.sourceControlHosts,
-          usageLimitSources: client.usageLimitSources,
           easDeviceHosts: client.easDeviceHosts,
         });
         for (const value of values) assert.include(JSON.stringify(echoed), value);
@@ -1361,7 +1329,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
             serverHost: null,
           }),
           sourceControlHostSecretName({ kind: "gitcafe", field: "token", serverHost: null }),
-          "usage-limit-source-aHVi",
         ];
         for (const name of secretNames) {
           assert.isTrue(Option.isSome(yield* store.get(name)), name);
@@ -1373,7 +1340,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
             bitbucket: { accessToken: "" },
             gitcafe: { token: "" },
           },
-          usageLimitSources: { [UsageLimitSourceId.make("hub")]: null },
         });
         for (const name of secretNames) {
           assert.isTrue(Option.isNone(yield* store.get(name)));
@@ -1593,30 +1559,27 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       const serverConfig = yield* ServerConfig.ServerConfig;
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const instanceId = ProviderInstanceId.make("codex_terminal");
+      const instanceId = ProviderInstanceId.make("antigravity_terminal");
 
       yield* serverSettings.updateSettings({
         providerInstances: {
           [instanceId]: {
-            driver: ProviderDriverKind.make("codex"),
+            driver: ProviderDriverKind.make("antigravity"),
             environment: [
               { name: "OPENROUTER_API_KEY", value: "sk-terminal-secret", sensitive: true },
             ],
-            config: { homePath: "~/.codex-terminal" },
           },
         },
       });
 
       const environment = yield* resolveProviderInstanceTerminalEnvironment({
         serverSettings,
-        path,
         rawProviderInstanceId: instanceId,
         env: undefined,
       });
       const persisted = yield* fileSystem.readFileString(serverConfig.settingsPath);
 
       assert.equal(environment.OPENROUTER_API_KEY, "sk-terminal-secret");
-      assert.match(environment.CODEX_HOME ?? "", /[\\/][.]codex-terminal$/);
       assert.notInclude(persisted, "sk-terminal-secret");
       assert.include(persisted, '"valueRedacted": true');
     }).pipe(Effect.provide(layerServerSettings())),

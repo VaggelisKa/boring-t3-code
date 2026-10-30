@@ -1,19 +1,11 @@
 import {
   AntigravitySettings,
-  ClaudeSettings,
-  CodexSettings,
   EasDeviceHostConfig,
   type ServerSettings,
   SimlockDeviceHostConfig,
-  UsageLimitSourceConfig,
   secretSettingsFields,
 } from "@t3tools/contracts";
 import { acpRegistryClient } from "@t3tools/provider-acp-registry/client";
-import { cursorClient } from "@t3tools/provider-cursor/client";
-import { grokClient } from "@t3tools/provider-grok/client";
-import { museClient } from "@t3tools/provider-muse/client";
-import { openCodeClient } from "@t3tools/provider-opencode/client";
-import { piClient } from "@t3tools/provider-pi/client";
 import {
   readSecretFieldValues,
   SOURCE_CONTROL_HOST_SECRET_FIELDS,
@@ -24,15 +16,9 @@ import {
 export const SECRET_REDACTED = "\u2022\u2022\u2022\u2022\u2022\u2022";
 
 const providerSecretFields = new Map([
-  ["codex", secretSettingsFields(CodexSettings)],
-  ["claudeAgent", secretSettingsFields(ClaudeSettings)],
   ["antigravity", secretSettingsFields(AntigravitySettings)],
-  ...[cursorClient, grokClient, museClient, openCodeClient, piClient, acpRegistryClient].map(
-    (definition) =>
-      [definition.driverKind, secretSettingsFields(definition.settingsSchema)] as const,
-  ),
+  [acpRegistryClient.driverKind, secretSettingsFields(acpRegistryClient.settingsSchema)],
 ]);
-const usageLimitSecretFields = secretSettingsFields(UsageLimitSourceConfig);
 const easDeviceHostSecretFields = secretSettingsFields(EasDeviceHostConfig);
 const simlockDeviceHostSecretFields = secretSettingsFields(SimlockDeviceHostConfig);
 const encode = (value: string) => Buffer.from(value, "utf8").toString("base64url");
@@ -131,21 +117,6 @@ export function mapSettingsSecrets(
     ]),
   ) as ServerSettings["sourceControlHosts"];
 
-  const usageLimitSources = Object.fromEntries(
-    Object.entries(settings.usageLimitSources).map(([id, source]) => [
-      id,
-      mapFields(
-        source,
-        usageLimitSecretFields,
-        (field, serverHost) =>
-          `usage-limit-source-${encode(id)}` +
-          (field === "managementKey" && serverHost === null
-            ? ""
-            : `-${encode(field)}${serverHost === null ? "" : `-${encode(serverHost)}`}`),
-      ),
-    ]),
-  ) as ServerSettings["usageLimitSources"];
-
   const easDeviceHosts = settings.easDeviceHosts.map(
     (host) =>
       mapFields(
@@ -173,7 +144,6 @@ export function mapSettingsSecrets(
     ...settings,
     providerInstances,
     sourceControlHosts,
-    usageLimitSources,
     easDeviceHosts,
     simlockDeviceHosts,
   };

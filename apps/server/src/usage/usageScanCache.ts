@@ -6,7 +6,6 @@ import type {
 } from "@t3tools/provider-core/server/usage";
 import * as Schema from "effect/Schema";
 
-import { CLAUDE_SYNTHETIC_MODEL } from "../provider/Drivers/claudeUsage.ts";
 import { GUARD_LENGTH, type TranscriptParsePosition } from "./usageTranscriptReader.ts";
 
 const USAGE_SCAN_CACHE_VERSION = 10 as const;
@@ -236,7 +235,7 @@ export function decodeScanCache(
 
       // Unchanged and deleted transcripts may only exist in the cache, so the
       // parser cannot remove their previously saved local placeholders.
-      if (provider === "claude" && model === CLAUDE_SYNTHETIC_MODEL) continue;
+      if (provider === "claude" && model === "<synthetic>") continue;
 
       records.push({
         provider,

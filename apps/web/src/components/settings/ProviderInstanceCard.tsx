@@ -1,40 +1,13 @@
 import { Spinner } from "~/components/ui/spinner";
 
-import {
-  AlertTriangleIcon,
-  CheckIcon,
-  ArrowUpCircleIcon,
-  CopyIcon,
-  DownloadIcon,
-  ExternalLinkIcon,
-  LayersIcon,
-  PlusIcon,
-  Trash2Icon,
-  XIcon,
-} from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, ArrowUpCircleIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, LayersIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { Lock as LockGlyph, LockOpen } from "lucide";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import { useState, type ReactElement, type ReactNode } from "react";
-import {
-  isProviderDriverKind,
-  resolveProviderInstanceEnabled,
-  type ProviderInstanceConfig,
-  type ProviderInstanceEnvironmentVariable,
-  type ProviderInstanceId,
-  type AcpRegistryUrlAuthAction,
-  type EnvironmentId,
-  type ProjectId,
-  type ProviderDriverKind,
-  type ServerProvider,
-  type ServerProviderModel,
-} from "@t3tools/contracts";
+import { isProviderDriverKind, resolveProviderInstanceEnabled, type ProviderInstanceConfig, type ProviderInstanceEnvironmentVariable, type ProviderInstanceId, type AcpRegistryUrlAuthAction, type EnvironmentId, type ProjectId, type ProviderDriverKind, type ServerProvider, type ServerProviderModel } from "@t3tools/contracts";
 
-import {
-  type CustomModelDefinition,
-  readCustomModelEntries,
-  toCustomModelSetting,
-} from "@t3tools/shared/model";
+import { type CustomModelDefinition, readCustomModelEntries, toCustomModelSetting } from "@t3tools/shared/model";
 import { cn } from "../../lib/utils";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { useStableCallback } from "../../hooks/useStableCallback";
@@ -48,31 +21,15 @@ import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import type {
-  ProviderClientDefinition,
-  ProviderEnvironmentField,
-} from "@t3tools/provider-core/client";
-import {
-  deriveProviderSettingsFields,
-  ProviderSettingsForm,
-  reconcileRowsDraft,
-  seedRowsDraft,
-} from "./ProviderSettingsForm";
+import type { ProviderClientDefinition, ProviderEnvironmentField } from "@t3tools/provider-core/client";
+import { deriveProviderSettingsFields, ProviderSettingsForm, reconcileRowsDraft, seedRowsDraft } from "./ProviderSettingsForm";
 import { ProviderModelsSection } from "./ProviderModelsSection";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { ProviderAccentColorPicker } from "./ProviderAccentColorPicker";
 import { RedactedSensitiveText } from "./RedactedSensitiveText";
 import { SettingResetButton, SettingsRow, SettingsSection } from "./settingsLayout";
 import { AcpSessionManagementSection } from "./AcpSessionManagementSection";
-import { FoldedSettingsSection } from "./FoldedSettingsSection";
-import { readCodexSetupMode } from "./CodexSetupSection.logic";
-import {
-  getProviderVersionAdvisoryPresentation,
-  PROVIDER_STATUS_STYLES,
-  getProviderStatusKey,
-  getProviderSummary,
-  getProviderVersionLabel,
-} from "./providerStatus";
+import { getProviderVersionAdvisoryPresentation, PROVIDER_STATUS_STYLES, getProviderStatusKey, getProviderSummary, getProviderVersionLabel } from "./providerStatus";
 
 const ENVIRONMENT_VARIABLE_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -568,7 +525,6 @@ interface ProviderInstanceCardProps {
   readonly onDelete?: (() => void) | undefined;
   readonly headerAction?: ReactNode | undefined;
   readonly setup?: ReactNode;
-  readonly runtime?: ReactNode;
   readonly hiddenModels: ReadonlyArray<string>;
   readonly favoriteModels: ReadonlyArray<string>;
   readonly modelOrder: ReadonlyArray<string>;
@@ -613,7 +569,6 @@ export function ProviderInstanceCard({
   onDelete,
   headerAction,
   setup,
-  runtime,
   hiddenModels,
   favoriteModels,
   modelOrder,
@@ -1190,22 +1145,7 @@ export function ProviderInstanceCard({
         </SettingsSection>
       ) : null}
 
-      {instance.driver === "codex" && readCodexSetupMode(instance.config) === "managed" ? (
-        <div
-          inert={readOnly}
-          aria-disabled={readOnly || undefined}
-          className={readOnly ? "opacity-50 select-none" : undefined}
-        >
-          <FoldedSettingsSection
-            key={instanceId}
-            id={`provider-instance-${instanceId}-runtime`}
-            title="Runtime"
-            headerPlacement="outside"
-          >
-            {runtime ?? runtimeFields}
-          </FoldedSettingsSection>
-        </div>
-      ) : !driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
+      {!driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
         <SettingsSection
           title="Runtime"
           inert={readOnly}

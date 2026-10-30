@@ -1,7 +1,5 @@
 import {
-  officialAcpRegistryIconUrlForAgentId,
   ProviderDriverKind,
-  resolveOfficialAcpRegistryIconUrl,
   TextGenerationError,
   type AcpRegistryOperationError,
   type ServerProvider,
@@ -194,17 +192,11 @@ function baseSnapshot(
     readonly probeError?: AcpRegistryOperationError;
   },
 ): ServerProvider {
-  const iconUrl =
-    input.settings.source === "local"
-      ? null
-      : (resolveOfficialAcpRegistryIconUrl(input.probe?.probe.icon) ??
-        officialAcpRegistryIconUrlForAgentId(input.settings.agentId));
   return {
     instanceId: input.instanceId,
     driver: DRIVER_KIND,
     ...(input.displayName ? { displayName: input.displayName } : {}),
     ...(input.accentColor ? { accentColor: input.accentColor } : {}),
-    ...(iconUrl ? { iconUrl } : {}),
     continuation: { groupKey: input.continuationKey },
     supportsTextGeneration: false,
     enabled: input.settings.enabled,

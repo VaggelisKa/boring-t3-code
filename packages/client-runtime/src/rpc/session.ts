@@ -60,7 +60,6 @@ export interface RpcSession {
 
 export interface RpcSessionOptions {
   readonly environmentThemes?: boolean;
-  readonly usageLimitSources?: boolean;
   readonly usageLimitsCommand?: boolean;
 }
 
@@ -91,16 +90,11 @@ type EnvironmentThemesUpdatedEvent = Extract<
   ServerConfigStreamEvent,
   { readonly type: "environmentThemesUpdated" }
 >;
-type UsageLimitSourcesUpdatedEvent = Extract<
-  ServerConfigStreamEvent,
-  { readonly type: "usageLimitSourcesUpdated" }
->;
 
 interface ServerConfigReplayState {
   readonly projection: ServerConfigProjection;
   readonly revision: number;
   readonly themesEvent: EnvironmentThemesUpdatedEvent | undefined;
-  readonly sourcesEvent: UsageLimitSourcesUpdatedEvent | undefined;
 }
 
 interface BufferedServerConfigEvent {
@@ -120,7 +114,6 @@ function serverConfigReplayEvents(
   return [
     snapshot,
     ...(state.themesEvent === undefined ? [] : [state.themesEvent]),
-    ...(state.sourcesEvent === undefined ? [] : [state.sourcesEvent]),
   ];
 }
 
@@ -169,7 +162,6 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
   const webSocketConstructor = yield* Socket.WebSocketConstructor;
   const serverConfigInput: ServerConfigSubscriptionInput = {
     ...(options.environmentThemes === true ? { environmentThemes: true } : {}),
-    ...(options.usageLimitSources === true ? { usageLimitSources: true } : {}),
     ...(options.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
   };
   // Config state merges the snapshots it fetches back in, so no subscriber needs them broadcast.
@@ -289,10 +281,6 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
                 event.type === "environmentThemesUpdated"
                   ? event
                   : Option.getOrUndefined(current)?.themesEvent,
-              sourcesEvent:
-                event.type === "usageLimitSourcesUpdated"
-                  ? event
-                  : Option.getOrUndefined(current)?.sourcesEvent,
             } satisfies ServerConfigReplayState;
             return [
               Option.some({ event, replay: next, revision: next.revision }),

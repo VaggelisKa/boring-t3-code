@@ -1,31 +1,11 @@
-import {
-  DEFAULT_SERVER_SETTINGS,
-  OnePasswordAccount,
-  ProjectId,
-  ProviderDriverKind,
-  ProviderInstanceId,
-  SecretProviderId,
-  SecretProviderKind,
-  ServerSettings,
-  ServerSettingsPatch,
-  UsageLimitSourceId,
-  type ServerProvider,
-} from "@t3tools/contracts";
+import { DEFAULT_SERVER_SETTINGS, OnePasswordAccount, ProjectId, ProviderDriverKind, ProviderInstanceId, SecretProviderId, SecretProviderKind, ServerSettings, ServerSettingsPatch, type ServerProvider } from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 import { resolveServerBackgroundActivitySettings } from "./backgroundActivitySettings.ts";
 import { createModelSelection } from "./model.ts";
 import { resolveProjectScripts } from "./projectScripts.ts";
-import {
-  applyServerSettingsPatch,
-  fallbackTextGenerationModelSelection,
-  modelPreferencesMigrationPatch,
-  resolveModelPreferences,
-  isModelSelectionProviderEnabled,
-  parsePersistedServerObservabilitySettings,
-  resolveSourceControlWriterModelSelection,
-} from "./serverSettings.ts";
+import { applyServerSettingsPatch, fallbackTextGenerationModelSelection, modelPreferencesMigrationPatch, resolveModelPreferences, isModelSelectionProviderEnabled, parsePersistedServerObservabilitySettings, resolveSourceControlWriterModelSelection } from "./serverSettings.ts";
 
 const decodeServerSettings = Schema.decodeUnknownSync(ServerSettings);
 const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
@@ -561,28 +541,6 @@ describe("serverSettings helpers", () => {
     });
   });
 
-  it("upserts and removes usageLimitSources per entry so concurrent edits cannot clobber", () => {
-    const hubA = UsageLimitSourceId.make("cliproxy-a");
-    const hubB = UsageLimitSourceId.make("cliproxy-b");
-    const source = (url: string) => ({
-      kind: "cliproxy" as const,
-      url,
-      managementKey: "secret",
-      enabled: true,
-    });
-    const current = {
-      ...DEFAULT_SERVER_SETTINGS,
-      usageLimitSources: { [hubA]: source("http://a:8318") },
-    };
-
-    const added = applyServerSettingsPatch(current, {
-      usageLimitSources: { [hubB]: source("http://b:8318") },
-    });
-    expect(Object.keys(added.usageLimitSources)).toEqual([hubA, hubB]);
-
-    const removed = applyServerSettingsPatch(added, { usageLimitSources: { [hubA]: null } });
-    expect(Object.keys(removed.usageLimitSources)).toEqual([hubB]);
-  });
 
   it("upserts and removes secretProviders per entry so concurrent edits cannot clobber", () => {
     const personal = SecretProviderId.make("personal");

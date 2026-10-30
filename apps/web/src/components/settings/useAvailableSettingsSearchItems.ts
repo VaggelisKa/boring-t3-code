@@ -27,16 +27,6 @@ export function useAvailableSettingsSearchItems(scopeSearch: SettingsScopeSearch
         hasServerConfig: environment.serverConfig !== null,
       }),
     ) === true;
-  const hasMacProviderSettingsEnvironment =
-    environments.some(
-      (environment) =>
-        (scopeSearch.machine === undefined || environment.environmentId === scopeSearch.machine) &&
-        environment.serverConfig?.environment.platform.os === "darwin" &&
-        isProviderSettingsEnvironmentAvailable({
-          connectionPhase: environment.connection.phase,
-          hasServerConfig: true,
-        }),
-    ) === true;
   const hasThreadAutoSettlement =
     getThreadAutoSettlementSearchAvailability(environments).eligibleEnvironmentIds.length > 0;
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -54,7 +44,6 @@ export function useAvailableSettingsSearchItems(scopeSearch: SettingsScopeSearch
     localEnvironmentDisabled,
     hasEnvironment,
     hasProviderSettingsEnvironment,
-    hasMacProviderSettingsEnvironment,
     canManageLocalBackend,
     isWslSettingsRowVisible: wslSettingsRowVisible,
     hasThreadAutoSettlement,

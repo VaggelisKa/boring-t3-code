@@ -47,9 +47,25 @@ import { collectUint8StreamText } from "@t3tools/provider-core/server/collectStr
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import type * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
 
-const ACP_REGISTRY_URL = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json";
 
 const MAX_REGISTRY_BYTES = 1024 * 1024;
+// GitHub Copilot is the only registry agent this build offers, pinned to a reviewed release.
+const PINNED_ACP_REGISTRY_TEXT = JSON.stringify({
+  version: "1.0.0",
+  agents: [
+    {
+      id: "github-copilot-cli",
+      name: "Copilot",
+      version: "1.0.105",
+      description: "GitHub's AI pair programmer",
+      repository: "https://github.com/github/copilot-cli",
+      website: "https://github.com/features/copilot/cli/",
+      authors: ["GitHub"],
+      license: "proprietary",
+      distribution: { npx: { package: "@github/copilot@1.0.105", args: ["--acp"] } },
+    },
+  ],
+});
 const MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024;
 const MAX_PACKAGE_MANIFEST_BYTES = 1024 * 1024;
 // Older clients omit the limit and validate responses against a 20-agent cap.
@@ -647,7 +663,7 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
   const hostEnvironment = yield* HostProcess.Environment;
   const resolveExecutable = yield* SpawnExecutableResolution;
   const platformTarget = resolveAcpRegistryPlatformTarget(platform, architecture);
-  const registryUrl = input.registryUrl ?? ACP_REGISTRY_URL;
+  const registryUrl = input.registryUrl;
   const registryDirectory = path.join(input.cacheDir, "acp-registry");
   const registryCachePath = path.join(registryDirectory, "registry.json");
   const installsDirectory = input.toolsDir;
@@ -762,9 +778,11 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
     return { version: envelope.version, agents } satisfies AcpRegistryIndex;
   });
 
-  const readCachedRegistry = fileSystem
-    .readFileString(registryCachePath)
-    .pipe(Effect.flatMap(decodeRegistryText), Effect.option);
+  const readCachedRegistry = (
+    registryUrl === undefined
+      ? Effect.succeed(PINNED_ACP_REGISTRY_TEXT)
+      : fileSystem.readFileString(registryCachePath)
+  ).pipe(Effect.flatMap(decodeRegistryText), Effect.option);
 
   const writeRegistryCache = (text: string) =>
     crypto.randomUUIDv4().pipe(
@@ -782,6 +800,8 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
     );
 
   const fetchRegistry = Effect.fn("AcpRegistryCatalog.fetchRegistry")(function* () {
+    // Only tests pass a URL; the app never fetches the public registry.
+    if (registryUrl === undefined) return yield* decodeRegistryText(PINNED_ACP_REGISTRY_TEXT);
     yield* assertHttpsUrl(registryUrl, "ACP Registry index URL must use HTTPS.");
     const response = yield* httpClient.execute(HttpClientRequest.get(registryUrl)).pipe(
       Effect.flatMap(HttpClientResponse.filterStatusOk),

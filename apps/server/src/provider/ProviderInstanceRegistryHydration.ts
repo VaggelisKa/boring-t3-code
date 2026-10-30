@@ -25,7 +25,7 @@ import * as ProviderHostLive from "./ProviderHostLive.ts";
 import type * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import type * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ServerConfig from "../config.ts";
-import type * as PortScanner from "../preview/PortScanner.ts";
+import type * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 
 type ProviderInstanceRegistryHydrationEnv =
   | Exclude<
@@ -39,8 +39,7 @@ type ProviderInstanceRegistryHydrationEnv =
   | ServerConfig.ServerConfig
   | Path.Path
   | FileSystem.FileSystem
-  // The Claude runner counts its CLIs as running agents for port discovery.
-  | PortScanner.PortDiscovery;
+  | ServerSecretStore.ServerSecretStore;
 
 export const deriveProviderInstanceConfigMap = (
   settings: ServerSettings,
@@ -171,8 +170,4 @@ export const layer: Layer.Layer<
 
     return layerSettingsWatcher(settingsChanges).pipe(Layer.provideMerge(layerMutable));
   }),
-) as Layer.Layer<
-  ProviderInstanceRegistry.ProviderInstanceRegistry,
-  never,
-  ProviderInstanceRegistryHydrationEnv
->;
+);

@@ -34,7 +34,6 @@ import * as ServerSettings from "../serverSettings.ts";
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
 import { withWorkspaceLease } from "../workspace/workspaceLease.ts";
 import { ProviderWorkspaceMissingError } from "../provider/Errors.ts";
-import { resolveCodexRollbackTurnCount } from "./Adapters/CodexAdapterV2.ts";
 import * as CheckpointService from "./CheckpointService.ts";
 import * as CheckpointRollbackService from "./CheckpointRollbackService.ts";
 import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
@@ -45,6 +44,20 @@ import * as ProjectStore from "./ProjectStore.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ProviderSessionManager from "./ProviderSessionManager.ts";
 import * as RuntimePolicy from "./RuntimePolicy.ts";
+
+// Mirrors a provider whose native rollback API takes a count of turns to drop.
+const terminalTurnsToRollBack = (input: ProviderAdapter.ProviderAdapterV2RollbackThreadInput) => {
+  const terminal = input.providerThreadTurns.filter(
+    (turn) =>
+      turn.nativeTurnRef !== null &&
+      ["completed", "interrupted", "failed", "cancelled"].includes(turn.status),
+  );
+  if (input.target.type === "thread_start") return terminal.length;
+  const { providerTurn } = input.target;
+  const boundary = input.providerThreadTurns.find((turn) => turn.id === providerTurn.id);
+  if (boundary === undefined) throw new Error(`Unknown provider turn ${providerTurn.id}`);
+  return terminal.filter((turn) => turn.ordinal > boundary.ordinal).length;
+};
 
 const unrelatedProject = Option.some({
   workspaceRoot: "/nonexistent/t3-rollback-project",
@@ -596,8 +609,8 @@ const seedRollbackHistory = Effect.gen(function* () {
           open: () =>
             Effect.succeed({
               rollbackThread: (input: ProviderAdapter.ProviderAdapterV2RollbackThreadInput) =>
-                Effect.gen(function* () {
-                  rollbackCounts.push(yield* resolveCodexRollbackTurnCount(input));
+                Effect.sync(() => {
+                  rollbackCounts.push(terminalTurnsToRollBack(input));
                   return { providerThread: input.providerThread };
                 }),
             } as never),

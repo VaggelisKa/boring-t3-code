@@ -5,8 +5,6 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 
-import { codexAuthDeliveryUrl, readCodexAuthHandoff } from "@t3tools/shared/codexAuthHandoff";
-import { receiveCodexAuthCallback, CodexAuthCallbackError } from "./CodexAuthCallback.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import { providerAuthReturnUrl } from "@t3tools/shared/providerAuthReturnUrl";
 import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
@@ -74,32 +72,6 @@ export const make = Effect.gen(function* () {
       const context = yield* Effect.context<ElectronWindow.ElectronWindow>();
       const runPromise = Effect.runPromiseWith(context);
 
-      const startProviderAuthHandoff = (value: string | undefined) => {
-        if (!value) return false;
-        const request = readCodexAuthHandoff(value, environment.isDevelopment);
-        if (!request) return false;
-        void runPromise(
-          Effect.gen(function* () {
-            yield* electronApp.whenReady;
-            yield* Effect.tryPromise({
-              try: () =>
-                receiveCodexAuthCallback(
-                  request.authorizationUrl,
-                  (url) => runPromise(shell.openExternal(url)),
-                  (callbackUrl) => codexAuthDeliveryUrl(request, callbackUrl),
-                ),
-              catch: () =>
-                new CodexAuthCallbackError({
-                  detail:
-                    "Could not receive hosted web ChatGPT sign-in. Retry or use the redirect URL in the web app.",
-                }),
-            });
-          }).pipe(
-            Effect.catch(() => Effect.logWarning("Could not complete ChatGPT desktop handoff.")),
-          ),
-        );
-        return true;
-      };
       const resumeProviderAuth = (value: string | undefined) => {
         const destination = providerAuthReturnUrl(value);
         const expectedOrigin = `${ElectronProtocol.getDesktopScheme(environment.isDevelopment)}://app`;
@@ -125,14 +97,13 @@ export const make = Effect.gen(function* () {
         return true;
       };
       const args = yield* HostProcess.Arguments;
-      args.some((value) => startProviderAuthHandoff(value) || openAppLink(value));
+      args.some((value) => openAppLink(value));
       const openWebLink = (url: string) => {
         if (!DesktopWebLinks.isWebLink(url)) return false;
         void runPromise(webLinks.receive(url));
         return true;
       };
       handleOpenUrl = (url) =>
-        startProviderAuthHandoff(url) ||
         resumeProviderAuth(url) ||
         openWebLink(url) ||
         openAppLink(url);
@@ -146,7 +117,7 @@ export const make = Effect.gen(function* () {
         if (
           argv?.some(
             (value) =>
-              startProviderAuthHandoff(value) || resumeProviderAuth(value) || openAppLink(value),
+              resumeProviderAuth(value) || openAppLink(value),
           )
         )
           return;

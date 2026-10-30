@@ -359,7 +359,6 @@ const cachedConfigSnapshotEvent = (config: ServerConfig): ServerConfigStreamEven
 
 export interface ServerConfigSubscriptionOptions {
   readonly environmentThemes?: boolean;
-  readonly usageLimitSources?: boolean;
   readonly usageLimitsCommand?: boolean;
 }
 
@@ -431,7 +430,6 @@ export const makeEnvironmentServerConfigState = Effect.fn("EnvironmentServerConf
       // A cached stall would read as a fresh freeze on the next launch.
       const {
         environmentThemes: _themes,
-        usageLimitSources: _sources,
         lastEventLoopStall: _stall,
         ...cacheable
       } = config;
@@ -480,7 +478,6 @@ export const makeEnvironmentServerConfigState = Effect.fn("EnvironmentServerConf
 
     yield* subscribe(WS_METHODS.subscribeServerConfig, {
       ...(subscription.environmentThemes === true ? { environmentThemes: true } : {}),
-      ...(subscription.usageLimitSources === true ? { usageLimitSources: true } : {}),
       ...(subscription.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
     }).pipe(
       Stream.runForEach((event) =>
@@ -749,7 +746,6 @@ export function createServerEnvironmentAtoms<R, E>(
       environmentId: EnvironmentId,
     ) => Atom.Atom<ServerConfig | null>;
     readonly environmentThemes?: boolean;
-    readonly usageLimitSources?: boolean;
     readonly usageLimitsCommand?: boolean;
   },
 ) {
@@ -764,7 +760,6 @@ export function createServerEnvironmentAtoms<R, E>(
       .atom(
         serverConfigStateChanges(environmentId, {
           ...(options.environmentThemes === true ? { environmentThemes: true } : {}),
-          ...(options.usageLimitSources === true ? { usageLimitSources: true } : {}),
           ...(options.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
         }),
       )
@@ -1094,7 +1089,6 @@ export function createServerEnvironmentAtoms<R, E>(
         Object.keys(aliases)
           .sort()
           .map((model) => [model, aliases[model]]),
-        settings?.cursorKeychainUsageEnabled ?? false,
       ]);
     }).pipe(Atom.withLabel(`environment-data:server:usage-scan-settings:${environmentId}`)),
   );
@@ -1201,22 +1195,6 @@ export function createServerEnvironmentAtoms<R, E>(
     completeProviderAuth: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:provider:auth-complete",
       tag: WS_METHODS.providerAuthComplete,
-    }),
-    chatGptReconnectProfile: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:chatgpt:reconnect-profile",
-      tag: WS_METHODS.chatGptReconnectProfile,
-    }),
-    chatGptImportProfile: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:chatgpt:import-profile",
-      tag: WS_METHODS.chatGptImportProfile,
-    }),
-    chatGptHandoffState: createEnvironmentSubscriptionAtomFamily(runtime, {
-      label: "environment-data:chatgpt:handoff",
-      sensitiveInput: true,
-      // OAuth must not be replayed when the connection recovers.
-      subscribe: (input: EnvironmentRpcInput<typeof WS_METHODS.chatGptHandoffSubscribe>) =>
-        runStream(WS_METHODS.chatGptHandoffSubscribe, input),
-      idleTtlMs: 0,
     }),
     cancelProviderAuth: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:provider:auth-cancel",
