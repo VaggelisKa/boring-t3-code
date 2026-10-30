@@ -43,9 +43,7 @@ import {
   stageWslRuntimeArchive,
   ancestorNodeModulesPaths,
   copyDirectoryPreservingSymlinks,
-  LinuxBrowserSecretHostError,
   MacPackagedAppMissingError,
-  stageBrowserSecret,
   validateMacPackagedPayload,
   validateWindowsPackagedPayload,
   verifyPackagedBundleIsSelfContained,
@@ -1084,39 +1082,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           spawnerLayer,
           Layer.succeed(HostProcess.Platform, "win32"),
           Layer.succeed(HostProcess.Architecture, "x64"),
-        ),
-      ),
-    );
-  });
-
-  it.effect("refuses a Linux build on a host that cannot build the browser secret helper", () => {
-    const commands: Array<{ readonly command: string }> = [];
-    const spawnerLayer = Layer.succeed(
-      ChildProcessSpawner.ChildProcessSpawner,
-      ChildProcessSpawner.make((command) => {
-        commands.push(command as unknown as (typeof commands)[number]);
-        return Effect.succeed(mockProcess(0));
-      }),
-    );
-
-    return Effect.gen(function* () {
-      const error = yield* stageBrowserSecret({
-        repoRoot: "/repo",
-        stageResourcesDir: "/stage/resources",
-        platform: "linux",
-        arch: "x64",
-        verbose: false,
-      }).pipe(Effect.flip);
-      assert.instanceOf(error, LinuxBrowserSecretHostError);
-      assert.equal(error.hostPlatform, "darwin");
-      assert.include(error.message, "Linux host");
-      assert.lengthOf(commands, 0);
-    }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          spawnerLayer,
-          Layer.succeed(HostProcess.Platform, "darwin"),
-          Layer.succeed(HostProcess.Architecture, "arm64"),
         ),
       ),
     );

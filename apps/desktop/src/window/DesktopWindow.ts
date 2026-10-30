@@ -8,7 +8,7 @@ import * as Ref from "effect/Ref";
 
 import * as Electron from "electron";
 
-import { type DesktopSnapShotEvent, DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts";
+import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts";
 
 import * as DesktopAssets from "../app/DesktopAssets.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
@@ -22,7 +22,6 @@ import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import {
   MENU_ACTION_CHANNEL,
   QUIT_SHORTCUT_CHANNEL,
-  SNAP_SHOT_EVENT_CHANNEL,
   TRACKPAD_SCROLL_END_CHANNEL,
   WINDOW_FULLSCREEN_STATE_CHANNEL,
 } from "../ipc/channels.ts";
@@ -100,13 +99,9 @@ export class DesktopWindow extends Context.Service<
     readonly handleBackendReady: (httpBaseUrl: URL) => Effect.Effect<void, DesktopWindowError>;
     readonly handleBackendNotReady: Effect.Effect<void>;
     readonly flushMainWindowBounds: Effect.Effect<void>;
-    readonly prepareCaptureReveal: Effect.Effect<void>;
     readonly dispatchMenuAction: (
       action: string,
       options?: { readonly reveal?: boolean },
-    ) => Effect.Effect<void, DesktopWindowError>;
-    readonly dispatchSnapShotEvent: (
-      event: DesktopSnapShotEvent,
     ) => Effect.Effect<void, DesktopWindowError>;
     // Electron zoom roles target focused guests; zoomMain must always target the app.
     readonly zoomMain: (direction: MainWindowZoomDirection) => Effect.Effect<void>;
@@ -951,12 +946,6 @@ export const make = Effect.gen(function* () {
     createMain: createMain.pipe(Effect.flatMap(requireWindow)),
     ensureMain: ensureMain.pipe(Effect.flatMap(requireWindow)),
     revealOrCreateMain,
-    prepareCaptureReveal: Effect.gen(function* () {
-      const existingWindow = yield* currentMainWindow;
-      if (Option.isSome(existingWindow)) {
-        yield* electronWindow.prepareReveal(existingWindow.value);
-      }
-    }),
     activate: Effect.gen(function* () {
       if (yield* Ref.get(desktopState.quitting)) return;
       const existingWindow = yield* currentMainWindow;
@@ -990,15 +979,6 @@ export const make = Effect.gen(function* () {
     dispatchMenuAction: Effect.fn("desktop.window.dispatchMenuAction")(function* (action, options) {
       yield* Effect.annotateCurrentSpan({ action });
       yield* dispatchRendererEvent(MENU_ACTION_CHANNEL, action, options);
-    }),
-    dispatchSnapShotEvent: Effect.fn("desktop.window.dispatchSnapShotEvent")(function* (event) {
-      yield* Effect.annotateCurrentSpan({
-        event: event.type,
-        captureId: "id" in event ? (event.id ?? null) : null,
-      });
-      yield* dispatchRendererEvent(SNAP_SHOT_EVENT_CHANNEL, event, {
-        reveal: event.type === "started",
-      });
     }),
     zoomMain: Effect.fn("desktop.window.zoomMain")(function* (direction) {
       yield* Effect.annotateCurrentSpan({ direction });

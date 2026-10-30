@@ -1,18 +1,12 @@
 import * as Schema from "effect/Schema";
 import type { PreviewCaptureFailureEncoded } from "./previewCapture.ts";
 
-import { SnapShotSource } from "./chatAttachment.ts";
 import { EnvironmentId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { BrowserProfileId } from "./browserProfile.ts";
-import type {
-  BrowserImportResult,
-  BrowserImportSource,
-  BrowserImportSourceId,
-} from "./browserImport.ts";
 import { AuthAccessTokenResult, AuthSessionState } from "./auth.ts";
 import { AdvertisedEndpoint } from "./remoteAccess.ts";
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
-import { type ClientSettings, type QuitConfirmationMode, SnapShotShortcut } from "./settings.ts";
+import type { ClientSettings, QuitConfirmationMode } from "./settings.ts";
 import type { EditorId } from "./editor.ts";
 import type { PreviewForwardedShortcut } from "./keybindings.ts";
 
@@ -106,157 +100,6 @@ export const DesktopAppBrandingSchema = Schema.Struct({
   stageLabel: DesktopAppStageLabelSchema,
   displayName: Schema.String,
 });
-
-export const DesktopSnapShotMode = Schema.Literals(["direct", "portal", "unavailable"]);
-export type DesktopSnapShotMode = typeof DesktopSnapShotMode.Type;
-
-export const DesktopCaptureExtensionState = Schema.Struct({
-  status: Schema.Literals([
-    "not-installed",
-    "disabled",
-    "enabled",
-    "restart-required",
-    "update-required",
-    "extensions-disabled",
-    "unsupported",
-    "error",
-  ]),
-  message: Schema.String,
-});
-export type DesktopCaptureExtensionState = typeof DesktopCaptureExtensionState.Type;
-
-export const DesktopCaptureHelperState = Schema.Struct({
-  status: Schema.Literals(["not-installed", "update-required", "ready", "error"]),
-  message: Schema.String,
-  feedbackAvailable: Schema.optional(Schema.Boolean),
-});
-export type DesktopCaptureHelperState = typeof DesktopCaptureHelperState.Type;
-
-export const DesktopSnapShotSetupAction = Schema.Literals([
-  "install-extension",
-  "enable-extension",
-  "disable-extension",
-  "install-kde-helper",
-  "remove-kde-helper",
-  "install-hyprland-helper",
-  "remove-hyprland-helper",
-  "test-mac-capture",
-  "allow-screen-recording",
-  "allow-accessibility",
-  "retry-shortcut",
-]);
-export type DesktopSnapShotSetupAction = typeof DesktopSnapShotSetupAction.Type;
-
-export const DesktopCaptureConfigRequest = Schema.Struct({
-  operation: Schema.Literals(["install", "remove"]),
-  chooseFile: Schema.Boolean,
-  shortcut: Schema.optional(Schema.String.check(Schema.isMaxLength(80))),
-});
-export type DesktopCaptureConfigRequest = typeof DesktopCaptureConfigRequest.Type;
-
-export const DesktopCaptureConfigPreview = Schema.Struct({
-  id: Schema.String,
-  path: Schema.String,
-  resolvedPath: Schema.String,
-  before: Schema.String,
-  after: Schema.String,
-  shortcut: Schema.String,
-  operation: Schema.Literals(["install", "remove"]),
-});
-export type DesktopCaptureConfigPreview = typeof DesktopCaptureConfigPreview.Type;
-
-export const DesktopCaptureConfigApplied = Schema.Struct({
-  backupPath: Schema.NullOr(Schema.String),
-  warning: Schema.NullOr(Schema.String),
-});
-export type DesktopCaptureConfigApplied = typeof DesktopCaptureConfigApplied.Type;
-
-export const DesktopSnapShotState = Schema.Struct({
-  mode: DesktopSnapShotMode,
-  windows: Schema.optional(Schema.Boolean),
-  linuxDesktop: Schema.optional(Schema.Literals(["gnome", "kde", "niri", "hyprland"])),
-  linuxBackend: Schema.optional(
-    Schema.Literals(["screenshot-portal", "gnome-extension", "niri", "kde", "hyprland", "picker"]),
-  ),
-  linuxFeedbackAvailable: Schema.optional(Schema.Boolean),
-  shortcut: SnapShotShortcut,
-  shortcutRegistered: Schema.Boolean,
-  shortcutPending: Schema.optional(Schema.Boolean),
-  shortcutCanRetry: Schema.optional(Schema.Boolean),
-  shortcutLabel: Schema.optional(Schema.String),
-  shortcutMessage: Schema.NullOr(Schema.String),
-  shortcutBinding: Schema.optional(Schema.String),
-  shortcutConfigPath: Schema.optional(Schema.String),
-  shortcutActionRegistered: Schema.optional(Schema.Boolean),
-  gnomeExtension: Schema.optional(DesktopCaptureExtensionState),
-  kdeHelper: Schema.optional(DesktopCaptureHelperState),
-  hyprlandHelper: Schema.optional(DesktopCaptureHelperState),
-  macPermissions: Schema.optional(
-    Schema.Struct({ screenRecording: Schema.Boolean, accessibility: Schema.Boolean }),
-  ),
-  shortcutVerified: Schema.optional(Schema.Boolean),
-  message: Schema.NullOr(Schema.String),
-});
-export type DesktopSnapShotState = typeof DesktopSnapShotState.Type;
-
-export const DesktopSnapShotShortcutAvailability = Schema.Struct({
-  available: Schema.Boolean,
-  message: Schema.NullOr(Schema.String),
-});
-export type DesktopSnapShotShortcutAvailability = typeof DesktopSnapShotShortcutAvailability.Type;
-
-export const DesktopSnapShotId = TrimmedNonEmptyString.check(
-  Schema.isMaxLength(64),
-  Schema.isPattern(/^[a-f0-9-]+$/i),
-);
-export type DesktopSnapShotId = typeof DesktopSnapShotId.Type;
-
-/** `id` is absent for failures before a capture exists. */
-export const DesktopSnapShotEvent = Schema.Union([
-  Schema.Struct({ type: Schema.Literal("requested"), id: DesktopSnapShotId }),
-  Schema.Struct({ type: Schema.Literal("started"), id: DesktopSnapShotId }),
-  Schema.Struct({ type: Schema.Literal("ready"), id: DesktopSnapShotId }),
-  Schema.Struct({ type: Schema.Literal("failed"), id: Schema.optional(DesktopSnapShotId) }),
-  Schema.Struct({ type: Schema.Literal("shortcut-changed") }),
-]);
-export type DesktopSnapShotEvent = typeof DesktopSnapShotEvent.Type;
-
-export const DesktopPendingSnapShot = Schema.Struct({
-  id: DesktopSnapShotId,
-  name: Schema.String,
-  mimeType: Schema.Literal("image/png"),
-  sizeBytes: Schema.Int,
-  source: SnapShotSource,
-});
-export type DesktopPendingSnapShot = typeof DesktopPendingSnapShot.Type;
-
-export const DesktopSnapShot = Schema.Struct({
-  ...DesktopPendingSnapShot.fields,
-  dataUrl: Schema.String,
-});
-export type DesktopSnapShot = typeof DesktopSnapShot.Type;
-
-export const DesktopSnapShotAnimationDestination = Schema.Struct({
-  id: DesktopSnapShotId,
-  viewportFrame: Schema.Struct({
-    x: Schema.Number,
-    y: Schema.Number,
-    width: Schema.Number,
-    height: Schema.Number,
-  }),
-  backgroundColor: Schema.String,
-  borderColor: Schema.String,
-  borderWidth: Schema.Number,
-  cornerRadius: Schema.Number,
-  details: Schema.optional(
-    Schema.Struct({
-      appName: SnapShotSource.fields.appName,
-      windowTitle: SnapShotSource.fields.windowTitle,
-      appIconDataUrl: SnapShotSource.fields.appIconDataUrl,
-    }),
-  ),
-});
-export type DesktopSnapShotAnimationDestination = typeof DesktopSnapShotAnimationDestination.Type;
 
 export interface DesktopRuntimeInfo {
   hostArch: DesktopRuntimeArch;
@@ -1008,9 +851,6 @@ export const DesktopPreviewRecordingSaveInputSchema = Schema.Struct({
   data: Schema.Uint8Array,
 });
 
-export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
-export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
-
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled: () => boolean;
@@ -1041,24 +881,6 @@ export interface DesktopBridge {
   setConnectionCatalog: (catalog: string) => Promise<boolean>;
   discoverSshHosts: () => Promise<readonly DesktopDiscoveredSshHost[]>;
   resolveSshHost: (alias: string) => Promise<DesktopSshEnvironmentTarget>;
-  requestSnapShotPermissions: (includeAccessibility: boolean) => Promise<void>;
-  getSnapShotState: () => Promise<DesktopSnapShotState>;
-  setupSnapShot: (action: DesktopSnapShotSetupAction) => Promise<void>;
-  previewSnapShotConfig: (
-    request: DesktopCaptureConfigRequest,
-  ) => Promise<DesktopCaptureConfigPreview | null>;
-  applySnapShotConfig: (previewId: string) => Promise<DesktopCaptureConfigApplied>;
-  checkSnapShotShortcut: (
-    shortcut: SnapShotShortcut,
-  ) => Promise<DesktopSnapShotShortcutAvailability>;
-  setSnapShotShortcutSuppressed: (suppressed: boolean) => Promise<void>;
-  listPendingSnapShots: () => Promise<readonly DesktopPendingSnapShot[]>;
-  readSnapShot: (id: string) => Promise<DesktopSnapShot>;
-  setSnapShotAnimationDestination: (
-    destination: DesktopSnapShotAnimationDestination,
-  ) => Promise<void>;
-  dismissSnapShotAnimation: (id: DesktopSnapShotId) => Promise<void>;
-  acknowledgeSnapShot: (id: string) => Promise<void>;
   ensureSshEnvironment: (
     target: DesktopSshEnvironmentTarget,
     options?: { issuePairingToken?: boolean },
@@ -1092,12 +914,9 @@ export interface DesktopBridge {
     position?: { x: number; y: number },
   ) => Promise<T | null>;
   openExternal: (url: string) => Promise<boolean>;
-  openSystemSettings: (pane: SystemSettingsPane) => Promise<boolean>;
-  checkSystemPermission: (pane: SystemSettingsPane) => Promise<boolean>;
   probeRemoteEditors: () => Promise<readonly EditorId[]>;
   pasteAsText: () => Promise<void>;
   onMenuAction: (listener: (action: string) => void) => () => void;
-  onSnapShotEvent: (listener: (event: DesktopSnapShotEvent) => void) => () => void;
   onQuitShortcut: (listener: (event: QuitShortcutHintEvent) => void) => () => void;
   getWindowFullscreenState: () => boolean;
   onWindowFullscreenStateChange: (listener: (fullscreen: boolean) => void) => () => void;
@@ -1156,13 +975,6 @@ export interface DesktopPreviewBridge {
     environmentId: EnvironmentId,
     profileId?: string,
   ) => Promise<DesktopPreviewWebviewConfig>;
-  listBrowserImportSources: () => Promise<ReadonlyArray<BrowserImportSource>>;
-  importBrowserCookies: (input: {
-    readonly environmentId: EnvironmentId;
-    readonly sourceId: BrowserImportSourceId;
-    readonly sourceProfileDirectory: string;
-    readonly targetProfileId: string;
-  }) => Promise<BrowserImportResult>;
   setAnnotationTheme: (theme: DesktopPreviewAnnotationTheme) => Promise<void>;
   setAnnotationSendEnabled: (tabId: string, enabled: boolean) => Promise<void>;
   /** Resolves with the annotation and attach/send intent, or null on cancellation. Rejects if activation fails. */
@@ -1205,7 +1017,6 @@ export interface LocalApi {
   };
   shell: {
     openExternal: (url: string) => Promise<void>;
-    openSystemSettings: (pane: SystemSettingsPane) => Promise<void>;
   };
   contextMenu: {
     show: <T extends string>(

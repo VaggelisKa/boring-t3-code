@@ -34,7 +34,6 @@ const layerDesktopLaunchLinks = (
   }),
   shell: ElectronShell.ElectronShell["Service"] = {
     openExternal: () => Effect.succeed(true),
-    openSystemSettings: () => Effect.succeed(false),
     copyText: () => Effect.void,
   },
   listeners = new Map<string, (...args: unknown[]) => void>(),
@@ -300,7 +299,6 @@ it.effect(
     );
   },
 );
-
 
 it.effect("hands web and app links to the renderer and leaves other links alone", () =>
   Effect.gen(function* () {

@@ -11,10 +11,7 @@ import {
   DesktopPreviewSetAudioMutedInputSchema,
   DesktopPreviewSetColorSchemeInputSchema,
   DesktopPreviewSetZoomFactorInputSchema,
-  BrowserImportResult,
-  BrowserImportSource,
   DesktopPreviewClearDataInputSchema,
-  DesktopPreviewImportCookiesInputSchema,
   DesktopPreviewCreateTabInputSchema,
   DesktopPreviewTabInputSchema,
   DesktopPreviewWebviewConfigSchema,
@@ -31,7 +28,6 @@ import * as Option from "effect/Option";
 import * as NodeURL from "node:url";
 
 import * as ElectronWindow from "../../electron/ElectronWindow.ts";
-import * as BrowserImport from "../../preview/BrowserImport/BrowserImport.ts";
 import * as PreviewManager from "../../preview/Manager.ts";
 import { normalizeCaptureFailure } from "../../preview/captureErrors.ts";
 import * as DesktopClientSettings from "../../settings/DesktopClientSettings.ts";
@@ -306,38 +302,6 @@ const getPreviewConfig = DesktopIpc.makeIpcMethod({
       webPreferences: PREVIEW_WEBVIEW_PREFERENCES,
       preloadUrl: NodeURL.pathToFileURL(`${__dirname}/preview-pick-preload.cjs`).href,
     };
-  }),
-});
-
-export const listBrowserImportSources = DesktopIpc.makeIpcMethod({
-  channel: IpcChannels.PREVIEW_IMPORT_SOURCES_CHANNEL,
-  payload: Schema.Void,
-  result: Schema.Array(BrowserImportSource),
-  handler: Effect.fn("desktop.ipc.preview.listBrowserImportSources")(function* () {
-    const browserImport = yield* BrowserImport.BrowserImport;
-    return yield* browserImport.listSources;
-  }),
-});
-
-export const importBrowserCookies = DesktopIpc.makeIpcMethod({
-  channel: IpcChannels.PREVIEW_IMPORT_COOKIES_CHANNEL,
-  payload: DesktopPreviewImportCookiesInputSchema,
-  result: BrowserImportResult,
-  handler: Effect.fn("desktop.ipc.preview.importBrowserCookies")(function* ({
-    environmentId,
-    ...importInput
-  }) {
-    const browserImport = yield* BrowserImport.BrowserImport;
-    const { scope, persistent, namespace } = resolvePartitionScope(
-      environmentId,
-      importInput.targetProfileId,
-    );
-    return yield* browserImport.importCookies({
-      input: importInput,
-      scope,
-      persistent,
-      ...(namespace === undefined ? {} : { namespace }),
-    });
   }),
 });
 

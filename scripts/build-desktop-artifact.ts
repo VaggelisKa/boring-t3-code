@@ -20,7 +20,6 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
-import gnomeCaptureBundle from "../apps/desktop/gnome-extension/bundle.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
 import {
@@ -325,11 +324,6 @@ export const LINUX_DESKTOP_BUILD_PREREQUISITES = [
   { id: "rust-target", description: "Requested Rust standard library", packages: [] },
   { id: "cc", description: "C/C++ build toolchain", packages: ["build-essential"] },
   { id: "make", description: "Make", packages: ["build-essential"] },
-  {
-    id: "libsecret",
-    description: "libsecret development headers and pkg-config",
-    packages: ["libsecret-1-dev", "pkg-config"],
-  },
   { id: "imagemagick", description: "ImageMagick", packages: ["imagemagick"] },
 ] as const;
 
@@ -463,15 +457,6 @@ const desktopIconPlatformNames = {
   linux: "Linux",
   win: "Windows",
 } satisfies Record<typeof BuildPlatform.Type, string>;
-
-export class LinuxBrowserSecretHostError extends Schema.TaggedError<LinuxBrowserSecretHostError>()(
-  "LinuxBrowserSecretHostError",
-  { hostPlatform: Schema.String },
-) {
-  override get message(): string {
-    return `Linux desktop builds must run on a Linux host: the browser secret helper links against libsecret and cannot be built on '${this.hostPlatform}'.`;
-  }
-}
 
 export class DesktopIconSourceMissingError extends Schema.TaggedError<DesktopIconSourceMissingError>()(
   "DesktopIconSourceMissingError",
@@ -966,16 +951,10 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
   "!**/*.map",
   "!**/*.d.cts",
-  "!apps/desktop/resources/browser-secret",
-  "!apps/desktop/resources/browser-secret/**/*",
-  "!apps/desktop/prod-resources/browser-secret",
-  "!apps/desktop/prod-resources/browser-secret/**/*",
   "!apps/desktop/prod-resources/windows-server",
   "!apps/desktop/prod-resources/windows-server/**/*",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
-  "!apps/desktop/gnome-extension",
-  "!apps/desktop/gnome-extension/**/*",
 ] as const;
 // Windows terminal helpers cannot run on macOS and slow signing and notarization.
 export const MAC_FILE_EXCLUSIONS = [
@@ -1073,25 +1052,6 @@ export const DESKTOP_EXTRA_RESOURCES = [
     to: "resource-monitor",
   },
 ] as const;
-export const LINUX_CAPTURE_EXTRA_RESOURCES = [
-  {
-    from: "apps/desktop/prod-resources/hyprland-capture",
-    to: "hyprland-capture",
-  },
-  {
-    from: "apps/desktop/prod-resources/kde-capture",
-    to: "kde-capture",
-  },
-  {
-    from: "apps/desktop/gnome-extension",
-    to: "gnome-extension",
-    filter: gnomeCaptureBundle.files,
-  },
-] as const;
-export const LINUX_BROWSER_SECRET_EXTRA_RESOURCES = [
-  { from: "apps/desktop/prod-resources/browser-secret", to: "browser-secret" },
-] as const;
-
 export interface MacPasskeySigningConfiguration {
   readonly appId: string;
   readonly teamId: string;
@@ -1798,24 +1758,18 @@ export const preflightLinuxDesktopBuild = Effect.fn("preflightLinuxDesktopBuild"
   const reuseResourceMonitor = yield* Config.Boolean("T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR").pipe(
     Config.withDefault(false),
   );
-  const reuseCaptureHelpers = yield* Config.Boolean(
-    "T3CODE_DESKTOP_REUSE_LINUX_CAPTURE_HELPERS",
-  ).pipe(Config.withDefault(false));
-  const needsRust = !reuseResourceMonitor || !reuseCaptureHelpers;
   const rustTarget = resolveResourceMonitorRustTargets("linux", arch)[0]!;
 
   const checks = yield* Effect.all(
     {
-      cargo: needsRust
-        ? desktopBuildProbeSucceeds(ChildProcess.make("cargo", ["--version"]), "cargo")
-        : Effect.succeed(true),
-      "rust-target": needsRust ? rustTargetIsInstalled(rustTarget) : Effect.succeed(true),
+      cargo: reuseResourceMonitor
+        ? Effect.succeed(true)
+        : desktopBuildProbeSucceeds(ChildProcess.make("cargo", ["--version"]), "cargo"),
+      "rust-target": reuseResourceMonitor
+        ? Effect.succeed(true)
+        : rustTargetIsInstalled(rustTarget),
       cc: desktopBuildProbeSucceeds(ChildProcess.make("cc", ["--version"]), "cc"),
       make: desktopBuildProbeSucceeds(ChildProcess.make("make", ["--version"]), "make"),
-      libsecret: desktopBuildProbeSucceeds(
-        ChildProcess.make("pkg-config", ["--exists", "libsecret-1"]),
-        "libsecret",
-      ),
       imagemagick: Effect.all([
         desktopBuildProbeSucceeds(ChildProcess.make("magick", ["-version"]), "magick"),
         desktopBuildProbeSucceeds(ChildProcess.make("convert", ["-version"]), "convert"),
@@ -2158,68 +2112,6 @@ export const verifyPackagedBundleIsSelfContained = Effect.fn("verifyPackagedBund
   },
 );
 
-export const stageLinuxCaptureHelper = Effect.fn("stageLinuxCaptureHelper")(function* (input: {
-  readonly backend: "kde" | "hyprland";
-  readonly repoRoot: string;
-  readonly stageResourcesDir: string;
-  readonly arch: typeof BuildArch.Type;
-  readonly verbose: boolean;
-}) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const [rustTarget] = resolveResourceMonitorRustTargets("linux", input.arch);
-  // CI skips Rust on helper-cache hits; allow reuse without rebuilding.
-  const reuseHelpers = yield* Config.Boolean("T3CODE_DESKTOP_REUSE_LINUX_CAPTURE_HELPERS").pipe(
-    Config.withDefault(false),
-  );
-  const binaryPath = path.join(
-    input.repoRoot,
-    `native/${input.backend}-snap-shot/target`,
-    rustTarget!,
-    `release/t3-${input.backend}-snap-shot`,
-  );
-  if (!reuseHelpers) {
-    const spawnCommand = yield* resolveSpawnCommand("cargo", [
-      "build",
-      "--locked",
-      "--release",
-      "--manifest-path",
-      path.join(input.repoRoot, `native/${input.backend}-snap-shot/Cargo.toml`),
-      "--target",
-      rustTarget!,
-    ]);
-    yield* runCommand(
-      ChildProcess.make(spawnCommand.command, spawnCommand.args, {
-        cwd: input.repoRoot,
-        shell: spawnCommand.shell,
-      }),
-      {
-        label: `cargo build ${input.backend} capture helper (${rustTarget})`,
-        verbose: input.verbose,
-      },
-    );
-  } else if (!(yield* fs.exists(binaryPath))) {
-    return yield* new ResourceMonitorBuildOutputMissingError({
-      binaryPath,
-      rustTarget: rustTarget!,
-      platform: "linux",
-      arch: input.arch,
-    });
-  }
-  const destination = path.join(input.stageResourcesDir, `${input.backend}-capture`);
-  yield* fs.makeDirectory(destination, { recursive: true });
-  const executable = path.join(destination, `t3-${input.backend}-snap-shot`);
-  yield* fs.copyFile(binaryPath, executable);
-  yield* fs.chmod(executable, 0o755);
-  if (input.backend === "hyprland") {
-    // The official protocol XML includes the BSD notices required with binary distribution.
-    yield* fs.copy(
-      path.join(input.repoRoot, "native/hyprland-snap-shot/protocols"),
-      path.join(destination, "protocols"),
-    );
-  }
-});
-
 export const stageResourceMonitor = Effect.fn("stageResourceMonitor")(function* (input: {
   readonly repoRoot: string;
   readonly stageResourcesDir: string;
@@ -2301,36 +2193,6 @@ export const stageResourceMonitor = Effect.fn("stageResourceMonitor")(function* 
   if (input.platform !== "win") {
     yield* fs.chmod(destinationPath, 0o755);
   }
-});
-
-export const stageBrowserSecret = Effect.fn("stageBrowserSecret")(function* (input: {
-  readonly repoRoot: string;
-  readonly stageResourcesDir: string;
-  readonly platform: typeof BuildPlatform.Type;
-  readonly arch: typeof BuildArch.Type;
-  readonly verbose: boolean;
-}) {
-  if (input.platform !== "linux") return;
-  // The helper links host libsecret and only builds on Linux; reject cross-host packaging that would silently omit it.
-  const hostPlatform = yield* HostProcess.Platform;
-  if (hostPlatform !== "linux") {
-    return yield* new LinuxBrowserSecretHostError({ hostPlatform });
-  }
-  const path = yield* Path.Path;
-  yield* runCommand(
-    ChildProcess.make(
-      "node",
-      [
-        path.join(input.repoRoot, "apps/desktop/scripts/build-browser-secret.mjs"),
-        "--arch",
-        input.arch === "arm64" ? "arm64" : "x64",
-        "--output",
-        path.join(input.stageResourcesDir, "browser-secret", "t3-browser-secret"),
-      ],
-      { cwd: input.repoRoot },
-    ),
-    { label: "build Linux browser secret helper", verbose: input.verbose },
-  );
 });
 
 const generateMacIconSet = Effect.fn("build-desktop-artifact.generateMacIconSet")(function* (
@@ -2674,8 +2536,6 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       : {}),
     extraResources: [
       ...DESKTOP_EXTRA_RESOURCES,
-      ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
-      ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
       ...(platform === "win" && wslRuntimeBundled ? WSL_RUNTIME_EXTRA_RESOURCES : []),
     ],
@@ -3616,16 +3476,6 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
   yield* Effect.log("[desktop-artifact] Staging release app...");
   yield* fs.copy(distDirs.desktopDist, path.join(stageAppDir, "apps/desktop/dist-electron"));
   yield* fs.copy(distDirs.desktopResources, stageResourcesDir);
-  if (options.platform === "linux") {
-    const extensionDir = path.join(stageAppDir, "apps/desktop/gnome-extension");
-    yield* fs.makeDirectory(extensionDir, { recursive: true });
-    for (const file of gnomeCaptureBundle.files) {
-      yield* fs.copyFile(
-        path.join(repoRoot, "apps/desktop/gnome-extension", file),
-        path.join(extensionDir, file),
-      );
-    }
-  }
   if (options.platform === "mac" && options.target === "dmg") {
     yield* stageDesktopDmgBackground(
       stageResourcesDir,
@@ -3637,23 +3487,6 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
     yield* fs.copy(distDirs.serverDist, path.join(stageAppDir, "apps/server/dist"));
   }
   yield* stageResourceMonitor({
-    repoRoot,
-    stageResourcesDir,
-    platform: options.platform,
-    arch: options.arch,
-    verbose: options.verbose,
-  });
-  if (options.platform === "linux") {
-    for (const backend of ["kde", "hyprland"] as const)
-      yield* stageLinuxCaptureHelper({
-        backend,
-        repoRoot,
-        stageResourcesDir,
-        arch: options.arch,
-        verbose: options.verbose,
-      });
-  }
-  yield* stageBrowserSecret({
     repoRoot,
     stageResourcesDir,
     platform: options.platform,

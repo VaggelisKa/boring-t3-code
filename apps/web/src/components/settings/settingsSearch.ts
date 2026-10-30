@@ -23,7 +23,6 @@ export type SettingsPath =
   | "/settings/chat"
   | "/settings/diffs"
   | "/settings/keybindings"
-  | "/settings/snap-shot"
   | "/settings/providers"
   | "/settings/threads"
   | "/settings/browser"
@@ -86,7 +85,6 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/chat": "Chat",
   "/settings/diffs": "Diffs & pull requests",
   "/settings/keybindings": "Keybindings",
-  "/settings/snap-shot": "SnapShots",
   "/settings/providers": "Providers",
   "/settings/threads": "Threads",
   "/settings/browser": "Browser",
@@ -115,7 +113,6 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
       "/settings/chat",
       "/settings/diffs",
       "/settings/keybindings",
-      "/settings/snap-shot",
     ],
   },
   {
@@ -732,45 +729,6 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   ...KEYBINDING_SEARCH_ITEMS,
   {
-    id: "snap-shot-enabled",
-    title: "SnapShots",
-    searchTerms: ["window capture screenshot"],
-    to: "/settings/snap-shot",
-  },
-  {
-    id: "snap-shot-accessibility",
-    title: "Include app text",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-    searchTerms: [
-      "capture accessibility data text UI structure elements privacy omit agent context",
-    ],
-  },
-  {
-    id: "snap-shot-shortcut",
-    title: "Capture shortcut",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
-    id: "snap-shot-sound",
-    title: "Capture sound",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
-    id: "snap-shot-flash",
-    title: "Capture flash",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
-    id: "snap-shot-animations",
-    title: "Capture animations",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
     id: "providers",
     title: "Providers",
     to: "/settings/providers",
@@ -1119,7 +1077,6 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/appearance": null,
   "/settings/chat": null,
   "/settings/diffs": null,
-  "/settings/snap-shot": null,
   "/settings/keybindings": null,
   "/settings/providers": null,
   "/settings/threads": null,
