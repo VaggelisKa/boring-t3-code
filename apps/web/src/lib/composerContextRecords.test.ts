@@ -1,11 +1,36 @@
-import { type ComposerContextId, EnvironmentId, MessageId, OrchestrationMessageContext, ThreadId, type PreviewAnnotationPayload } from "@t3tools/contracts";
+import {
+  type ComposerContextId,
+  EnvironmentId,
+  MessageId,
+  OrchestrationMessageContext,
+  ThreadId,
+  type PreviewAnnotationPayload,
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { upgradeLegacyContextMessage } from "@t3tools/shared/composerContextLegacy";
 
-import { formatInlineContextReference, removeInlineContextReference } from "./composerContextReferences";
+import {
+  formatInlineContextReference,
+  removeInlineContextReference,
+} from "./composerContextReferences";
 import { describe, expect, it } from "vite-plus/test";
 
-import { asKnownContextRecord, buildMessageContext, composerContextImportLookupIds, isSameComposerContextPayload, previewAnnotationContextRecord, previewAnnotationFromRecord, pullRequestContextKindLabel, resolveUserMessageContext, selectedMessageContextFragment, reviewCommentContextRecord, terminalContextRecord, terminalContextReference, terminalContextDraftFromRecord, uploadedAttachmentContextRecord } from "./composerContextRecords";
+import {
+  asKnownContextRecord,
+  buildMessageContext,
+  composerContextImportLookupIds,
+  isSameComposerContextPayload,
+  previewAnnotationContextRecord,
+  previewAnnotationFromRecord,
+  pullRequestContextKindLabel,
+  resolveUserMessageContext,
+  selectedMessageContextFragment,
+  reviewCommentContextRecord,
+  terminalContextRecord,
+  terminalContextReference,
+  terminalContextDraftFromRecord,
+  uploadedAttachmentContextRecord,
+} from "./composerContextRecords";
 
 const decodeMessageContext = Schema.decodeUnknownSync(OrchestrationMessageContext);
 

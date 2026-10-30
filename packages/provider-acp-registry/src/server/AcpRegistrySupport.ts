@@ -47,7 +47,6 @@ import { collectUint8StreamText } from "@t3tools/provider-core/server/collectStr
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import type * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
 
-
 const MAX_REGISTRY_BYTES = 1024 * 1024;
 // GitHub Copilot is the only registry agent this build offers, pinned to a reviewed release.
 const PINNED_ACP_REGISTRY_TEXT = JSON.stringify({

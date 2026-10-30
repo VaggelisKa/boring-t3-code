@@ -1,7 +1,10 @@
 import type { ExecutionEnvironmentCapabilities } from "@t3tools/contracts";
 import { ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
-import { planThreadPullRequestMutation, threadPullRequestLinkMode } from "./threadPullRequestCompatibility.ts";
+import {
+  planThreadPullRequestMutation,
+  threadPullRequestLinkMode,
+} from "./threadPullRequestCompatibility.ts";
 
 const reference = {
   host: "github.example",
@@ -17,7 +20,6 @@ const input = {
 const capabilities = { repositoryIdentity: true } satisfies ExecutionEnvironmentCapabilities;
 
 describe("thread pull request capability negotiation", () => {
-
   it("does not dispatch before the server config loads", () => {
     expect(threadPullRequestLinkMode(undefined)).toBe("unsupported");
     expect(planThreadPullRequestMutation({ ...input, capabilities: undefined })).toBeNull();

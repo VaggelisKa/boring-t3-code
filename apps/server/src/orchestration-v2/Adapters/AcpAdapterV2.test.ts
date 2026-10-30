@@ -1,11 +1,25 @@
-import { extractCopilotSubagentUpdate, makeCopilotSubagentRouting } from "@t3tools/provider-acp-registry/testing";
+import {
+  extractCopilotSubagentUpdate,
+  makeCopilotSubagentRouting,
+} from "@t3tools/provider-acp-registry/testing";
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as DocumentText from "../../provider/DocumentText.ts";
 import { assert, describe, it } from "@effect/vitest";
-import { CheckpointId, EnvironmentId, type ModelSelection, ProviderDriverKind, ProviderInstanceId, ProviderSessionId, ThreadId, type OrchestrationV2ProviderThread, type OrchestrationV2TurnItem, type ProviderOptionDescriptor } from "@t3tools/contracts";
+import {
+  CheckpointId,
+  EnvironmentId,
+  type ModelSelection,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  ProviderSessionId,
+  ThreadId,
+  type OrchestrationV2ProviderThread,
+  type OrchestrationV2TurnItem,
+  type ProviderOptionDescriptor,
+} from "@t3tools/contracts";
 import { deriveBlockedOnThreadWait } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import { resolveSelfInvocation } from "@t3tools/shared/nodeRuntime";
 import * as DateTime from "effect/DateTime";
@@ -33,14 +47,26 @@ import type * as EffectAcpSchema from "effect-acp/compat";
 import * as TestProviderHost from "@t3tools/provider-testing/TestProviderHost";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
-import { ACP_EMPTY_OPTION_VALUE, ACP_SESSION_MODE_OPTION_ID, acpProviderOptionDescriptors } from "@t3tools/provider-acp/server/sessionConfig";
+import {
+  ACP_EMPTY_OPTION_VALUE,
+  ACP_SESSION_MODE_OPTION_ID,
+  acpProviderOptionDescriptors,
+} from "@t3tools/provider-acp/server/sessionConfig";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import { makeTurnInput } from "./AcpAdapterV2.testkit.ts";
 import type * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
-import { AcpProviderCapabilitiesV2, acpScopedNativeId, acpPostSettleWakeEvidence, acpToolCallDiffPatch, makeAcpAdapterV2, type AcpAdapterV2ExtensionContext, type AcpAdapterV2Flavor, type AcpAdapterV2RuntimeInput, type AcpAdapterV2SubagentUpdate } from "@t3tools/provider-acp/server/adapter";
-
-
+import {
+  AcpProviderCapabilitiesV2,
+  acpScopedNativeId,
+  acpPostSettleWakeEvidence,
+  acpToolCallDiffPatch,
+  makeAcpAdapterV2,
+  type AcpAdapterV2ExtensionContext,
+  type AcpAdapterV2Flavor,
+  type AcpAdapterV2RuntimeInput,
+  type AcpAdapterV2SubagentUpdate,
+} from "@t3tools/provider-acp/server/adapter";
 
 const layerHost = TestProviderHost.layer().pipe(Layer.provide(NodeServices.layer));
 
@@ -5562,4 +5588,3 @@ describe("AcpAdapterV2", () => {
       }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 });
-

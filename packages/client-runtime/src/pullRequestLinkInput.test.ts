@@ -15,17 +15,18 @@ const project = {
 };
 
 describe("resolveLinkPullRequestInput", () => {
-  it.each([
-    ["https://github.acme.test/acme/web/pull/42", "github.acme.test"],
-  ])("links supported host URL %s without a thread project", (url, host) => {
-    expect(
-      resolveLinkPullRequestInput({
-        reference: ` ${url} `,
-        project: null,
-        hasProject: (candidate) => candidate.host === host,
-      }),
-    ).toEqual({ link: { host, repository: "acme/web", number: 42, url } });
-  });
+  it.each([["https://github.acme.test/acme/web/pull/42", "github.acme.test"]])(
+    "links supported host URL %s without a thread project",
+    (url, host) => {
+      expect(
+        resolveLinkPullRequestInput({
+          reference: ` ${url} `,
+          project: null,
+          hasProject: (candidate) => candidate.host === host,
+        }),
+      ).toEqual({ link: { host, repository: "acme/web", number: 42, url } });
+    },
+  );
 
   it("resolves a bare number against the thread's own repository", () => {
     expect(

@@ -1,4 +1,4 @@
-import { AntigravitySettings, isProviderDriverKind, ProviderDriverKind } from "@t3tools/contracts";
+import { AntigravitySettings, ProviderDriverKind } from "@t3tools/contracts";
 import { acpRegistryClient } from "@t3tools/provider-acp-registry/client";
 import { makeProviderClientRegistry } from "@t3tools/provider-core/client";
 import { modelShortName } from "@t3tools/provider-core/modelShortName";

@@ -111,10 +111,7 @@ function serverConfigReplayEvents(
     type: "snapshot" as const,
     config: withoutEnvironmentThemes(state.projection.config),
   };
-  return [
-    snapshot,
-    ...(state.themesEvent === undefined ? [] : [state.themesEvent]),
-  ];
+  return [snapshot, ...(state.themesEvent === undefined ? [] : [state.themesEvent])];
 }
 
 const isSocketErrorReason = Schema.is(Socket.SocketErrorReason);

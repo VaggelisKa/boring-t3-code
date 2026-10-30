@@ -1,7 +1,18 @@
-import { EnvironmentId, ProjectId, type RepositoryIdentity, SourceControlProviderKind } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  ProjectId,
+  type RepositoryIdentity,
+  SourceControlProviderKind,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { findProjectForChangeRequest, findProjectOnChangeRequestHost, projectChangeRequestUrl, resolveChangeRequestLinkTarget, resolvePullRequestPreviewTarget } from "./changeRequestLinks.ts";
+import {
+  findProjectForChangeRequest,
+  findProjectOnChangeRequestHost,
+  projectChangeRequestUrl,
+  resolveChangeRequestLinkTarget,
+  resolvePullRequestPreviewTarget,
+} from "./changeRequestLinks.ts";
 
 describe("findProjectForChangeRequest", () => {
   const project = (identity: Record<string, unknown>) =>

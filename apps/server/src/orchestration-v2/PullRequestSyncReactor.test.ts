@@ -1378,59 +1378,59 @@ describe("PullRequestSyncReactor", () => {
     ),
   );
 
-  it.effect.each([
-    "gh pr merge 7 --squash 2>&1 | tail -3",
-  ])("reads open links fresh only for a thread that ran `%s`", (mergeCommand) =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        yield* TestClock.setTime(Date.parse(NOW));
-        const state = yield* Ref.make<PullRequestSummary["state"]>("open");
-        const invalidated = yield* Ref.make<ReadonlyArray<number>>([]);
-        const fixture = yield* makeHarness({
-          snapshot: makeSnapshot([
-            makeThread("agent", { pullRequests: [makeLink(7, { state: "open" })] }),
-            makeThread("other", { pullRequests: [makeLink(9, { state: "open" })] }),
-          ]),
-          summary: (input) =>
-            Ref.get(state).pipe(
-              Effect.map((current) =>
-                makeSummary(input, current === "merged" ? { state: current, mergedAt: NOW } : {}),
-              ),
-            ),
-          invalidate: ({ reference }) =>
-            Ref.update(invalidated, (numbers) => [...numbers, reference?.number ?? -1]),
-        });
-
-        yield* Effect.gen(function* () {
-          const reactor = yield* startAndSweep(fixture);
-          yield* Ref.set(state, "merged");
-          yield* Ref.set(fixture.summaryCalls, []);
-
-          yield* Queue.offerAll(fixture.domainEvents, [
-            commandRan(ThreadId.make("other"), "gh pr view 9"),
-            runUpdated(ThreadId.make("other"), "completed"),
-            commandRan(ThreadId.make("agent"), mergeCommand),
-            runUpdated(ThreadId.make("agent"), "completed"),
-          ]);
-          yield* Queue.take(fixture.snapshotReads);
-          yield* Queue.take(fixture.snapshotReads);
-          yield* reactor.drain;
-
-          assert.deepStrictEqual(yield* Ref.get(invalidated), [7]);
-          assert.deepStrictEqual(
-            (yield* Ref.get(fixture.summaryCalls)).map((call) => call.number),
-            [7],
-          );
-          assert.deepStrictEqual(
-            (yield* Ref.get(fixture.syncCommands)).map((command) => [
-              command.number,
-              command.snapshot.state,
+  it.effect.each(["gh pr merge 7 --squash 2>&1 | tail -3"])(
+    "reads open links fresh only for a thread that ran `%s`",
+    (mergeCommand) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* TestClock.setTime(Date.parse(NOW));
+          const state = yield* Ref.make<PullRequestSummary["state"]>("open");
+          const invalidated = yield* Ref.make<ReadonlyArray<number>>([]);
+          const fixture = yield* makeHarness({
+            snapshot: makeSnapshot([
+              makeThread("agent", { pullRequests: [makeLink(7, { state: "open" })] }),
+              makeThread("other", { pullRequests: [makeLink(9, { state: "open" })] }),
             ]),
-            [[7, "merged"]],
-          );
-        }).pipe(Effect.provide(fixture.layer));
-      }),
-    ),
+            summary: (input) =>
+              Ref.get(state).pipe(
+                Effect.map((current) =>
+                  makeSummary(input, current === "merged" ? { state: current, mergedAt: NOW } : {}),
+                ),
+              ),
+            invalidate: ({ reference }) =>
+              Ref.update(invalidated, (numbers) => [...numbers, reference?.number ?? -1]),
+          });
+
+          yield* Effect.gen(function* () {
+            const reactor = yield* startAndSweep(fixture);
+            yield* Ref.set(state, "merged");
+            yield* Ref.set(fixture.summaryCalls, []);
+
+            yield* Queue.offerAll(fixture.domainEvents, [
+              commandRan(ThreadId.make("other"), "gh pr view 9"),
+              runUpdated(ThreadId.make("other"), "completed"),
+              commandRan(ThreadId.make("agent"), mergeCommand),
+              runUpdated(ThreadId.make("agent"), "completed"),
+            ]);
+            yield* Queue.take(fixture.snapshotReads);
+            yield* Queue.take(fixture.snapshotReads);
+            yield* reactor.drain;
+
+            assert.deepStrictEqual(yield* Ref.get(invalidated), [7]);
+            assert.deepStrictEqual(
+              (yield* Ref.get(fixture.summaryCalls)).map((call) => call.number),
+              [7],
+            );
+            assert.deepStrictEqual(
+              (yield* Ref.get(fixture.syncCommands)).map((command) => [
+                command.number,
+                command.snapshot.state,
+              ]),
+              [[7, "merged"]],
+            );
+          }).pipe(Effect.provide(fixture.layer));
+        }),
+      ),
   );
 
   it.effect("reads open links again when the run ends, after `merge --auto` left them open", () =>

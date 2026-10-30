@@ -1,7 +1,16 @@
-import { ProjectId, type ThreadPullRequestLink, type ThreadPullRequestSnapshot } from "@t3tools/contracts";
+import {
+  ProjectId,
+  type ThreadPullRequestLink,
+  type ThreadPullRequestSnapshot,
+} from "@t3tools/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { threadPullRequestSearchTerms, resolveThreadCurrentPullRequest, resolveThreadPullRequestChains, resolveThreadPullRequestBadge } from "./threadPullRequests.ts";
+import {
+  threadPullRequestSearchTerms,
+  resolveThreadCurrentPullRequest,
+  resolveThreadPullRequestChains,
+  resolveThreadPullRequestBadge,
+} from "./threadPullRequests.ts";
 
 // Remove ES2023 array methods to match Hermes on mobile.
 beforeEach(() => {

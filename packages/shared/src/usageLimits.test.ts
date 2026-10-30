@@ -1,7 +1,26 @@
-import { DEFAULT_SERVER_SETTINGS, EnvironmentId, ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  EnvironmentId,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  type ServerProvider,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { type LimitAccount, collectProviderUsageLimits, collectLimitAccounts, collectExternalUsageLinks, collectLimitNotices, collectLimitPools, elapsedShare, exhaustedUsageWindow, paceOf, paceRemainingPercent, usesChatGptSharing, resolveNewThreadModelSelection } from "./usageLimits.ts";
+import {
+  type LimitAccount,
+  collectProviderUsageLimits,
+  collectLimitAccounts,
+  collectExternalUsageLinks,
+  collectLimitNotices,
+  collectLimitPools,
+  elapsedShare,
+  exhaustedUsageWindow,
+  paceOf,
+  paceRemainingPercent,
+  usesChatGptSharing,
+  resolveNewThreadModelSelection,
+} from "./usageLimits.ts";
 
 const now = Date.parse("2026-09-03T12:00:00.000Z");
 
@@ -273,7 +292,6 @@ describe("pools", () => {
     expect(account?.limits.resetCredits?.availableCount).toBe(1);
     expect(account?.redeem?.environmentId).toBe("env-2");
   });
-
 });
 
 describe("pooled account columns", () => {
@@ -490,11 +508,9 @@ describe("/usage-limits", () => {
       auth: { ...selected.auth, workspaceId: "ws-b" },
     });
     expect(
-      collectProviderUsageLimits(
-        selected.instanceId,
-        [...natives, unreadable],
-        now,
-      )?.accounts.map((account) => account.id),
+      collectProviderUsageLimits(selected.instanceId, [...natives, unreadable], now)?.accounts.map(
+        (account) => account.id,
+      ),
     ).toEqual(["workspace-a-fresh", "codex"]);
     expect(
       collectProviderUsageLimits(
@@ -504,7 +520,6 @@ describe("/usage-limits", () => {
       )?.accounts.map((account) => account.id),
     ).toEqual(["workspace-a-fresh", "codex", "workspace-b"]);
   });
-
 });
 
 describe("external usage settings", () => {

@@ -1,8 +1,4 @@
-import type {
-  EnvironmentId,
-  ProviderInstanceId,
-  ServerProvider,
-} from "@t3tools/contracts";
+import type { EnvironmentId, ProviderInstanceId, ServerProvider } from "@t3tools/contracts";
 import { collectProviderUsageLimits, hasProviderUsageLimits } from "@t3tools/shared/usageLimits";
 import { useState } from "react";
 import { useStableCallback } from "../../hooks/useStableCallback";
@@ -18,14 +14,8 @@ export function useUsageLimitsPanel(input: {
   readonly providerDriver: ServerProvider["driver"] | null;
   readonly providers: readonly ServerProvider[];
 }) {
-  const {
-    environmentId,
-    threadKey,
-    panelKey,
-    providerInstanceId,
-    providerDriver,
-    providers,
-  } = input;
+  const { environmentId, threadKey, panelKey, providerInstanceId, providerDriver, providers } =
+    input;
   const [panel, setPanel] = useState<{
     readonly key: string;
     readonly threadKey: string;
@@ -46,8 +36,7 @@ export function useUsageLimitsPanel(input: {
         )
       : null;
   // Intercept /usage-limits only when Limits has selected-provider data.
-  const offered =
-    providerDriver !== null && hasProviderUsageLimits(providerDriver, providers);
+  const offered = providerDriver !== null && hasProviderUsageLimits(providerDriver, providers);
 
   const open = useStableCallback(() => {
     const now = Date.now();

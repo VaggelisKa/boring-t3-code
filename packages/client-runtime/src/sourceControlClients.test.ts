@@ -105,12 +105,12 @@ describe("change request URLs built from a parsed link", () => {
     });
   };
 
-  it.each([
-    ["https://github.com/pull/1/pull/42/files", "https://github.com/pull/1/pull/43"],
-  ])("builds a canonical sibling of %s", (url, expected) => {
-    expect(sibling(url, 43)).toBe(expected);
-  });
-
+  it.each([["https://github.com/pull/1/pull/42/files", "https://github.com/pull/1/pull/43"]])(
+    "builds a canonical sibling of %s",
+    (url, expected) => {
+      expect(sibling(url, 43)).toBe(expected);
+    },
+  );
 });
 
 describe("sourceControlClients.recognizeRemote", () => {

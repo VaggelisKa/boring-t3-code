@@ -338,7 +338,6 @@ function migrateLegacySourceControlSettings(
   return { settings: { ...settings, sourceControlHosts }, secretMoves };
 }
 
-
 function migrateLegacyProviderSettings(
   settings: ServerSettings,
   legacyProviders: Readonly<Record<string, unknown>>,
@@ -707,9 +706,7 @@ const make = Effect.gen(function* () {
         ),
     ).pipe(Effect.map((copied) => copied.every(Boolean)));
     const hasLegacySourceControl =
-      settingsFileTrusted &&
-      legacySecretsCopied &&
-      legacySourceControl.github !== undefined;
+      settingsFileTrusted && legacySecretsCopied && legacySourceControl.github !== undefined;
     const sourceControlMigration = hasLegacySourceControl
       ? migrateLegacySourceControlSettings(folded, legacySourceControl)
       : { settings: folded, secretMoves: [] };

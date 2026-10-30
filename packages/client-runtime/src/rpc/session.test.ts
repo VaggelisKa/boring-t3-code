@@ -1,4 +1,12 @@
-import { DEFAULT_SERVER_SETTINGS, EnvironmentId, ServerConfig, type ServerConfig as ServerConfigType, ServerConfigStreamEvent, type ServerConfigStreamEvent as ServerConfigStreamEventType, WS_METHODS } from "@t3tools/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  EnvironmentId,
+  ServerConfig,
+  type ServerConfig as ServerConfigType,
+  ServerConfigStreamEvent,
+  type ServerConfigStreamEvent as ServerConfigStreamEventType,
+  WS_METHODS,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
@@ -13,7 +21,13 @@ import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import * as Socket from "effect/socket/Socket";
 
-import { AVAILABLE_CONNECTION_STATE, ConnectionBlockedError, ConnectionTransientError, PrimaryConnectionTarget, type PreparedConnection } from "../connection/model.ts";
+import {
+  AVAILABLE_CONNECTION_STATE,
+  ConnectionBlockedError,
+  ConnectionTransientError,
+  PrimaryConnectionTarget,
+  type PreparedConnection,
+} from "../connection/model.ts";
 import * as EnvironmentSupervisor from "../connection/supervisor.ts";
 import * as Persistence from "../platform/persistence.ts";
 import * as RpcSession from "./session.ts";
@@ -395,7 +409,6 @@ describe("RpcSessionFactory", () => {
     ),
   );
 
-
   it.effect("replays theme updates and deletion as authoritative events", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -489,7 +502,6 @@ describe("RpcSessionFactory", () => {
       }),
     ),
   );
-
 
   it.effect("closes the session when the config source dies", () =>
     Effect.scoped(

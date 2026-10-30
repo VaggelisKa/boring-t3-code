@@ -1,13 +1,40 @@
 import { Spinner } from "~/components/ui/spinner";
 
-import { AlertTriangleIcon, CheckIcon, ArrowUpCircleIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, LayersIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  ArrowUpCircleIcon,
+  CopyIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  LayersIcon,
+  PlusIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { Lock as LockGlyph, LockOpen } from "lucide";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import { useState, type ReactElement, type ReactNode } from "react";
-import { isProviderDriverKind, resolveProviderInstanceEnabled, type ProviderInstanceConfig, type ProviderInstanceEnvironmentVariable, type ProviderInstanceId, type AcpRegistryUrlAuthAction, type EnvironmentId, type ProjectId, type ProviderDriverKind, type ServerProvider, type ServerProviderModel } from "@t3tools/contracts";
+import {
+  isProviderDriverKind,
+  resolveProviderInstanceEnabled,
+  type ProviderInstanceConfig,
+  type ProviderInstanceEnvironmentVariable,
+  type ProviderInstanceId,
+  type AcpRegistryUrlAuthAction,
+  type EnvironmentId,
+  type ProjectId,
+  type ProviderDriverKind,
+  type ServerProvider,
+  type ServerProviderModel,
+} from "@t3tools/contracts";
 
-import { type CustomModelDefinition, readCustomModelEntries, toCustomModelSetting } from "@t3tools/shared/model";
+import {
+  type CustomModelDefinition,
+  readCustomModelEntries,
+  toCustomModelSetting,
+} from "@t3tools/shared/model";
 import { cn } from "../../lib/utils";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { useStableCallback } from "../../hooks/useStableCallback";
@@ -21,15 +48,29 @@ import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import type { ProviderClientDefinition, ProviderEnvironmentField } from "@t3tools/provider-core/client";
-import { deriveProviderSettingsFields, ProviderSettingsForm, reconcileRowsDraft, seedRowsDraft } from "./ProviderSettingsForm";
+import type {
+  ProviderClientDefinition,
+  ProviderEnvironmentField,
+} from "@t3tools/provider-core/client";
+import {
+  deriveProviderSettingsFields,
+  ProviderSettingsForm,
+  reconcileRowsDraft,
+  seedRowsDraft,
+} from "./ProviderSettingsForm";
 import { ProviderModelsSection } from "./ProviderModelsSection";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { ProviderAccentColorPicker } from "./ProviderAccentColorPicker";
 import { RedactedSensitiveText } from "./RedactedSensitiveText";
 import { SettingResetButton, SettingsRow, SettingsSection } from "./settingsLayout";
 import { AcpSessionManagementSection } from "./AcpSessionManagementSection";
-import { getProviderVersionAdvisoryPresentation, PROVIDER_STATUS_STYLES, getProviderStatusKey, getProviderSummary, getProviderVersionLabel } from "./providerStatus";
+import {
+  getProviderVersionAdvisoryPresentation,
+  PROVIDER_STATUS_STYLES,
+  getProviderStatusKey,
+  getProviderSummary,
+  getProviderVersionLabel,
+} from "./providerStatus";
 
 const ENVIRONMENT_VARIABLE_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 

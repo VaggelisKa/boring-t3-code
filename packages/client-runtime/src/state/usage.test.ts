@@ -1,4 +1,9 @@
-import { EnvironmentId, UsageDay, USAGE_CONTRACT_VERSION, type UsageSummary } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  UsageDay,
+  USAGE_CONTRACT_VERSION,
+  type UsageSummary,
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
@@ -175,4 +180,3 @@ describe("limits refresh cooldown", () => {
     expect(newCheck).toHaveBeenCalledTimes(1);
   });
 });
-

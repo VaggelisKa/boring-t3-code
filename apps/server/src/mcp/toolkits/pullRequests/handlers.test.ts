@@ -561,5 +561,4 @@ describe("pull request guide tools", () => {
       expect((yield* Ref.get(harness.guideRequests)).map((ref) => ref.number)).toEqual([5]);
     }),
   );
-
 });

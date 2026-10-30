@@ -14,7 +14,17 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import { EnvironmentId, DEFAULT_SERVER_SETTINGS, PROVIDER_WORKSPACE_SNAPSHOT_TTL_MS, ProviderDriverKind, ProviderInstanceId, ServerSettings, ServerSettingsError, ServerProvider, type ServerSettings as ContractServerSettings } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  DEFAULT_SERVER_SETTINGS,
+  PROVIDER_WORKSPACE_SNAPSHOT_TTL_MS,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  ServerSettings,
+  ServerSettingsError,
+  ServerProvider,
+  type ServerSettings as ContractServerSettings,
+} from "@t3tools/contracts";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { deepMerge } from "@t3tools/shared/Struct";
 import { createModelCapabilities } from "@t3tools/shared/model";
@@ -34,7 +44,10 @@ import * as ServerConfig from "../config.ts";
 import * as ServerSettingsModule from "../serverSettings.ts";
 import { readProviderStatusCache, resolveProviderStatusCachePath } from "./providerStatusCache.ts";
 import { COMPACT_SLASH_COMMAND } from "@t3tools/provider-core/server/snapshotProbe";
-import type { ProviderInstance, ProviderWorkspaceSnapshot } from "@t3tools/provider-core/server/driver";
+import type {
+  ProviderInstance,
+  ProviderWorkspaceSnapshot,
+} from "@t3tools/provider-core/server/driver";
 import * as ProviderInstanceRegistry from "./ProviderInstanceRegistry.ts";
 import * as ProviderRegistry from "./ProviderRegistry.ts";
 import { makeManualOnlyProviderMaintenanceCapabilities } from "@t3tools/provider-core/server/maintenanceResolver";
@@ -54,8 +67,6 @@ const disabledDefaultSlots = (
       { driver: ProviderDriverKind.make(driver), enabled: false },
     ]),
   );
-
-
 
 const TEST_EPOCH = DateTime.makeUnsafe("1970-01-01T00:00:00.000Z");
 const withBundledCompatibility = (snapshot: ServerProvider) =>
@@ -1501,5 +1512,4 @@ it.layer(
         }),
     );
   });
-
 });

@@ -1,11 +1,30 @@
-import { DEFAULT_SERVER_SETTINGS, OnePasswordAccount, ProjectId, ProviderDriverKind, ProviderInstanceId, SecretProviderId, SecretProviderKind, ServerSettings, ServerSettingsPatch, type ServerProvider } from "@t3tools/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  OnePasswordAccount,
+  ProjectId,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  SecretProviderId,
+  SecretProviderKind,
+  ServerSettings,
+  ServerSettingsPatch,
+  type ServerProvider,
+} from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 import { resolveServerBackgroundActivitySettings } from "./backgroundActivitySettings.ts";
 import { createModelSelection } from "./model.ts";
 import { resolveProjectScripts } from "./projectScripts.ts";
-import { applyServerSettingsPatch, fallbackTextGenerationModelSelection, modelPreferencesMigrationPatch, resolveModelPreferences, isModelSelectionProviderEnabled, parsePersistedServerObservabilitySettings, resolveSourceControlWriterModelSelection } from "./serverSettings.ts";
+import {
+  applyServerSettingsPatch,
+  fallbackTextGenerationModelSelection,
+  modelPreferencesMigrationPatch,
+  resolveModelPreferences,
+  isModelSelectionProviderEnabled,
+  parsePersistedServerObservabilitySettings,
+  resolveSourceControlWriterModelSelection,
+} from "./serverSettings.ts";
 
 const decodeServerSettings = Schema.decodeUnknownSync(ServerSettings);
 const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
@@ -540,7 +559,6 @@ describe("serverSettings helpers", () => {
       providerInstances: {},
     });
   });
-
 
   it("upserts and removes secretProviders per entry so concurrent edits cannot clobber", () => {
     const personal = SecretProviderId.make("personal");

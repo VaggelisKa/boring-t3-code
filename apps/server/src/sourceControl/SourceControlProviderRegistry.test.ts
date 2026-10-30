@@ -243,9 +243,7 @@ it.effect(
       const registry = yield* makeRegistry({
         remotes: [{ name: "origin", url: "https://github.com/unrelated/checkout.git" }],
       });
-      for (const [url, host] of [
-        ["https://github.com/team/project/issues/1", "github"],
-      ] as const) {
+      for (const [url, host] of [["https://github.com/team/project/issues/1", "github"]] as const) {
         const lookup = registry.resolveLink({ cwd: "/unrelated", url: new URL(url) });
         assert.ok(lookup);
         assert.deepStrictEqual(yield* lookup, { title: `${host} subject`, body: null });

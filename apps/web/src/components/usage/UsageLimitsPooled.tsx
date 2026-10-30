@@ -1,7 +1,30 @@
-import { CHATGPT_USAGE_URL, collectLimitAccounts, collectExternalUsageLinks, collectLimitNotices, collectLimitPools, cursorUsageWindowDetails, displayLimitWindows, formatResetsIn, type LimitAccount, type LimitPool, type LimitPoolMember, type LimitPoolWindow, paceRemainingPercent, remainingPercent } from "@t3tools/shared/usageLimits";
+import {
+  CHATGPT_USAGE_URL,
+  collectLimitAccounts,
+  collectExternalUsageLinks,
+  collectLimitNotices,
+  collectLimitPools,
+  cursorUsageWindowDetails,
+  displayLimitWindows,
+  formatResetsIn,
+  type LimitAccount,
+  type LimitPool,
+  type LimitPoolMember,
+  type LimitPoolWindow,
+  paceRemainingPercent,
+  remainingPercent,
+} from "@t3tools/shared/usageLimits";
 import type { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { AlertTriangleIcon, ExternalLinkIcon, TicketIcon } from "lucide-react";
-import { createContext, type ReactNode, type RefObject, use, useLayoutEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  type RefObject,
+  use,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ensureLocalApi } from "../../localApi";
 import { usePrimarySettings } from "../../hooks/useSettings";
@@ -14,7 +37,14 @@ import { Button } from "../ui/button";
 import { OpenAI } from "../Icons";
 import { Alert, AlertTitle } from "../ui/alert";
 import { Popover, PopoverCreateHandle, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import { PaceIcon, ResetCreditDialog, barColor, usePaceMark, resetCreditsSummary, useResetCredit } from "./UsageLimits";
+import {
+  PaceIcon,
+  ResetCreditDialog,
+  barColor,
+  usePaceMark,
+  resetCreditsSummary,
+  useResetCredit,
+} from "./UsageLimits";
 
 function accountInitials(email: string): string {
   const [local = "", domain = ""] = email.split("@");

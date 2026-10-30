@@ -1,11 +1,58 @@
 import { SourceControlProviderKind } from "@t3tools/contracts";
 import { resolvePlanFollowUpSubmission } from "../../proposedPlan";
-import { GitCommandError, ProjectId, type PullRequestCheck, type PullRequestComment, type PullRequestDetail, type PullRequestDetailView, type PullRequestRef, type PullRequestReviewThread, type PullRequestState, type RepositoryIdentity, type ThreadPullRequestLink } from "@t3tools/contracts";
+import {
+  GitCommandError,
+  ProjectId,
+  type PullRequestCheck,
+  type PullRequestComment,
+  type PullRequestDetail,
+  type PullRequestDetailView,
+  type PullRequestRef,
+  type PullRequestReviewThread,
+  type PullRequestState,
+  type RepositoryIdentity,
+  type ThreadPullRequestLink,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { formatInlineContextReference } from "~/lib/composerContextReferences";
 import { buildMessageContext, reviewCommentContextReference } from "~/lib/composerContextRecords";
 
-import { buildAddSelectionToAgentHandoff, resolveThreadPanelPullRequestAction, buildPullRequestReferenceContext, buildFixFindingHandoff, canDeletePullRequestBranch, buildFixFindingsHandoff, groupPullRequestTimelineConversations, filterPullRequestConversationItems, pagePullRequestConversationItems, pullRequestConversationItemComments, pullRequestConversationItems, handoffPrompt, handoffReviewComments, stripPullRequestHandoffReferences, isPullRequestVerdictStale, isStackedPullRequestBase, loadingPullRequestCheckoutCommand, pullRequestPanelContext, threadPullRequestPanelTarget, latestPullRequestReviewOutcomes, newestPullRequestCommitAt, mergePullRequestThreadComments, orderPullRequestComments, checkoutFailureDescription, readPullRequestDetailSnapshot, resolveDisplayedPullRequestDetail, resolvePullRequestReferenceHost, resolvePullRequestPrimaryControl, allowsSinglePullRequestMerge, shouldRefreshPullRequestActivity, resolveBaseFreshness, buildPullRequestTimeline, writePullRequestDetailSnapshot, readableFailure } from "./pullRequestDetail.logic";
+import {
+  buildAddSelectionToAgentHandoff,
+  resolveThreadPanelPullRequestAction,
+  buildPullRequestReferenceContext,
+  buildFixFindingHandoff,
+  canDeletePullRequestBranch,
+  buildFixFindingsHandoff,
+  groupPullRequestTimelineConversations,
+  filterPullRequestConversationItems,
+  pagePullRequestConversationItems,
+  pullRequestConversationItemComments,
+  pullRequestConversationItems,
+  handoffPrompt,
+  handoffReviewComments,
+  stripPullRequestHandoffReferences,
+  isPullRequestVerdictStale,
+  isStackedPullRequestBase,
+  loadingPullRequestCheckoutCommand,
+  pullRequestPanelContext,
+  threadPullRequestPanelTarget,
+  latestPullRequestReviewOutcomes,
+  newestPullRequestCommitAt,
+  mergePullRequestThreadComments,
+  orderPullRequestComments,
+  checkoutFailureDescription,
+  readPullRequestDetailSnapshot,
+  resolveDisplayedPullRequestDetail,
+  resolvePullRequestReferenceHost,
+  resolvePullRequestPrimaryControl,
+  allowsSinglePullRequestMerge,
+  shouldRefreshPullRequestActivity,
+  resolveBaseFreshness,
+  buildPullRequestTimeline,
+  writePullRequestDetailSnapshot,
+  readableFailure,
+} from "./pullRequestDetail.logic";
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 
 describe("pull request checkout commands", () => {
@@ -624,7 +671,6 @@ describe("fix findings handoff", () => {
     expect(handoff.prompt).toContain("typecheck");
     expect(handoff.prompt).toContain("6 further findings were omitted");
   });
-
 });
 
 describe("findings that cannot be attached", () => {
@@ -806,7 +852,6 @@ describe("asking about a change rather than working on it", () => {
     expect(handoff.reviewComments[0]?.text).not.toContain("Do not change any code");
     expect(handoff.reviewComments[1]?.text).toBe("");
   });
-
 });
 
 describe("a second ask into the same composer", () => {
