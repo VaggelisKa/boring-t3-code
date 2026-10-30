@@ -13,41 +13,6 @@ vp run dev
 Open the pairing URL printed by the dev runner. The bare origin does not authenticate
 a new browser.
 
-Prefer a container? See [Dev container](../internals/devcontainer.md) for VS Code and Codespaces setup.
-
-## GitCafe mirror (optional)
-
-GitHub is the source of truth. [git.cafe/pingdotgg/t3code](https://git.cafe/pingdotgg/t3code) is a
-two-way synced mirror with much higher API rate limits, which helps when many agents work at once.
-You never need it to contribute.
-
-Pushes, PRs, comments, reviews, labels, and issue edits made on GitCafe sync to GitHub within
-about a minute, and PR and issue numbers match. CI runs on GitHub, and its checks show up on
-GitCafe.
-
-```sh
-git remote set-url origin https://git.cafe/pingdotgg/t3code.git
-git remote add github https://github.com/pingdotgg/t3code.git
-gh repo set-default pingdotgg/t3code   # `gh` is still used for merging
-bun install -g @gitcafe/cli@latest   # `cafe` needs Bun 1.2 or newer
-cafe auth login && cafe auth http setup
-cafe skills install --global  # optional: cafe-* skills for coding agents
-```
-
-With `origin` on git.cafe, work through GitCafe and leave GitHub's API alone:
-
-- Push to `origin`, open PRs with `cafe pr create` (`--head owner/repo:branch` from a fork) or
-  `cafe stack submit`, and use `cafe` for everything after that. Link the git.cafe PR URL, not the
-  github.com one, wherever a tool tracks the PR, so polling stays on GitCafe.
-- Read checks with `cafe pr status <n>`, and GitHub Actions logs with `cafe ci logs <run>` (run ids
-  from `cafe ci list --pr <n>`). `cafe ci rerun <run>` reruns one. These need `cafe` 0.11 or newer.
-- Write closing references as `Fixes pingdotgg/t3code#<n>`. GitCafe turns a bare `#<n>` in text it
-  syncs to GitHub into a git.cafe link, and GitHub does not close issues from those.
-- Merge with `gh pr merge <n> --match-head-commit <sha>`, because `cafe pr merge` cannot pin the
-  commit you reviewed.
-- `cafe` commands differ from `gh`: `cafe issue comments <n>` not `--comments`, `cafe pr status`
-  not `pr checks`.
-
 ## Choosing a dev process
 
 Use `vp run dev` for server and web, or `vp run dev:desktop` for the Electron client.
@@ -161,62 +126,9 @@ for the security model.
 
 ## Checks
 
-`vp run check:changed` runs CI's fast checks for your branch's changes: format and lint of the
-changed files, `knip:check` when code or a manifest changes, the generated GraphQL checks, typecheck
-of the affected packages and their dependents, and the test files beside the changed files. It also
-runs the checks that read other files: the agent context budget when the server is affected, and
-React Compiler coverage for only the changed web and mobile files. It maps
-files to packages with [ci-changes.cjs](../../.github/scripts/ci-changes.cjs), as CI does. It
-compares against the merge base with `origin/main`, or with a ref you pass. CI still runs the full
-test suites and the jobs the summary lists, so a local pass does not promise a green CI run.
-
-The steps run side by side, as many at once as the machine allows: one per two cores and per 6 GiB
-of available memory. On a large machine a run takes about as long as its slowest step, usually
-knip's exports pass at about 10 s. Pass `--concurrency <n>` or set `CHECK_CHANGED_CONCURRENCY` to
-change the limit (`1` runs the steps one by one). A step that runs past `--timeout <seconds>` or
-`CHECK_CHANGED_TIMEOUT` (default 900) is killed with every process it started and reported as
-`TIMEOUT`, not as a failing check. When the files are exactly those of the last passing run, it prints that
-run's summary instead of running again. Any change to a file, the install, or a generated file runs
-the checks again.
-
-While you iterate, run single checks:
-
-```sh
-vp test run <files>
-vp lint <files>
-vp run --filter <package> typecheck
-```
-
-In `apps/web`, a test that renders React or touches the DOM is named `*.browser.test.{ts,tsx}`
-and runs in headless Chromium with the React Compiler on, like the app. There is no jsdom; other
-`*.test.ts` files run in Node.
-
-TypeScript workspaces typecheck with `tsc`. The `typescript` catalog entry is
-`@tsc-rs/typescript`, the tsc-rs drop-in, with Effect diagnostics, quick fixes, and
-refactors built in. VS Code uses it through `js/ts.tsdk.path` in `.vscode/settings.json`.
-
-Use `vp run lint:mobile` for native mobile changes. CI owns the full suite; see
-[ci.yml](../../.github/workflows/ci.yml) for its current jobs.
-The [manual Windows lane](../../.github/workflows/windows-tests.yml) is available for focused
-Windows investigation while that suite is not a required gate.
-
-### Unused code
-
-`vp run knip:check` checks unused files and dependencies across the repo, then
-unused runtime exports in `apps/server`, `apps/desktop`, `apps/web`, and every internal package under
-`packages/`. CI enforces both checks.
-Exported types and Effect schemas are allowed without consumers. The schema preprocessor
-recognizes schema types, including aliases and schema classes; functions that create or decode
-schemas remain checked. Canonical Effect service construction APIs stay exported with an explicit
-`@public` annotation, which Knip recognizes. Completely unused files remain checked too.
-Named exports in web UI component modules are kept as complete component sets. Knip ignores
-unused exports in `apps/web/src/components/ui/*.tsx`, while still reporting an entire unused file.
-Use `vp run knip --workspace apps/web` to audit one workspace, including exports,
-or `vp run knip:production --workspace apps/web` to find code kept alive only by tests.
-The full export audit still has findings and is not a repo-wide CI gate. Extend the
-export check's workspace selectors as more workspaces become clean. Review callers before
-deleting code; production mode can also report development scripts and test fixtures.
-Runtime-discovered entrypoints and dependency exceptions belong in [knip.jsonc](../../knip.jsonc).
+Before you push, run the checks CI runs: `vp fmt --check`, `vp lint`, `vp run knip:check`,
+`vp run -r typecheck`, and `vp test run` for the packages you changed. The pre-commit hook runs
+format, lint and knip for you.
 
 ## Desktop artifacts
 
