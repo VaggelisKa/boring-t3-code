@@ -64,7 +64,6 @@ function connectionIdOf(target: ConnectionTarget): string | null {
     case "RelayConnectionTarget":
       return null;
     case "BearerConnectionTarget":
-    case "SshConnectionTarget":
       return target.connectionId;
   }
 }
@@ -135,7 +134,6 @@ export function registerConnectionInCatalog(
     case "RelayConnectionRegistration":
       return next;
     case "BearerConnectionRegistration":
-    case "SshConnectionRegistration":
       return {
         ...next,
         profiles: replaceCatalogValue(

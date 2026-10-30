@@ -66,7 +66,7 @@ const StoredVcsRefs = Schema.Struct({
 });
 const StoredVcsRefsJson = Schema.fromJsonString(StoredVcsRefs);
 const ConnectionCatalogDocumentJson = Schema.fromJsonString(ConnectionCatalogDocument);
-const decodeConnectionCatalogDocument = Schema.decodeUnknownEffect(ConnectionCatalogDocumentJson);
+const decodeConnectionCatalogDocument = Schema.decodeUnknownEffect(ConnectionCatalogDocument);
 const encodeConnectionCatalogDocument = Schema.encodeEffect(ConnectionCatalogDocumentJson);
 const decodeStoredShellSnapshot = Schema.decodeUnknownEffect(StoredShellSnapshotJson);
 const decodeStoredThreadSnapshot = Schema.decodeUnknownEffect(StoredThreadSnapshotJson);
@@ -365,8 +365,27 @@ function vcsRefsCacheKey(environmentId: EnvironmentId, cwd: string) {
   return `${environmentId}:${cwd}`;
 }
 
+const isLegacySshRecord = (value: unknown) =>
+  typeof value === "object" &&
+  value !== null &&
+  "_tag" in value &&
+  (value._tag === "SshConnectionTarget" || value._tag === "SshConnectionProfile");
+
+// Catalogs saved before SSH hosts were removed can still hold their records.
+function dropLegacySshRecords(document: unknown): unknown {
+  if (typeof document !== "object" || document === null) return document;
+  const record = document as Record<string, unknown>;
+  const filter = (value: unknown) =>
+    Array.isArray(value) ? value.filter((entry) => !isLegacySshRecord(entry)) : value;
+  return { ...record, targets: filter(record.targets), profiles: filter(record.profiles) };
+}
+
 const decodeCatalog = Effect.fn("web.connectionStorage.decodeCatalog")(function* (raw: string) {
-  return yield* decodeConnectionCatalogDocument(raw).pipe(
+  const parsed = yield* Effect.try({
+    try: (): unknown => JSON.parse(raw),
+    catch: (cause) => catalogError("decode", cause),
+  });
+  return yield* decodeConnectionCatalogDocument(dropLegacySshRecords(parsed)).pipe(
     Effect.mapError((cause) => catalogError("decode", cause)),
   );
 });

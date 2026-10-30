@@ -15,7 +15,6 @@
     "@t3tools/client-runtime": "workspace:*",
     "@t3tools/contracts": "workspace:*",
     "@t3tools/shared": "workspace:*",
-    "@t3tools/ssh": "workspace:*",
     "effect": "catalog:",
     "electron": "44.10.0",
     "electron-updater": "^6.8.9",

@@ -45,7 +45,6 @@ function parseHostname(url: string): string | null {
 
 export function resolveRemoteOpenState(input: {
   readonly target: ConnectionTarget | null;
-  readonly sshTarget: { readonly alias: string; readonly username: string | null } | null;
   readonly isDesktopRenderer: boolean;
 }): RemoteOpenState {
   const { target } = input;
@@ -65,22 +64,6 @@ export function resolveRemoteOpenState(input: {
     return LOCAL_EXEC;
   }
 
-  if (input.sshTarget !== null && input.sshTarget.alias.length > 0) {
-    const { alias } = input.sshTarget;
-    const userSeparator = alias.lastIndexOf("@");
-    const host = userSeparator === -1 ? alias : alias.slice(userSeparator + 1);
-    const username =
-      input.sshTarget.username?.trim() ||
-      (userSeparator === -1 ? null : alias.slice(0, userSeparator));
-    return {
-      mode: "remote-links",
-      host: {
-        kind: "ssh-alias",
-        host,
-        ...(username === null ? {} : { username }),
-      },
-    };
-  }
   return REMOTE_UNAVAILABLE;
 }
 
@@ -102,12 +85,9 @@ const remoteOpenResolutionAtom = Atom.family((environmentId: EnvironmentId) =>
     if (entry === null) {
       return UNRESOLVED_REMOTE_OPEN;
     }
-    const profile = Option.getOrNull(entry.profile);
     const next: RemoteOpenResolution = {
       state: resolveRemoteOpenState({
         target: entry.target,
-        sshTarget:
-          profile !== null && profile._tag === "SshConnectionProfile" ? profile.target : null,
         isDesktopRenderer: window.desktopBridge !== undefined,
       }),
       isResolved: true,

@@ -556,7 +556,6 @@ function useChatMarkdownState({
             target !== null &&
             resolveRemoteOpenState({
               target,
-              sshTarget: null,
               isDesktopRenderer: window.desktopBridge !== undefined,
             }).mode !== "local-exec"
           ) {
