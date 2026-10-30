@@ -126,9 +126,9 @@ for the security model.
 
 ## Checks
 
-Before you push, run the checks CI runs: `vp fmt --check`, `vp lint`, `vp run knip:check`,
-`vp run -r typecheck`, and `vp test run` for the packages you changed. The pre-commit hook runs
-format, lint and knip for you.
+Before you push, run `vp run typecheck` in each package you changed and `vp test run` for the
+files you changed. The pre-commit hook runs format, lint and knip. CI runs format, lint, knip,
+typecheck and the full test suites on every pull request.
 
 ## Desktop artifacts
 
@@ -192,11 +192,9 @@ rustup target add aarch64-pc-windows-msvc
 ```
 
 NSIS is downloaded by electron-builder. WSL support additionally needs the Linux CLI archive
-passed as `--wsl-runtime`; see the
-[release runbook](./release.md#windows-payload-topology-and-update-validation).
+passed as `--wsl-runtime`.
 
 ### Signing and passkeys
 
-Add `--signed` after configuring the platform credentials in the
-[release runbook](./release.md). macOS passkeys need a signed, provisioned app; follow the
+Add `--signed` after configuring the platform signing credentials. macOS passkeys need a signed, provisioned app; follow the
 [Connect setup](./connect-setup.md#desktop-passkeys) for local signing and renderer HMR.

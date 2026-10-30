@@ -98,7 +98,7 @@ An empty database is a bad test. Seed your worktree's `.t3` with a copy of real 
 
 ## Verifying
 
-- Before you push, run the fast checks CI runs: `vp run -r typecheck` and `vp test run` for the packages you changed (the pre-commit hook covers format, lint and knip). See [Checks](docs/operations/development.md#checks).
+- Before you push, run `vp run typecheck` in each package you changed and `vp test run` for the files you changed. The pre-commit hook covers format, lint and knip, and CI runs the full suite. See [Checks](docs/operations/development.md#checks).
 - While you iterate, run `vp test run <files>`. For big files, add `-t "<name>"`.
 - Use `vp run typecheck`, not `npx tsc`; it caches per package. Both run tsc-rs (`typescript` is the `@tsc-rs/typescript` drop-in).
 - Run `node -e` snippets from `apps/server` or the owning package. `effect` does not resolve from the repo root.
@@ -148,7 +148,6 @@ For mobile verification, a missing or outdated native client is an install step,
 ## Pull requests
 
 - Never make a PR unless the developer explicitly asks you to do so.
-- If `origin` is git.cafe, follow [GitCafe mirror](docs/operations/development.md#gitcafe-mirror-optional): push to `origin`, open and track PRs with `cafe` and their git.cafe URLs, and keep `gh` for merging.
 - Conventional commit titles, plain language: `fix(web): new threads no longer spike CPU`.
 - Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
 - UI changes need before/after images. Motion or timing needs a short video.

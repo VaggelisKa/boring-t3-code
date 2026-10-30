@@ -102,7 +102,7 @@ pairing once through T3 Connect is enough to use the LAN at home. When the
 machine's LAN address changes, for example after it joins another Wi-Fi network,
 the learned route follows it. The machine must allow network access for its LAN
 address to be learned. The [background service](./background-service.md#local-network-access)
-allows it on private networks by default. You can reorder a learned route, but not remove it; it
+listens on loopback only unless you set `T3CODE_HOST`. You can reorder a learned route, but not remove it; it
 goes away with the route it was learned through, or when the machine stops
 reporting that address.
 

@@ -895,7 +895,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
 
       expect(yield* resolveHost({ connected: true })).toEqual({
         host: "127.0.0.1",
-        privateNetworkOnly: true,
+        privateNetworkOnly: undefined,
       });
       // `service.env` reaches the server as its environment.
       expect(yield* resolveHost({ connected: true, env: { T3CODE_HOST: "127.0.0.1" } })).toEqual({

@@ -148,8 +148,6 @@ export default defineConfig({
   fmt: {
     ignorePatterns: [
       ".repos/**",
-      // Macroscope requires one glob per line; Markdown formatting corrupts it.
-      ".macroscope/ignore.md",
       ".alchemy",
       "dist",
       "dist-electron",

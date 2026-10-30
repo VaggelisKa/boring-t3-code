@@ -42,13 +42,8 @@ under T3 home. Pass `--yes` from a script.
 
 ## Local network access
 
-The service listens on your local network and Tailscale addresses, so the
-desktop and mobile apps on the same network connect directly instead of through
-T3 Connect. The hosted web app at app.t3.codes stays on T3 Connect, because
-browsers block plain HTTP from an HTTPS page. The service does not answer on
-public addresses, and every device still needs to pair or sign in. To keep the service reachable from this machine only, set
-`T3CODE_HOST=127.0.0.1` in `service.env` (below). Any `T3CODE_HOST` value
-replaces this default.
+The service listens on `127.0.0.1` only, so nothing else on your network can reach it. To listen on
+another address, set `T3CODE_HOST` in `service.env` (below).
 
 ## Configure the service environment
 

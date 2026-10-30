@@ -1,13 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { faviconUrlForOrigin, toolActivityFaviconUrl } from "./favicon.ts";
-
-describe("faviconUrlForOrigin", () => {
-  it("never builds a network favicon URL", () => {
-    expect(faviconUrlForOrigin("https://github.com/pingdotgg/t3code", 64)).toBeNull();
-    expect(faviconUrlForOrigin("https://example.com")).toBeNull();
-  });
-});
+import { toolActivityFaviconUrl } from "./favicon.ts";
 
 describe("toolActivityFaviconUrl", () => {
   it("keeps inline images and drops remote ones", () => {

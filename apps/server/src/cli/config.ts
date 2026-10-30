@@ -22,7 +22,6 @@ import { Argument, Flag } from "effect/cli";
 import * as CliError from "effect/cli/CliError";
 
 import { readBootstrapEnvelope } from "../bootstrap.ts";
-import { resolveServiceLauncherMode } from "../cloud/serviceLauncherClient.ts";
 import * as ServerConfig from "../config.ts";
 import { expandHomePath, resolveBaseDir } from "../os-jank.ts";
 import { isProcessAlive, readPersistedServerRuntimeState } from "../serverRuntimeState.ts";
@@ -409,15 +408,7 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
     Option.fromUndefinedOr(env.host),
     Option.fromUndefinedOr(bootstrap?.host),
   );
-  // Boring T3 Code listens on loopback only unless a host is set explicitly,
-  // including when it runs as a background service.
-  const privateNetworkOnly =
-    Option.isNone(explicitHost) &&
-    mode === "web" &&
-    (yield* resolveServiceLauncherMode().pipe(
-      Effect.map((launcher) => launcher.managed),
-      Effect.orElseSucceed(() => false),
-    ));
+  // Loopback only unless a host is set explicitly, including under the service launcher.
   const host = Option.getOrElse(explicitHost, () => "127.0.0.1");
   const logLevel = Option.getOrElse(cliLogLevel, () => env.logLevel);
 
@@ -483,7 +474,6 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
     ...derivedPaths,
     serverTracePath,
     host,
-    ...(privateNetworkOnly ? { privateNetworkOnly } : {}),
     staticDir,
     devUrl,
     ...(devAuthToken === undefined ? {} : { devAuthToken }),

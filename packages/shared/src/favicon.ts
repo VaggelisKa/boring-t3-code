@@ -27,7 +27,3 @@ export function toolActivityFaviconUrl(
   }
   return inlineFaviconUrl(icon.faviconUrl);
 }
-
-export function faviconUrlForOrigin(_rawUrl: string | null | undefined, _size = 32): string | null {
-  return null;
-}
