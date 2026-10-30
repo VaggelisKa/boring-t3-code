@@ -9,8 +9,6 @@ import {
   type AuthClientSession,
   type AuthPairingLink,
   type AuthPairingCredentialResult,
-  type AdvertisedEndpoint,
-  type DesktopServerExposureState,
   type DesktopWslState,
   type EnvironmentId,
   resolveEnvironmentMachineKind,
@@ -26,7 +24,6 @@ import { isLocalEnvironmentDisabled } from "../../localEnvironment";
 import {
   applyWslEnableSelection,
   isWslSettingsRowVisible,
-  missingTailscaleEndpointDescription,
   resolveLocalVersionStatusLabel,
 } from "./ConnectionsSettings.logic";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
@@ -36,17 +33,6 @@ import { EnvironmentIconMenu } from "./EnvironmentIconPicker";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { LoadBalancingSettings } from "./LoadBalancingSettings";
 import { PullRequestRoutingSettings } from "./PullRequestRoutingSettings";
-import { Input } from "../ui/input";
-import {
-  Dialog,
-  DialogClose,
-  DialogFooter,
-  DialogDescription,
-  DialogHeader,
-  DialogPanel,
-  DialogPopup,
-  DialogTitle,
-} from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import {
   AlertDialog,
@@ -62,7 +48,6 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import {
@@ -73,7 +58,6 @@ import {
   type ServerClientSessionRecord,
 } from "~/environments/primary";
 import { isDesktopLocalConnectionTarget } from "~/connection/desktopLocal";
-import { useUiStateStore } from "~/uiStateStore";
 import {
   resolveServerConfigVersionMismatch,
   resolveServerSelfUpdateCapability,
@@ -83,10 +67,6 @@ import { authEnvironment } from "~/state/auth";
 import { environmentCatalog } from "~/connection/catalog";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
-import {
-  desktopNetworkAccessStateAtom,
-  refreshDesktopNetworkAccessState,
-} from "~/state/desktopNetworkAccess";
 import { desktopWslStateAtom, refreshDesktopWslState } from "~/state/desktopWslState";
 import { useDesktopUpdateState } from "~/state/desktopUpdate";
 import {
@@ -110,22 +90,11 @@ import {
   sortDesktopClientSessions,
   toDesktopPairingLinkRecord,
   toDesktopClientSessionRecord,
-  selectPairingEndpoint,
-  isTailscaleHttpsEndpoint,
-  endpointDefaultPreferenceKey,
 } from "./ConnectionsSettings.logic";
-import {
-  AdvertisedEndpointListRow,
-  AuthorizedClientsHeaderAction,
-  NetworkAccessDescription,
-  PairingClientsList,
-} from "./AuthorizedClientsSettings";
+import { AuthorizedClientsHeaderAction, PairingClientsList } from "./AuthorizedClientsSettings";
 import { ITEM_ROW_CLASSNAME } from "./itemRows";
 import { RemoteEnvironmentsEmptyState, SavedBackendListRow } from "./SavedEnvironmentRows";
 import { AddEnvironmentDialog } from "./AddEnvironmentDialog";
-
-const DEFAULT_TAILSCALE_SERVE_PORT = 443;
-const EMPTY_ADVERTISED_ENDPOINTS: ReadonlyArray<AdvertisedEndpoint> = [];
 
 // Colons are invalid in distro names, keeping picker sentinels collision-free.
 const BACKEND_VALUE_DEFAULT_WSL = "backend:default-wsl";
@@ -155,7 +124,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
   const currentSessionScopes = primarySessionState.data?.authenticated
     ? (primarySessionState.data.permissions ?? primarySessionState.data.scopes ?? null)
     : null;
-  const currentAuthPolicy = desktopBridge ? null : (primarySessionState.data?.auth.policy ?? null);
   const savedEnvironments = environments.filter(
     (environment) => environment.entry.target._tag !== "PrimaryConnectionTarget",
   );
@@ -203,9 +171,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     ...(primaryEnvironment ? [primaryEnvironment] : []),
     ...savedEnvironments.filter((environment) => environment.entry.enabled),
   ].filter((environment) => environment.connection.phase !== "unsupported");
-  const [desktopServerExposureMutationError, setDesktopServerExposureMutationError] = useState<
-    string | null
-  >(null);
   const [desktopAccessManagementMutationError, setDesktopAccessManagementMutationError] = useState<
     string | null
   >(null);
@@ -235,8 +200,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
   };
   const [removingSavedEnvironmentId, setRemovingSavedEnvironmentId] =
     useState<EnvironmentId | null>(null);
-  const [isUpdatingDesktopServerExposure, setIsUpdatingDesktopServerExposure] = useState(false);
-  const [isUpdatingTailscaleServe, setIsUpdatingTailscaleServe] = useState(false);
   const [isUpdatingWslBackend, setIsUpdatingWslBackend] = useState(false);
   const [desktopWslMutationError, setDesktopWslMutationError] = useState<string | null>(null);
   type PendingWslChange =
@@ -246,26 +209,10 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     | { readonly kind: "wsl-only"; readonly nextValue: boolean };
   const [pendingWslChange, setPendingWslChange] = useState<PendingWslChange | null>(null);
   const isWslConfirmDialogOpen = pendingWslChange !== null;
-  const [pendingTailscaleServeEndpoint, setPendingTailscaleServeEndpoint] =
-    useState<AdvertisedEndpoint | null>(null);
-  const [disableTailscaleServeDialogOpen, setDisableTailscaleServeDialogOpen] = useState(false);
-  const [tailscaleServePortInput, setTailscaleServePortInput] = useState(
-    String(DEFAULT_TAILSCALE_SERVE_PORT),
-  );
-  const [pendingDesktopServerExposureMode, setPendingDesktopServerExposureMode] = useState<
-    DesktopServerExposureState["mode"] | null
-  >(null);
   const primaryServerConfig = primaryEnvironment?.serverConfig ?? null;
   const primaryVersionMismatch = resolveServerConfigVersionMismatch(primaryServerConfig);
   const primaryServerUpdateState = useAtomValue(
     serverEnvironment.updateStateAtom(primaryEnvironmentId),
-  );
-  const [isAdvertisedEndpointListExpanded, setIsAdvertisedEndpointListExpanded] = useState(false);
-  const defaultAdvertisedEndpointKey = useUiStateStore(
-    (state) => state.defaultAdvertisedEndpointKey,
-  );
-  const setDefaultAdvertisedEndpointKey = useUiStateStore(
-    (state) => state.setDefaultAdvertisedEndpointKey,
   );
   const canReadAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessReadScope);
   const canWriteAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessWriteScope);
@@ -280,20 +227,12 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
         })
       : null,
   );
-  const desktopNetworkAccess = useEnvironmentQuery(
-    showsAccess && canManageLocalBackend && desktopBridge ? desktopNetworkAccessStateAtom : null,
-  );
   const desktopWsl = useEnvironmentQuery(
     showsAccess && canManageLocalBackend && desktopBridge ? desktopWslStateAtom : null,
   );
   const desktopWslState = desktopWsl.data;
   const desktopWslError = desktopWslMutationError ?? desktopWsl.error;
   const isLoadingWslState = desktopWsl.isPending && desktopWsl.data === null;
-  const desktopServerExposureState = desktopNetworkAccess.data?.serverExposureState ?? null;
-  const desktopAdvertisedEndpoints =
-    desktopNetworkAccess.data?.advertisedEndpoints ?? EMPTY_ADVERTISED_ENDPOINTS;
-  const desktopServerExposureError =
-    desktopServerExposureMutationError ?? desktopNetworkAccess.error;
   const desktopAccessManagementError =
     desktopAccessManagementMutationError ?? authAccessChanges.error;
   const isLoadingDesktopAccessManagement =
@@ -316,144 +255,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
       ),
     );
   })();
-  const isLocalBackendNetworkAccessible = desktopBridge
-    ? desktopServerExposureState?.mode === "network-accessible"
-    : currentAuthPolicy === "remote-reachable";
-  const trimmedTailscaleServePortInput = tailscaleServePortInput.trim();
-  const parsedTailscaleServePort = Number(trimmedTailscaleServePortInput);
-  const isTailscaleServePortValid =
-    /^\d+$/u.test(trimmedTailscaleServePortInput) &&
-    Number.isInteger(parsedTailscaleServePort) &&
-    parsedTailscaleServePort >= 1 &&
-    parsedTailscaleServePort <= 65_535;
-
-  const pendingTailscaleServeBaseUrl = (() => {
-    if (!pendingTailscaleServeEndpoint) return null;
-    if (!isTailscaleServePortValid) return pendingTailscaleServeEndpoint.httpBaseUrl;
-    if (parsedTailscaleServePort === DEFAULT_TAILSCALE_SERVE_PORT) {
-      return pendingTailscaleServeEndpoint.httpBaseUrl;
-    }
-    try {
-      const url = new URL(pendingTailscaleServeEndpoint.httpBaseUrl);
-      url.port = String(parsedTailscaleServePort);
-      return url.toString().replace(/\/$/u, "");
-    } catch {
-      return pendingTailscaleServeEndpoint.httpBaseUrl;
-    }
-  })();
-
-  const handleDesktopServerExposureChange = async (checked: boolean) => {
-    if (
-      !desktopBridge ||
-      primaryEnvironmentId === null ||
-      !readEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope)
-    )
-      return;
-    setIsUpdatingDesktopServerExposure(true);
-    setDesktopServerExposureMutationError(null);
-    try {
-      await desktopBridge.setServerExposureMode(checked ? "network-accessible" : "local-only");
-      refreshDesktopNetworkAccessState();
-      setPendingDesktopServerExposureMode(null);
-      setIsUpdatingDesktopServerExposure(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update network exposure.";
-      setPendingDesktopServerExposureMode(null);
-      setDesktopServerExposureMutationError(message);
-      toastManager.add(
-        stackedThreadToast({
-          type: "error",
-          title: "Could not update network access",
-          description: message,
-        }),
-      );
-      setIsUpdatingDesktopServerExposure(false);
-    }
-  };
-
-  const handleConfirmDesktopServerExposureChange = () => {
-    if (pendingDesktopServerExposureMode === null) return;
-    const checked = pendingDesktopServerExposureMode === "network-accessible";
-    void handleDesktopServerExposureChange(checked);
-  };
-
-  const handleConfirmTailscaleServeSetup = async () => {
-    if (
-      !desktopBridge ||
-      primaryEnvironmentId === null ||
-      !readEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope)
-    )
-      return;
-    if (!isTailscaleServePortValid) return;
-    setIsUpdatingTailscaleServe(true);
-    setDesktopServerExposureMutationError(null);
-    const settled = await settlePromise(async () => {
-      await desktopBridge.setTailscaleServeEnabled({
-        enabled: true,
-        port: parsedTailscaleServePort,
-      });
-      refreshDesktopNetworkAccessState();
-      setPendingTailscaleServeEndpoint(null);
-    });
-    if (settled._tag === "Failure") {
-      const error = Cause.squash(settled.cause);
-      const message =
-        error instanceof Error ? error.message : "Failed to configure Tailscale HTTPS.";
-      setDesktopServerExposureMutationError(message);
-      toastManager.add(
-        stackedThreadToast({
-          type: "error",
-          title: "Could not set up Tailscale HTTPS",
-          description: message,
-        }),
-      );
-    }
-    setIsUpdatingTailscaleServe(false);
-  };
-
-  const handleStartTailscaleServeSetup = (endpoint: AdvertisedEndpoint) => {
-    setTailscaleServePortInput(
-      String(desktopServerExposureState?.tailscaleServePort ?? DEFAULT_TAILSCALE_SERVE_PORT),
-    );
-    setPendingTailscaleServeEndpoint(endpoint);
-  };
-
-  const handleConfirmTailscaleServeDisable = async () => {
-    if (
-      !desktopBridge ||
-      primaryEnvironmentId === null ||
-      !readEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope)
-    )
-      return;
-    setIsUpdatingTailscaleServe(true);
-    setDesktopServerExposureMutationError(null);
-    const settled = await settlePromise(async () => {
-      await desktopBridge.setTailscaleServeEnabled({
-        enabled: false,
-        port: desktopServerExposureState?.tailscaleServePort ?? DEFAULT_TAILSCALE_SERVE_PORT,
-      });
-      refreshDesktopNetworkAccessState();
-      setDisableTailscaleServeDialogOpen(false);
-    });
-    if (settled._tag === "Failure") {
-      const error = Cause.squash(settled.cause);
-      const message = error instanceof Error ? error.message : "Failed to disable Tailscale HTTPS.";
-      setDesktopServerExposureMutationError(message);
-      toastManager.add(
-        stackedThreadToast({
-          type: "error",
-          title: "Could not disable Tailscale HTTPS",
-          description: message,
-        }),
-      );
-    }
-    setIsUpdatingTailscaleServe(false);
-  };
-
-  const handleStartTailscaleServeDisable = (_endpoint: AdvertisedEndpoint) => {
-    setDisableTailscaleServeDialogOpen(true);
-  };
-
   const handleRevokeDesktopPairingLink = async (id: string) => {
     if (
       primaryEnvironmentId === null ||
@@ -587,58 +388,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     if (confirmed === true) await removeSavedBackend(environment);
   };
 
-  const visibleDesktopPairingLinks = desktopPairingLinks;
-  const tailscaleHttpsEndpoint = desktopAdvertisedEndpoints.find(isTailscaleHttpsEndpoint) ?? null;
-  const visibleDesktopNetworkAdvertisedEndpoints = isLocalBackendNetworkAccessible
-    ? desktopAdvertisedEndpoints.filter((endpoint) => !isTailscaleHttpsEndpoint(endpoint))
-    : [];
-  const visibleDesktopAdvertisedEndpoints = tailscaleHttpsEndpoint
-    ? [...visibleDesktopNetworkAdvertisedEndpoints, tailscaleHttpsEndpoint]
-    : visibleDesktopNetworkAdvertisedEndpoints;
-  const defaultDesktopNetworkAdvertisedEndpoint = selectPairingEndpoint(
-    visibleDesktopNetworkAdvertisedEndpoints,
-    defaultAdvertisedEndpointKey,
-  );
-  const defaultDesktopAdvertisedEndpoint =
-    defaultDesktopNetworkAdvertisedEndpoint ??
-    selectPairingEndpoint(
-      tailscaleHttpsEndpoint ? [tailscaleHttpsEndpoint] : [],
-      defaultAdvertisedEndpointKey,
-    );
-  const defaultDesktopAdvertisedEndpointKey = defaultDesktopAdvertisedEndpoint
-    ? endpointDefaultPreferenceKey(defaultDesktopAdvertisedEndpoint)
-    : null;
-  const handleSetDefaultAdvertisedEndpoint = (endpoint: AdvertisedEndpoint) => {
-    setDefaultAdvertisedEndpointKey(endpointDefaultPreferenceKey(endpoint));
-  };
-
-  const renderNetworkAccessToggle = () => (
-    <Switch
-      checked={desktopServerExposureState?.mode === "network-accessible"}
-      disabled={!desktopServerExposureState || isUpdatingDesktopServerExposure}
-      onCheckedChange={(checked) => {
-        setPendingDesktopServerExposureMode(checked ? "network-accessible" : "local-only");
-      }}
-      aria-label="Enable network access"
-    />
-  );
-  const renderEndpointRows = () =>
-    isAdvertisedEndpointListExpanded
-      ? visibleDesktopNetworkAdvertisedEndpoints.map((endpoint) => {
-          const endpointKey = endpointDefaultPreferenceKey(endpoint);
-          return (
-            <AdvertisedEndpointListRow
-              key={endpoint.id}
-              endpoint={endpoint}
-              isDefault={endpointKey === defaultDesktopAdvertisedEndpointKey}
-              onSetDefault={handleSetDefaultAdvertisedEndpoint}
-              onSetupTailscaleServe={handleStartTailscaleServeSetup}
-              onDisableTailscaleServe={handleStartTailscaleServeDisable}
-              isUpdatingTailscaleServe={isUpdatingTailscaleServe}
-            />
-          );
-        })
-      : null;
   const applyWslSettingChange = async (apply: () => Promise<DesktopWslState>) => {
     if (
       !desktopBridge ||
@@ -881,34 +630,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     );
   };
 
-  const renderTailscaleRow = () => (
-    <SettingsRow
-      title={searchableSetting("tailscale-https").title}
-      description={
-        tailscaleHttpsEndpoint
-          ? tailscaleHttpsEndpoint.status === "available"
-            ? tailscaleHttpsEndpoint.httpBaseUrl
-            : "Use Tailscale Serve to expose this backend through a MagicDNS HTTPS URL."
-          : missingTailscaleEndpointDescription(desktopServerExposureState)
-      }
-      control={
-        tailscaleHttpsEndpoint ? (
-          <Switch
-            checked={tailscaleHttpsEndpoint.status === "available"}
-            disabled={isUpdatingTailscaleServe}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                handleStartTailscaleServeSetup(tailscaleHttpsEndpoint);
-                return;
-              }
-              handleStartTailscaleServeDisable(tailscaleHttpsEndpoint);
-            }}
-            aria-label="Enable Tailscale HTTPS"
-          />
-        ) : null
-      }
-    />
-  );
   const renderAuthorizedClients = () => (
     <>
       {desktopAccessManagementError ? (
@@ -917,11 +638,8 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
         </div>
       ) : null}
       <PairingClientsList
-        endpointUrl={desktopServerExposureState?.endpointUrl}
-        endpoints={visibleDesktopAdvertisedEndpoints}
-        defaultEndpointKey={defaultDesktopAdvertisedEndpointKey}
         isLoading={isLoadingDesktopAccessManagement}
-        pairingLinks={visibleDesktopPairingLinks}
+        pairingLinks={desktopPairingLinks}
         createdPairingCredentials={createdPairingCredentials}
         clientSessions={desktopClientSessions}
         revokingPairingLinkId={revokingDesktopPairingLinkId}
@@ -932,75 +650,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
       />
     </>
   );
-  const renderNetworkAccessRow = () => (
-    <SettingsRow
-      title={searchableSetting("network-access").title}
-      description={
-        isLocalBackendNetworkAccessible ? (
-          <NetworkAccessDescription
-            endpoint={defaultDesktopNetworkAdvertisedEndpoint}
-            hiddenEndpointCount={Math.max(visibleDesktopNetworkAdvertisedEndpoints.length - 1, 0)}
-            expanded={isAdvertisedEndpointListExpanded}
-            onToggleExpanded={() => setIsAdvertisedEndpointListExpanded((expanded) => !expanded)}
-            fallback={
-              desktopServerExposureState?.endpointUrl
-                ? `Reachable at ${desktopServerExposureState.endpointUrl}`
-                : desktopServerExposureState?.advertisedHost
-                  ? `Exposed on all interfaces. Pairing links use ${desktopServerExposureState.advertisedHost}.`
-                  : "Exposed on all interfaces."
-            }
-          />
-        ) : desktopServerExposureState ? (
-          "Limited to this machine."
-        ) : (
-          "Loading…"
-        )
-      }
-      status={
-        desktopServerExposureError ? (
-          <span className="block text-destructive">{desktopServerExposureError}</span>
-        ) : null
-      }
-      control={renderNetworkAccessToggle()}
-    />
-  );
-  const renderDisabledNetworkAccessRow = () => (
-    <SettingsRow
-      title={searchableSetting("network-access").title}
-      description={
-        desktopBridge
-          ? "This connection cannot view or change network exposure."
-          : currentAuthPolicy === "remote-reachable"
-            ? "Remote access is already configured. Change network exposure where the server starts."
-            : currentAuthPolicy === "loopback-browser"
-              ? "Only this machine can connect. Restart with a non-loopback host for remote pairing."
-              : "Network exposure information is unavailable."
-      }
-      control={
-        !desktopBridge &&
-        (currentAuthPolicy === "remote-reachable" || currentAuthPolicy === "loopback-browser") ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span className="inline-flex">
-                  <Switch
-                    checked={isLocalBackendNetworkAccessible}
-                    disabled
-                    aria-label="Enable network access"
-                  />
-                </span>
-              }
-            />
-            <TooltipPopup side="top">
-              Network exposure changes restart the backend and must be controlled where the server
-              process is launched.
-            </TooltipPopup>
-          </Tooltip>
-        ) : undefined
-      }
-    />
-  );
-
   const primarySettings = (
     <>
       {primaryEnvironmentId !== null ? (
@@ -1089,16 +738,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
                 }
               />
             ) : null}
-            {canManageLocalBackend && desktopBridge ? (
-              <>
-                {renderNetworkAccessRow()}
-                {renderEndpointRows()}
-                {renderTailscaleRow()}
-                {renderWslRow()}
-              </>
-            ) : canManageLocalBackend ? (
-              renderDisabledNetworkAccessRow()
-            ) : null}
+            {canManageLocalBackend && desktopBridge ? renderWslRow() : null}
             {primaryEnvironment ? (
               <details className="group px-3 sm:px-4">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
@@ -1120,10 +760,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
             <FoldedSettingsSection
               id="authorized-clients"
               title="Authorized clients"
-              summary={summarizeAuthorizedClients(
-                desktopClientSessions,
-                visibleDesktopPairingLinks,
-              )}
+              summary={summarizeAuthorizedClients(desktopClientSessions, desktopPairingLinks)}
               control={
                 canWriteAccess ? (
                   <AuthorizedClientsHeaderAction
@@ -1158,54 +795,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
               </ScrollArea>
             </FoldedSettingsSection>
           ) : null}
-          <AlertDialog
-            open={pendingDesktopServerExposureMode !== null && canManageLocalBackend}
-            onOpenChange={(open) => {
-              if (!open && !isUpdatingDesktopServerExposure)
-                setPendingDesktopServerExposureMode(null);
-            }}
-          >
-            <AlertDialogPopup>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {pendingDesktopServerExposureMode === "network-accessible"
-                    ? "Enable network access?"
-                    : "Disable network access?"}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {pendingDesktopServerExposureMode === "network-accessible"
-                    ? "Let your other devices connect to T3 Code over the network. Pair devices to give them access. T3 Code will restart."
-                    : "Devices connected over your local network will disconnect. Existing tunnels, such as Tailscale HTTPS, keep working. T3 Code will restart."}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogClose
-                  disabled={isUpdatingDesktopServerExposure}
-                  render={<Button variant="outline" disabled={isUpdatingDesktopServerExposure} />}
-                >
-                  <span className="[text-box:trim-both_cap_alphabetic]">Cancel</span>
-                </AlertDialogClose>
-                <Button
-                  variant="default"
-                  onClick={handleConfirmDesktopServerExposureChange}
-                  disabled={
-                    !canManageLocalBackend ||
-                    pendingDesktopServerExposureMode === null ||
-                    isUpdatingDesktopServerExposure
-                  }
-                >
-                  {isUpdatingDesktopServerExposure && <Spinner size="sm" />}
-                  <span className="[text-box:trim-both_cap_alphabetic]">
-                    {isUpdatingDesktopServerExposure
-                      ? "Restarting…"
-                      : pendingDesktopServerExposureMode === "network-accessible"
-                        ? "Restart and enable"
-                        : "Restart and disable"}
-                  </span>
-                </Button>
-              </AlertDialogFooter>
-            </AlertDialogPopup>
-          </AlertDialog>
           <AlertDialog
             open={isWslConfirmDialogOpen && canManageLocalBackend}
             onOpenChange={(open) => {
@@ -1314,116 +903,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
               </AlertDialogFooter>
             </AlertDialogPopup>
           </AlertDialog>
-          <AlertDialog
-            open={disableTailscaleServeDialogOpen && canManageLocalBackend}
-            onOpenChange={(open) => {
-              if (isUpdatingTailscaleServe) return;
-              setDisableTailscaleServeDialogOpen(open);
-            }}
-          >
-            <AlertDialogPopup>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Disable Tailscale HTTPS?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  T3 Code will restart the local backend without Tailscale Serve.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogClose
-                  disabled={isUpdatingTailscaleServe}
-                  render={<Button variant="outline" disabled={isUpdatingTailscaleServe} />}
-                >
-                  Cancel
-                </AlertDialogClose>
-                <Button
-                  variant="destructive"
-                  onClick={() => void handleConfirmTailscaleServeDisable()}
-                  disabled={isUpdatingTailscaleServe || !canManageLocalBackend}
-                >
-                  {isUpdatingTailscaleServe ? (
-                    <>
-                      <Spinner size="sm" />
-                      Restarting…
-                    </>
-                  ) : (
-                    "Restart and disable"
-                  )}
-                </Button>
-              </AlertDialogFooter>
-            </AlertDialogPopup>
-          </AlertDialog>
-          <Dialog
-            open={pendingTailscaleServeEndpoint !== null}
-            onOpenChange={(open) => {
-              if (isUpdatingTailscaleServe) return;
-              if (!open) setPendingTailscaleServeEndpoint(null);
-            }}
-          >
-            <DialogPopup className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Set up Tailscale HTTPS?</DialogTitle>
-                <DialogDescription>
-                  T3 Code will restart the local backend with Tailscale Serve enabled and ask
-                  Tailscale to proxy HTTPS traffic to this backend.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogPanel>
-                <label className="block">
-                  <span className="text-sm font-medium text-foreground">HTTPS port</span>
-                  <Input
-                    className="mt-2"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={65_535}
-                    step={1}
-                    value={tailscaleServePortInput}
-                    onChange={(event) => setTailscaleServePortInput(event.target.value)}
-                    disabled={isUpdatingTailscaleServe}
-                  />
-                </label>
-                {!isTailscaleServePortValid ? (
-                  <p className="mt-2 text-xs text-destructive">Enter a port from 1 to 65535.</p>
-                ) : null}
-                <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2">
-                  <p className="text-xs font-medium text-muted-foreground">HTTPS endpoint</p>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <p className="mt-1 truncate text-sm text-foreground">
-                          {pendingTailscaleServeBaseUrl ?? "Pending MagicDNS endpoint"}
-                        </p>
-                      }
-                    />
-                    {pendingTailscaleServeBaseUrl ? (
-                      <TooltipPopup side="top">{pendingTailscaleServeBaseUrl}</TooltipPopup>
-                    ) : null}
-                  </Tooltip>
-                </div>
-              </DialogPanel>
-              <DialogFooter>
-                <DialogClose
-                  disabled={isUpdatingTailscaleServe}
-                  render={<Button variant="outline" disabled={isUpdatingTailscaleServe} />}
-                >
-                  Cancel
-                </DialogClose>
-                <Button
-                  onClick={() => void handleConfirmTailscaleServeSetup()}
-                  disabled={isUpdatingTailscaleServe || !isTailscaleServePortValid}
-                >
-                  {isUpdatingTailscaleServe ? (
-                    <>
-                      <Spinner size="sm" />
-                      Restarting…
-                    </>
-                  ) : (
-                    "Enable"
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogPopup>
-          </Dialog>
         </>
       ) : (
         <SettingsSection {...searchableSetting("connections-environment")}>

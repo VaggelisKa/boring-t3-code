@@ -68,8 +68,7 @@ export class DesktopDevelopmentBackendPortRequiredError extends Schema.TaggedErr
   }
 }
 
-const { logInfo: logBootstrapInfo, logWarning: logBootstrapWarning } =
-  DesktopObservability.makeComponentLogger("desktop-bootstrap");
+const { logInfo: logBootstrapInfo } = DesktopObservability.makeComponentLogger("desktop-bootstrap");
 
 const { logInfo: logStartupInfo, logError: logStartupError } =
   DesktopObservability.makeComponentLogger("desktop-startup");
@@ -211,28 +210,10 @@ const bootstrap = Effect.gen(function* () {
     },
   );
 
-  if (settings.serverExposureMode !== environment.defaultDesktopSettings.serverExposureMode) {
-    yield* logBootstrapInfo("bootstrap restoring persisted server exposure mode", {
-      mode: settings.serverExposureMode,
-    });
-  }
-  const serverExposureState = yield* serverExposure.configureFromSettings({ port: backendPort });
-  const backendConfig = yield* serverExposure.backendConfig;
+  const backendConfig = yield* serverExposure.configure({ port: backendPort });
   yield* logBootstrapInfo("bootstrap resolved backend endpoint", {
     baseUrl: backendConfig.httpBaseUrl.href,
   });
-  if (serverExposureState.endpointUrl) {
-    yield* logBootstrapInfo("bootstrap enabled network access", {
-      endpointUrl: serverExposureState.endpointUrl,
-    });
-  } else if (
-    settings.serverExposureMode === "network-accessible" &&
-    serverExposureState.mode === "local-only"
-  ) {
-    yield* logBootstrapWarning(
-      "bootstrap fell back to local-only because no advertised network host was available",
-    );
-  }
 
   if (!(yield* Ref.get(state.quitting))) {
     if (settings.wslOnly === true && settings.wslBackendEnabled === true) {

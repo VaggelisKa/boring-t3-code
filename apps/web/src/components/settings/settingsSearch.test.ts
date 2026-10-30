@@ -90,11 +90,6 @@ describe("searchSettings", () => {
     expect(searchSettings("pairing remote", ITEMS).map((item) => item.id)).toEqual([
       "network-access",
     ]);
-    expect(
-      searchSettings("remote pairing")
-        .slice(0, 2)
-        .map((item) => item.id),
-    ).toEqual(["network-access", "connections-environment"]);
   });
 
   it("hides desktop-only settings from browser search", () => {
@@ -116,13 +111,11 @@ describe("searchSettings", () => {
     const gatedIds = new Set<string>([
       "follow-change-request-templates",
       "git-fetch-interval",
-      "network-access",
       "provider-health-check-interval",
       "source-control-writer-model",
       "review-guide-model",
       "review-guide-instructions",
       "source-control-writing-style",
-      "tailscale-https",
       "wsl-backend",
       "auto-settle-inactive-threads",
       "auto-settle-merged-threads",
@@ -290,7 +283,6 @@ describe("movedSettingsPath", () => {
       "/settings/worktrees",
     );
     expect(movedSettingsPath("/settings/appearance", "diff-color-scheme")).toBe("/settings/diffs");
-    expect(movedSettingsPath("/settings/connections", "network-access")).toBe("/settings/access");
     expect(movedSettingsPath("/settings/storage", "storage-worktrees")).toBe("/settings/worktrees");
     expect(movedSettingsPath("/settings/storage", "")).toBe("/settings/maintenance");
     expect(movedSettingsPath("/settings/beta", "")).toBe("/settings/labs");

@@ -165,18 +165,12 @@ const layerDesktopAssets = Layer.succeed(DesktopAssets.DesktopAssets, {
 } satisfies DesktopAssets.DesktopAssets["Service"]);
 
 const layerDesktopServerExposure = Layer.succeed(DesktopServerExposure.DesktopServerExposure, {
-  getState: Effect.die("unexpected getState"),
   backendConfig: Effect.succeed({
     port: 3773,
     bindHost: "127.0.0.1",
     httpBaseUrl: new URL("http://127.0.0.1:3773"),
-    tailscaleServeEnabled: false,
-    tailscaleServePort: 443,
   }),
-  configureFromSettings: () => Effect.die("unexpected configureFromSettings"),
-  setMode: () => Effect.die("unexpected setMode"),
-  setTailscaleServeEnabled: () => Effect.die("unexpected setTailscaleServeEnabled"),
-  getAdvertisedEndpoints: Effect.die("unexpected getAdvertisedEndpoints"),
+  configure: () => Effect.die("unexpected configure"),
 } satisfies DesktopServerExposure.DesktopServerExposure["Service"]);
 
 const layerElectronMenu = Layer.succeed(ElectronMenu.ElectronMenu, {
@@ -252,8 +246,6 @@ function layerTest(input: {
         }
         return { settings: desktopSettings, changed };
       }),
-    setServerExposureMode: () => Effect.die("unexpected server exposure update"),
-    setTailscaleServe: () => Effect.die("unexpected Tailscale Serve update"),
     setUpdateChannel: () => Effect.die("unexpected update channel change"),
     setWslBackendEnabled: () => Effect.die("unexpected WSL backend toggle"),
     setWslDistro: () => Effect.die("unexpected WSL distro change"),

@@ -1,20 +1,17 @@
 import * as DateTime from "effect/DateTime";
 
-import { resolveDesktopPairingUrl } from "./pairingUrls";
 import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "@t3tools/shared/remote";
 import {
   type ServerClientSessionRecord,
   type ServerPairingLinkRecord,
 } from "~/environments/primary";
 import {
-  type AdvertisedEndpoint,
   type AuthClientSession,
   type AuthGrantScope,
   type AuthPairingLink,
   AuthTerminalOperateScope,
   AuthTerminalReadScope,
   type DesktopBridge,
-  type DesktopServerExposureState,
   type DesktopSshEnvironmentTarget,
   type DesktopUpdateState,
   type DesktopWslState,
@@ -51,21 +48,6 @@ export function canRevokeOtherClients(
 
 type WslEnableBridge = Pick<DesktopBridge, "setWslBackendEnabled" | "setWslDistro" | "setWslOnly">;
 
-/** Never offer loopback URLs as QR targets; scanning devices would connect to themselves. */
-export function isQrShareableEndpoint(endpoint: AdvertisedEndpoint): boolean {
-  return endpoint.status !== "unavailable" && endpoint.reachability !== "loopback";
-}
-
-/** Desktop skips Tailscale probing until network/Serve is enabled to avoid macOS prompts; absence then
- * means unchecked. */
-export function missingTailscaleEndpointDescription(
-  state: Pick<DesktopServerExposureState, "mode" | "tailscaleServeEnabled"> | null,
-): string {
-  return state && state.mode !== "network-accessible" && !state.tailscaleServeEnabled
-    ? "Turn on Network access to detect Tailscale."
-    : "Start Tailscale to set up HTTPS access through MagicDNS.";
-}
-
 export function isWslSettingsRowVisible(input: {
   readonly state: DesktopWslState | null;
   readonly error: string | null;
@@ -100,29 +82,6 @@ export function resolveLocalVersionStatusLabel(state: DesktopUpdateState | null)
       : "Update available";
   }
   return "Up to date";
-}
-
-export type QrEndpointOption = {
-  readonly id: string;
-  /** Stable per endpoint type, not unique; used only to match the saved default. */
-  readonly preferenceKey: string;
-  readonly qrShareable: boolean;
-};
-
-export function selectQrEndpointOption<T extends QrEndpointOption>(
-  options: ReadonlyArray<T>,
-  selectedId: string | null,
-  defaultPreferenceKey: string | null,
-): T | null {
-  return (
-    (selectedId !== null ? options.find((option) => option.id === selectedId) : undefined) ??
-    (defaultPreferenceKey !== null
-      ? options.find((option) => option.preferenceKey === defaultPreferenceKey)
-      : undefined) ??
-    options.find((option) => option.qrShareable) ??
-    options[0] ??
-    null
-  );
 }
 
 export async function applyWslEnableSelection(input: {
@@ -322,74 +281,7 @@ export function toDesktopClientSessionRecord(
   };
 }
 
-export function selectPairingEndpoint(
-  endpoints: ReadonlyArray<AdvertisedEndpoint>,
-  defaultEndpointKey?: string | null,
-): AdvertisedEndpoint | null {
-  const availableEndpoints = endpoints.filter((endpoint) => endpoint.status !== "unavailable");
-  if (defaultEndpointKey) {
-    const selectedEndpoint = availableEndpoints.find(
-      (endpoint) => endpointDefaultPreferenceKey(endpoint) === defaultEndpointKey,
-    );
-    if (selectedEndpoint) {
-      return selectedEndpoint;
-    }
-  }
-  return (
-    availableEndpoints.find((endpoint) => endpoint.isDefault) ??
-    availableEndpoints.find((endpoint) => endpoint.reachability !== "loopback") ??
-    availableEndpoints.find((endpoint) => endpoint.compatibility.hostedHttpsApp === "compatible") ??
-    null
-  );
-}
-
-export function isTailscaleHttpsEndpoint(endpoint: AdvertisedEndpoint): boolean {
-  return endpoint.id.startsWith("tailscale-magicdns:");
-}
-
-export function endpointDefaultPreferenceKey(endpoint: AdvertisedEndpoint): string {
-  if (endpoint.id.startsWith("desktop-loopback:")) {
-    return "desktop-core:loopback:http";
-  }
-  if (endpoint.id.startsWith("desktop-lan:")) {
-    return "desktop-core:lan:http";
-  }
-  if (endpoint.id.startsWith("tailscale-ip:")) {
-    return "tailscale:ip:http";
-  }
-  if (isTailscaleHttpsEndpoint(endpoint)) {
-    return "tailscale:magicdns:https";
-  }
-
-  let scheme = "unknown";
-  try {
-    scheme = new URL(endpoint.httpBaseUrl).protocol.replace(/:$/u, "");
-  } catch {}
-
-  return `${endpoint.provider.id}:${endpoint.reachability}:${scheme}:${endpoint.label}`;
-}
-
-export function resolveAdvertisedEndpointPairingUrl(
-  endpoint: AdvertisedEndpoint,
-  credential: string,
-): string {
-  return resolveDesktopPairingUrl(endpoint.httpBaseUrl, credential);
-}
-
 export function resolveCurrentOriginPairingUrl(credential: string): string {
   const url = new URL("/pair", window.location.href);
   return setPairingTokenOnUrl(url, credential).toString();
-}
-
-export function endpointShareHint(endpoint: AdvertisedEndpoint): string {
-  switch (endpoint.reachability) {
-    case "lan":
-      return "Devices on the same network";
-    case "private-network":
-      return "Devices on your private network";
-    case "public":
-      return "Reachable from anywhere";
-    case "loopback":
-      return "Clients on this machine";
-  }
 }

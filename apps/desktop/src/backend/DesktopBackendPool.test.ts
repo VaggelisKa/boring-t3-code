@@ -109,8 +109,6 @@ describe("DesktopBackendPool", () => {
               t3Home: "/tmp/t3",
               host: "127.0.0.1",
               desktopBootstrapToken: "token",
-              tailscaleServeEnabled: false,
-              tailscaleServePort: 443,
             },
             bootstrapDelivery: "fd3",
             extendEnv: true,

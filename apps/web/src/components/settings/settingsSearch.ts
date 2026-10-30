@@ -930,23 +930,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     desktopOnly: true,
   },
   {
-    id: "network-access",
-    title: "Network access",
-    to: "/settings/access",
-    targetId: "connections-environment",
-    searchTerms: ["expose backend remote pairing local machine interfaces host restart"],
-    localBackendManagementOnly: true,
-  },
-  {
-    id: "tailscale-https",
-    title: "Tailscale HTTPS",
-    to: "/settings/access",
-    targetId: "connections-environment",
-    searchTerms: ["serve magicdns endpoint remote secure network"],
-    desktopOnly: true,
-    localBackendManagementOnly: true,
-  },
-  {
     id: "wsl-backend",
     title: "WSL backend",
     to: "/settings/access",

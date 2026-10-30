@@ -25,7 +25,6 @@ export interface PersistedUiState {
   collapsedProjectCwds?: string[];
   expandedProjectCwds?: string[];
   projectOrderCwds?: string[];
-  defaultAdvertisedEndpointKey?: string | null;
   sidebarProjectScopeKey?: string | null;
   sidebarProjectScopeKeys?: string[];
   threadChangedFilesExpansionVersion?: number;
@@ -44,16 +43,11 @@ export interface UiThreadState {
   threadChangedFilesExpandedById: Record<string, Record<string, boolean>>;
 }
 
-export interface UiEndpointState {
-  defaultAdvertisedEndpointKey: string | null;
-}
-
 export interface UiPullRequestState {
   pullRequestMergeMethod: PullRequestMergeMethod;
 }
 
-export interface UiState
-  extends UiProjectState, UiThreadState, UiEndpointState, UiPullRequestState {}
+export interface UiState extends UiProjectState, UiThreadState, UiPullRequestState {}
 
 const initialState: UiState = {
   projectExpandedById: {},
@@ -61,7 +55,6 @@ const initialState: UiState = {
   sidebarProjectScopeKeys: [],
   threadLastVisitedAtById: {},
   threadChangedFilesExpandedById: {},
-  defaultAdvertisedEndpointKey: null,
   pullRequestMergeMethod: "merge",
 };
 
@@ -93,10 +86,6 @@ function sanitizeBooleanRecord(value: unknown): Record<string, boolean> {
       (entry): entry is [string, boolean] => entry[0].length > 0 && typeof entry[1] === "boolean",
     ),
   );
-}
-
-function sanitizeOptionalKey(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function sanitizeTimestampRecord(value: unknown): Record<string, string> {
@@ -150,7 +139,6 @@ export function parsePersistedState(parsed: PersistedUiState): UiState {
       parsed.threadChangedFilesExpansionVersion === THREAD_CHANGED_FILES_EXPANSION_VERSION
         ? sanitizePersistedThreadChangedFilesExpanded(parsed.threadChangedFilesExpandedById)
         : {},
-    defaultAdvertisedEndpointKey: sanitizeOptionalKey(parsed.defaultAdvertisedEndpointKey),
     sidebarProjectScopeKeys: sanitizeStringArray(
       parsed.sidebarProjectScopeKeys ?? [parsed.sidebarProjectScopeKey],
     ),
@@ -226,7 +214,6 @@ export function persistState(state: UiState): void {
         projectExpandedById,
         projectOrder: state.projectOrder,
         threadLastVisitedAtById: state.threadLastVisitedAtById,
-        defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
         sidebarProjectScopeKeys: state.sidebarProjectScopeKeys,
         // Older clients read only this field.
         sidebarProjectScopeKey:
@@ -317,17 +304,6 @@ function setThreadChangedFilesExpanded(
         [turnId]: expanded,
       },
     },
-  };
-}
-
-function setDefaultAdvertisedEndpointKey(state: UiState, key: string | null): UiState {
-  const nextKey = key && key.length > 0 ? key : null;
-  if (state.defaultAdvertisedEndpointKey === nextKey) {
-    return state;
-  }
-  return {
-    ...state,
-    defaultAdvertisedEndpointKey: nextKey,
   };
 }
 
@@ -432,7 +408,6 @@ interface UiStateStore extends UiState {
   markThreadVisited: (threadId: string, visitedAt: string) => void;
   markThreadUnread: (threadId: string, latestTurnCompletedAt: string | null | undefined) => void;
   setThreadChangedFilesExpanded: (threadId: string, turnId: string, expanded: boolean) => void;
-  setDefaultAdvertisedEndpointKey: (key: string | null) => void;
   setSidebarProjectScopeKeys: (projectKeys: readonly string[]) => void;
   setPullRequestMergeMethod: (method: PullRequestMergeMethod) => void;
   setProjectExpanded: (projectIds: string | readonly string[], expanded: boolean) => void;
@@ -451,8 +426,6 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
     set((state) => markThreadUnread(state, threadId, latestTurnCompletedAt)),
   setThreadChangedFilesExpanded: (threadId, turnId, expanded) =>
     set((state) => setThreadChangedFilesExpanded(state, threadId, turnId, expanded)),
-  setDefaultAdvertisedEndpointKey: (key) =>
-    set((state) => setDefaultAdvertisedEndpointKey(state, key)),
   setSidebarProjectScopeKeys: (projectKeys) =>
     set((state) => setSidebarProjectScopeKeys(state, projectKeys)),
   setPullRequestMergeMethod: (method) => set((state) => setPullRequestMergeMethod(state, method)),
