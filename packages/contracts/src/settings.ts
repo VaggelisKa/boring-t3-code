@@ -1244,9 +1244,7 @@ export const ServerSettings = Schema.Struct({
   responseStreamingMode: ResponseStreamingMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("paragraph" as const)),
   ),
-  enableProviderUpdateChecks: Schema.Boolean.pipe(
-    Schema.withDecodingDefault(Effect.succeed(false)),
-  ),
+  enableProviderUpdateChecks: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   continueThreadsAfterServerUpdate: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(true)),
   ),
