@@ -30,6 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-ci-deps
+      # Server preview tests drive a headless Chromium through Playwright.
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
       - run: vp test run apps/server packages
       - run: vp test run --passWithNoTests --project unit
         working-directory: apps/web
