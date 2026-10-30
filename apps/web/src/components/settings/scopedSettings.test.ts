@@ -442,20 +442,6 @@ describe("scoped settings writes", () => {
     ).toEqual([]);
   });
 
-  // regression: #11541 device settings were written to the wrong scope
-  it("scopes agent device access to projects while keeping hub and hosts environment-wide", () => {
-    const plan = planScopedSettingsPatch(project, [laptop, server], {
-      enableAgentDeviceAccess: true,
-    });
-    expect(plan.serverWrites.map((write) => write.patch)).toEqual([
-      { projectSettingsOverrides: { [projectId]: { enableAgentDeviceAccess: true } } },
-      { projectSettingsOverrides: { [laptopProjectId]: { enableAgentDeviceAccess: true } } },
-    ]);
-    for (const patch of [{ enableDeviceSupport: true }, { deviceHosts: [] }]) {
-      expect(planScopedSettingsPatch(project, environments, patch).serverWrites).toEqual([]);
-    }
-  });
-
   it("refuses environment-wide keys at project scope", () => {
     expect(
       planScopedSettingsPatch(project, environments, { enableProviderUpdateChecks: false }),
@@ -727,10 +713,10 @@ it("routes legacy model preference keys exclusively to the selected environment"
 });
 
 describe("model selection patches at project scope", () => {
-  const codex = ProviderInstanceId.make("codex");
+  const antigravity = ProviderInstanceId.make("antigravity");
   const claude = ProviderInstanceId.make("claudeAgent");
   const saved = {
-    instanceId: codex,
+    instanceId: antigravity,
     model: "gpt-5.6",
     options: [{ id: "reasoningEffort", value: "high" }],
   };
@@ -751,14 +737,14 @@ describe("model selection patches at project scope", () => {
   it("replaces old options when changing model selections", () => {
     const plan = planScopedSettingsPatch(checkout, [customized], {
       defaultModelSelection: { instanceId: claude, model: "claude-opus-4-8" },
-      sourceControlWriterModelSelection: { instanceId: codex, model: "gpt-5.6-mini" },
-      reviewGuideModelSelection: { instanceId: codex, model: "gpt-5.6-mini" },
+      sourceControlWriterModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
+      reviewGuideModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
       textGenerationModelSelection: { instanceId: claude, model: "claude-sonnet-4-6" },
     });
     expect(plan.serverWrites[0]?.patch.projectSettingsOverrides?.[projectId]).toEqual({
       defaultModelSelection: { instanceId: claude, model: "claude-opus-4-8" },
-      sourceControlWriterModelSelection: { instanceId: codex, model: "gpt-5.6-mini" },
-      reviewGuideModelSelection: { instanceId: codex, model: "gpt-5.6-mini" },
+      sourceControlWriterModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
+      reviewGuideModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
       textGenerationModelSelection: { instanceId: claude, model: "claude-sonnet-4-6" },
     });
   });
@@ -770,7 +756,7 @@ describe("model selection patches at project scope", () => {
     expect(
       modelPlan.serverWrites[0]?.patch.projectSettingsOverrides?.[projectId]
         ?.textGenerationModelSelection,
-    ).toEqual({ instanceId: codex, model: "gpt-5.6-mini" });
+    ).toEqual({ instanceId: antigravity, model: "gpt-5.6-mini" });
 
     const options = [{ id: "reasoningEffort", value: "low" }];
     const optionsPlan = planScopedSettingsPatch(checkout, [customized], {

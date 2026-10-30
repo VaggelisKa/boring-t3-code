@@ -1,10 +1,4 @@
-import {
-  AntigravitySettings,
-  EasDeviceHostConfig,
-  type ServerSettings,
-  SimlockDeviceHostConfig,
-  secretSettingsFields,
-} from "@t3tools/contracts";
+import { AntigravitySettings, type ServerSettings, secretSettingsFields } from "@t3tools/contracts";
 import { acpRegistryClient } from "@t3tools/provider-acp-registry/client";
 import {
   readSecretFieldValues,
@@ -19,8 +13,6 @@ const providerSecretFields = new Map([
   ["antigravity", secretSettingsFields(AntigravitySettings)],
   [acpRegistryClient.driverKind, secretSettingsFields(acpRegistryClient.settingsSchema)],
 ]);
-const easDeviceHostSecretFields = secretSettingsFields(EasDeviceHostConfig);
-const simlockDeviceHostSecretFields = secretSettingsFields(SimlockDeviceHostConfig);
 const encode = (value: string) => Buffer.from(value, "utf8").toString("base64url");
 
 export interface SettingsSecret {
@@ -117,34 +109,9 @@ export function mapSettingsSecrets(
     ]),
   ) as ServerSettings["sourceControlHosts"];
 
-  const easDeviceHosts = settings.easDeviceHosts.map(
-    (host) =>
-      mapFields(
-        host,
-        easDeviceHostSecretFields,
-        (field, serverHost) =>
-          `device-host-${encode(host.id)}-${encode(field)}` +
-          (serverHost === null ? "" : `-${encode(serverHost)}`),
-      ) as EasDeviceHostConfig,
-  );
-
-  // Its own prefix: an EAS and a Simlock host may share an id.
-  const simlockDeviceHosts = settings.simlockDeviceHosts.map(
-    (host) =>
-      mapFields(
-        host,
-        simlockDeviceHostSecretFields,
-        (field, serverHost) =>
-          `simlock-device-host-${encode(host.id)}-${encode(field)}` +
-          (serverHost === null ? "" : `-${encode(serverHost)}`),
-      ) as SimlockDeviceHostConfig,
-  );
-
   return {
     ...settings,
     providerInstances,
     sourceControlHosts,
-    easDeviceHosts,
-    simlockDeviceHosts,
   };
 }

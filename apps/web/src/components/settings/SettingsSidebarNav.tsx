@@ -18,7 +18,6 @@ import {
   ServerIcon,
   Settings2Icon,
   ShieldCheckIcon,
-  SmartphoneIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
@@ -48,7 +47,6 @@ import { useAvailableSettingsSearchItems } from "./useAvailableSettingsSearchIte
 import { useSettingsSectionNavigation } from "./useSettingsSectionNavigation";
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
 
-
 const SETTINGS_SECTION_ICONS: Readonly<
   Record<SettingsPath, ComponentType<{ className?: string }>>
 > = {
@@ -62,7 +60,6 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/providers": BotIcon,
   "/settings/threads": MessagesSquareIcon,
   "/settings/browser": GlobeIcon,
-  "/settings/devices": SmartphoneIcon,
   "/settings/source-control": GitBranchIcon,
   "/settings/worktrees": FolderTreeIcon,
   "/settings/connections": ServerIcon,

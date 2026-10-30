@@ -1,10 +1,6 @@
-import { DeviceHostUpdates } from "../device/DeviceHostUpdates";
-import { DeviceToolVersions } from "../device/DeviceToolVersions";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { ScopedSwitch } from "./ScopedSwitch";
-import { DeviceSourcesSettings } from "./DeviceSourcesSettings";
 import {
-  AuthSettingsWriteScope,
   BROWSER_PROFILE_MAX_COUNT,
   type BrowserLinkTarget,
   type BrowserProfile,
@@ -42,18 +38,10 @@ import { ScreenRotationIcon } from "~/browser/ScreenRotationIcon";
 import { previewBridge } from "~/components/preview/previewBridge";
 import { cn, randomUUID } from "~/lib/utils";
 import { useEnvironments } from "~/state/environments";
-import { deviceEnvironment, useDeviceState } from "~/state/device";
-import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { formatEnvironmentQueryError } from "~/state/query";
 import { previewEnvironment } from "~/state/preview";
 import { useServerConfigs } from "~/state/entities";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import {
-  AgentDeviceSetupStatus,
-  DeviceHubSetupStatus,
-  deviceHubReadiness,
-} from "~/components/device/DeviceSetup";
 import { isElectron } from "../../env";
 
 import { Badge } from "../ui/badge";
@@ -674,232 +662,6 @@ export function PullRequestLinksOpenInAppSetting() {
   );
 }
 
-function DeviceIntegrationSettings() {
-  const { search, environment: selected } = useSettingsScope();
-  const settings = useScopedSettings();
-  const connected = selected?.connection.phase === "connected" && selected.serverConfig !== null;
-  const environmentId = connected ? selected.environmentId : null;
-
-  const { state } = useDeviceState(environmentId);
-
-  return (
-    <>
-      <SettingsSection id="devices" title="Devices">
-        <DeviceIntegrationControls
-          key={`${environmentId}:${JSON.stringify(search)}`}
-          environmentId={environmentId}
-          enabled={settings.enableDeviceSupport}
-          agentAccessEnabled={settings.enableAgentDeviceAccess}
-        />
-      </SettingsSection>
-      <DeviceSourcesSettings
-        supportsEas={state.supportsEasHosts === true}
-        supportsSimlock={state.supportsSimlockHosts === true}
-      />
-    </>
-  );
-}
-
-function DeviceIntegrationControls({
-  environmentId,
-  enabled,
-  agentAccessEnabled,
-}: {
-  environmentId: EnvironmentId | null;
-  enabled: boolean;
-  agentAccessEnabled: boolean;
-}) {
-  const canConfigure = useEnvironmentScope(environmentId, AuthSettingsWriteScope);
-  const { state, loaded } = useDeviceState(environmentId);
-  const { scope, environments, connectedEnvironments } = useSettingsScope();
-  const updateSettings = useUpdateScopedSettings();
-  const projectScope = scope.kind === "project" || scope.kind === "checkout";
-  const anyHubEnabled = connectedEnvironments.some(
-    (environment) => environment.serverConfig?.settings.enableDeviceSupport,
-  );
-  const configure = useAtomCommand(deviceEnvironment.configure, { reportFailure: false });
-  const list = useAtomCommand(deviceEnvironment.list, { reportFailure: false });
-  const [pending, setPending] = useState<
-    "hub" | "check" | "agent" | "update-hub" | "update-agent" | null
-  >(null);
-  const { busy } = deviceHubReadiness(state);
-
-  const update = async (
-    kind: NonNullable<typeof pending>,
-    input: { enabled?: boolean; agentAccessEnabled?: boolean },
-  ) => {
-    if (!environmentId || !readEnvironmentScope(environmentId, AuthSettingsWriteScope)) return;
-    setPending(kind);
-    const results = await Promise.allSettled(
-      environments.map(async (environment) => {
-        if (environment.connection.phase !== "connected" || !environment.serverConfig) {
-          throw new Error("Environment disconnected");
-        }
-        if (!readEnvironmentScope(environment.environmentId, AuthSettingsWriteScope)) {
-          throw new Error("This connection cannot change device settings.");
-        }
-        return configure({
-          environmentId: environment.environmentId,
-          input: { ...input, ...(input.enabled ? { onboardingCompleted: true } : {}) },
-        });
-      }),
-    );
-    setPending(null);
-    const failed = environments.filter((_, index) => {
-      const result = results[index];
-      return result?.status !== "fulfilled" || result.value._tag === "Failure";
-    });
-    if (failed.length > 0) {
-      toastManager.add({
-        type: "error",
-        title: "Device settings not saved on all environments",
-        description: `Could not update ${failed.map((environment) => environment.label).join(", ")}.`,
-      });
-    }
-  };
-
-  const [updateError, setUpdateError] = useState<{ tool: "hub" | "agent"; message: string } | null>(
-    null,
-  );
-  const localTools = state.hosts.find((host) => host.kind === "local")?.tools;
-  const versionActions = (tool: "hub" | "agent") => {
-    const version = localTools?.[tool];
-    const needsUpdate = version && !version.installedVersions.includes(version.requiredVersion);
-    return (
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
-          {state.supportsToolUpdate && needsUpdate ? (
-            <Button
-              size="sm"
-              disabled={!environmentId || pending !== null || busy}
-              onClick={() => {
-                if (!environmentId) return;
-                setUpdateError(null);
-                setPending(`update-${tool}`);
-                void list({ environmentId, input: { updateTool: tool } })
-                  .then((result) => {
-                    if (result._tag === "Failure")
-                      setUpdateError({ tool, message: formatEnvironmentQueryError(result.cause) });
-                  })
-                  .finally(() => setPending(null));
-              }}
-            >
-              {pending === `update-${tool}` ? "Updating…" : `Update to v${version.requiredVersion}`}
-            </Button>
-          ) : null}
-          {state.supportsToolInspection ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!environmentId || pending !== null || busy}
-              onClick={() => {
-                if (!environmentId) return;
-                setPending("check");
-                void list({ environmentId, input: { inspectOnly: true } }).finally(() =>
-                  setPending(null),
-                );
-              }}
-            >
-              {pending === "check" ? "Checking…" : "Check versions"}
-            </Button>
-          ) : null}
-        </div>
-        {updateError?.tool === tool ? (
-          <p role="alert" className="text-xs text-destructive">
-            {updateError.message}
-          </p>
-        ) : null}
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <SettingsRow
-        {...searchableSetting("device-hub")}
-        serverScoped
-        settingKeys={["enableDeviceSupport"]}
-        description={
-          <>
-            Open simulators and emulators in the Device panel. Hub:{" "}
-            <DeviceToolVersions
-              action={versionActions("hub")}
-              kind="hub"
-              tools={state.hosts.find((host) => host.kind === "local")?.tools}
-            />
-          </>
-        }
-        control={
-          <>
-            {pending === "hub" ? <DeviceHubSetupStatus state={state} pending compact /> : null}
-            <ScopedSwitch
-              settingKeys={["enableDeviceSupport"]}
-              checked={enabled}
-              disabled={
-                !canConfigure ||
-                projectScope ||
-                !loaded ||
-                !environmentId ||
-                busy ||
-                pending !== null
-              }
-              aria-label="Device hub"
-              onCheckedChange={(checked) =>
-                void update("hub", {
-                  enabled: Boolean(checked),
-                  ...(checked ? {} : { agentAccessEnabled: false }),
-                })
-              }
-            />
-          </>
-        }
-      />
-      <SettingsRow
-        {...searchableSetting("agent-device-access")}
-        serverScoped
-        settingKeys={["enableAgentDeviceAccess"]}
-        description={
-          <>
-            New agent sessions can open and drive these devices. agent-device:{" "}
-            <DeviceToolVersions
-              action={versionActions("agent")}
-              kind="agent"
-              tools={state.hosts.find((host) => host.kind === "local")?.tools}
-            />
-          </>
-        }
-        control={
-          <>
-            {pending === "agent" ? <AgentDeviceSetupStatus state={state} pending compact /> : null}
-            <ScopedSwitch
-              settingKeys={["enableAgentDeviceAccess"]}
-              checked={agentAccessEnabled}
-              disabled={
-                !canConfigure ||
-                connectedEnvironments.length === 0 ||
-                (!projectScope && (!loaded || !anyHubEnabled || busy)) ||
-                pending !== null
-              }
-              aria-label="Agent device access"
-              onCheckedChange={(checked) =>
-                projectScope
-                  ? updateSettings({ enableAgentDeviceAccess: Boolean(checked) })
-                  : void update("agent", { agentAccessEnabled: Boolean(checked) })
-              }
-            />
-          </>
-        }
-      />
-      {environmentId ? (
-        <DeviceHostUpdates
-          state={{ ...state, hosts: state.hosts.filter((host) => host.kind === "local") }}
-          environmentId={environmentId}
-        />
-      ) : null}
-    </>
-  );
-}
-
 function AgentBrowserAccessSetting() {
   const { scope } = useSettingsScope();
   const settings = useScopedSettings();
@@ -947,7 +709,7 @@ function BrowserAutoShowFloatingPreviewSetting({ disabled }: { readonly disabled
   return (
     <SettingsRow
       {...searchableSetting("browser-auto-show-floating-preview")}
-      description="Show the floating preview when an agent opens a browser or device unless the agent says otherwise."
+      description="Show the floating preview when an agent opens a browser unless the agent says otherwise."
       resetAction={
         !disabled && autoShow !== DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW ? (
           <SettingResetButton
@@ -1332,14 +1094,6 @@ export function BrowserSettingsPanel() {
           <BrowserRecordingInputSettings disabled={desktopOnly} />
         </SettingsUnavailableGroup>
       </SettingsSection>
-    </SettingsPageContainer>
-  );
-}
-
-export function DevicesSettingsPanel() {
-  return (
-    <SettingsPageContainer>
-      <DeviceIntegrationSettings />
     </SettingsPageContainer>
   );
 }

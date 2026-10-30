@@ -642,7 +642,6 @@ function makeBrowserAccessProject(projectId: ProjectId): Project {
 function runBrowserAccessScenario(input: {
   readonly enableAgentBrowserAccess: boolean;
   readonly projectOverride: boolean;
-  readonly deviceOverride?: boolean;
   readonly createThread?: boolean;
   readonly projectExists?: boolean;
   readonly delegatedBy?: ThreadId;
@@ -700,9 +699,6 @@ function runBrowserAccessScenario(input: {
             projectSettingsOverrides: {
               [projectId]: {
                 enableAgentBrowserAccess: input.projectOverride,
-                ...(input.deviceOverride === undefined
-                  ? {}
-                  : { enableAgentDeviceAccess: input.deviceOverride }),
               },
             },
           }),
@@ -3784,38 +3780,4 @@ it.effect(
         );
       }).pipe(Effect.provide(layerTest({ state, idleTimeoutMs: 60_000 })));
     }).pipe(Effect.provide(NodeServices.layer)),
-);
-
-it.effect(
-  "ProviderSessionManagerV2 applies project device access independently of browser access",
-  () =>
-    Effect.gen(function* () {
-      const enabled = yield* runBrowserAccessScenario({
-        enableAgentBrowserAccess: false,
-        projectOverride: false,
-        deviceOverride: true,
-      });
-      assert.isTrue(enabled?.capabilities?.has("device"));
-      assert.isFalse(enabled?.browserToolsAvailable);
-      const denied = yield* runBrowserAccessScenario({
-        enableAgentBrowserAccess: false,
-        projectOverride: false,
-        deviceOverride: true,
-        projectExists: false,
-      });
-      assert.isFalse(denied?.capabilities?.has("device"));
-    }),
-);
-
-// Device instructions reach delegated children only because their own sessions hold `device`.
-it.effect("ProviderSessionManagerV2 gives a delegated child its project's device access", () =>
-  Effect.gen(function* () {
-    const child = yield* runBrowserAccessScenario({
-      enableAgentBrowserAccess: false,
-      projectOverride: false,
-      deviceOverride: true,
-      delegatedBy: ThreadId.make("thread-provider-session-manager-parent"),
-    });
-    assert.isTrue(child?.capabilities?.has("device"));
-  }),
 );

@@ -197,9 +197,7 @@ describe("resolveIdleCompaction", () => {
         agy_personal: { driver: "antigravity" },
       },
     });
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_work"))).toBe(
-      "onReturn",
-    );
+    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_work"))).toBe("onReturn");
     expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_personal"))).toBe("off");
     expect(resolveIdleCompaction(settings, ProviderInstanceId.make("antigravity"))).toBe("off");
   });
@@ -340,41 +338,6 @@ describe("ServerSettings environment icon", () => {
   it("decodes a kind from a newer server as null instead of failing the snapshot", () => {
     expect(decodeServerSettings({ environmentIcon: "toaster" }).environmentIcon).toBeNull();
   });
-});
-
-const decodeDeviceHostSettings = Schema.decodeSync(ServerSettings);
-
-// `deviceHosts` as it was decoded before EAS hosts existed: an SSH host needs a target.
-const decodeOlderDeviceHostSettings = Schema.decodeUnknownSync(
-  Schema.Struct({
-    deviceHosts: Schema.Array(Schema.Struct({ id: Schema.String, target: Schema.String })),
-  }),
-);
-
-it("keeps EAS hosts out of the SSH host list servers and clients before EAS hosts decode", () => {
-  const settings = decodeDeviceHostSettings({
-    deviceHosts: [{ id: "mini", label: "Mac mini", target: "user@mini" }],
-    easDeviceHosts: [{ kind: "eas", id: "eas", label: "EAS Simulator" }],
-  });
-  const wire = encodeServerSettings(settings);
-  expect(decodeOlderDeviceHostSettings(wire).deviceHosts).toEqual([
-    { id: "mini", target: "user@mini" },
-  ]);
-  expect(settings.easDeviceHosts.map((host) => host.id)).toEqual(["eas"]);
-});
-
-it("validates remote device hosts and rejects ambiguous host ids", () => {
-  const host = { id: "mini", label: "Mac mini", target: "user@mini", port: 2222 };
-  // Hosts saved before EAS hosts existed have no `kind`; they are SSH hosts.
-  expect(decodeDeviceHostSettings({ deviceHosts: [host] }).deviceHosts).toEqual([
-    { kind: "ssh", ...host },
-  ]);
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [host, host] })).toThrow();
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [{ ...host, id: "local" }] })).toThrow();
-  expect(() =>
-    decodeDeviceHostSettings({ deviceHosts: [{ ...host, target: "-oProxyCommand=bad" }] }),
-  ).toThrow();
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [{ ...host, port: 0 }] })).toThrow();
 });
 
 describe("ServerSettings project overrides across versions", () => {

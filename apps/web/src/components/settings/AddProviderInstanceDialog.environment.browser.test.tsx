@@ -129,10 +129,10 @@ async function type(selector: string, value: string) {
 }
 const signInStep = () => document.querySelector('[aria-label="Sign-in step"]');
 
-async function prepareCodexInstance() {
+async function prepareInstance() {
   await using stack = new AsyncDisposableStack();
   const screen = stack.use(await render(dialog()));
-  await click("Configure manually");
+  await click("Next");
   await type("#add-provider-label", "Work");
   await click("Next");
   stack.move();
@@ -152,42 +152,27 @@ describe("AddProviderInstanceDialog environment routing", () => {
   it("chooses an unused identity for another account without replacing configured instances", async () => {
     setup();
     settingsHooks.read.mockReturnValue({
-      providerInstances: { codex_2: { driver: "codex", enabled: false } },
+      providerInstances: { antigravity_2: { driver: "antigravity", enabled: false } },
     });
     await using _screen = await render(dialog());
-    await click("Configure manually");
+    await click("Next");
     await click("Next");
     await click("Add instance");
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
       operation: "create",
-      instanceId: "codex_3",
-      instance: {
-        driver: "codex",
-        enabled: true,
-        displayName: "Codex",
-        config: { setupMode: "existing" },
-      },
+      instanceId: "antigravity_3",
+      instance: { driver: "antigravity", enabled: true, displayName: "Antigravity" },
     });
   });
 
-  it("keeps fx and the ACP Registry under Show more", async () => {
+  it("keeps the ACP Registry under Show more", async () => {
     setup();
     await using _screen = await render(dialog());
-    expect(radio("Codex")).toBeDefined();
-    expect(radio("fx")).toBeUndefined();
+    expect(radio("Antigravity")).toBeDefined();
     expect(document.body.textContent).not.toContain("Use Kilo Code");
 
     await click("Show more");
     button("Use Kilo Code");
-    await act(async () => radio("fx")!.click());
-    await click("Next");
-    await click("Next");
-    await click("Add instance");
-    expect(settingsHooks.mutate).toHaveBeenCalledWith({
-      operation: "create",
-      instanceId: "fx",
-      instance: { driver: "fx", enabled: true, displayName: "fx" },
-    });
   });
 
   it("awaits an atomic create before closing and retains prepared ACP metadata", async () => {
@@ -210,7 +195,6 @@ describe("AddProviderInstanceDialog environment routing", () => {
         config: {
           agentId: "kilo",
           distribution: "auto",
-          registryIconUrl: "https://cdn.agentclientprotocol.com/registry/v1/latest/kilo.svg",
         },
       },
     });
@@ -273,7 +257,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
 
   it("rejects a queued save after the provider grant is revoked", async () => {
     setup();
-    await using screen = await prepareCodexInstance();
+    await using screen = await prepareInstance();
     const save = button("Add instance");
     actions.canManageProviders = false;
     // Click before React renders the revoked grant.

@@ -1,5 +1,13 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { DEFAULT_SERVER_SETTINGS, ModelSelection, ProjectId, ProjectScript, ProviderDriverKind, ProviderInstanceId, ServerSettings } from "@t3tools/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  ModelSelection,
+  ProjectId,
+  ProjectScript,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  ServerSettings,
+} from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { assert, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
@@ -1083,24 +1091,8 @@ it.layer(NodeServices.layer)("server settings", (it) => {
           sourceControlHosts: {
             github: { tokens: { "github.com": "github-secret" } },
           },
-          easDeviceHosts: [
-            {
-              kind: "eas",
-              id: "eas",
-              label: "EAS Simulator",
-              accessToken: "expo-secret",
-              maxSessionMinutes: 30,
-              idleMinutes: 10,
-              maxConcurrentSessions: 2,
-            },
-          ],
         });
-        const values = [
-          "config-secret",
-          "env-secret",
-          "github-secret",
-          "expo-secret",
-        ];
+        const values = ["config-secret", "env-secret", "github-secret"];
         const client = ServerSettingsModule.redactServerSettingsForClient(saved);
         const disk = yield* fs.readFileString(config.settingsPath);
         for (const value of values) {
@@ -1112,7 +1104,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
         const echoed = yield* service.updateSettings({
           providerInstances: client.providerInstances,
           sourceControlHosts: client.sourceControlHosts,
-          easDeviceHosts: client.easDeviceHosts,
         });
         for (const value of values) assert.include(JSON.stringify(echoed), value);
         const renamed = yield* service.updateProviderInstance({

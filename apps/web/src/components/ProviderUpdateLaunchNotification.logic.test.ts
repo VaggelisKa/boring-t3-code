@@ -73,8 +73,8 @@ function updateCandidate(input: Parameters<typeof provider>[0]): ProviderUpdateC
 describe("provider update launch notification logic", () => {
   it("disables one-click updates when provider instances disagree on the update command", () => {
     const candidate = updateCandidate({
-      driver: driver("claudeAgent"),
-      instanceId: instanceId("claude_personal"),
+      driver: driver("antigravity"),
+      instanceId: instanceId("antigravity_personal"),
       latestVersion: "2.1.123",
     });
 
@@ -82,8 +82,8 @@ describe("provider update launch notification logic", () => {
       canOneClickUpdateProviderCandidate(candidate, [
         candidate,
         provider({
-          driver: driver("claudeAgent"),
-          instanceId: instanceId("claude_work"),
+          driver: driver("antigravity"),
+          instanceId: instanceId("antigravity_work"),
           latestVersion: "2.1.123",
           canUpdate: true,
           updateCommand: "bun add -g @anthropic-ai/claude-code@latest",
@@ -94,8 +94,8 @@ describe("provider update launch notification logic", () => {
 
   it("keeps one-click updates enabled when sibling instances are already current", () => {
     const candidate = updateCandidate({
-      driver: driver("claudeAgent"),
-      instanceId: instanceId("claude_personal"),
+      driver: driver("antigravity"),
+      instanceId: instanceId("antigravity_personal"),
       latestVersion: "2.1.123",
       updateCommand: "npm install -g @anthropic-ai/claude-code@latest",
     });
@@ -104,8 +104,8 @@ describe("provider update launch notification logic", () => {
       hasOneClickUpdateProviderCandidate(candidate, [
         candidate,
         provider({
-          driver: driver("claudeAgent"),
-          instanceId: instanceId("claude_work"),
+          driver: driver("antigravity"),
+          instanceId: instanceId("antigravity_work"),
           version: "2.1.123",
           latestVersion: "2.1.123",
           advisoryStatus: "current",
@@ -118,8 +118,8 @@ describe("provider update launch notification logic", () => {
       canOneClickUpdateProviderCandidate(candidate, [
         candidate,
         provider({
-          driver: driver("claudeAgent"),
-          instanceId: instanceId("claude_work"),
+          driver: driver("antigravity"),
+          instanceId: instanceId("antigravity_work"),
           version: "2.1.123",
           latestVersion: "2.1.123",
           advisoryStatus: "current",
@@ -132,7 +132,7 @@ describe("provider update launch notification logic", () => {
 
   it("keeps the inline update action available while a provider update is already running", () => {
     const candidate = updateCandidate({
-      driver: driver("codex"),
+      driver: driver("acpRegistry"),
       updateState: {
         status: "running",
         startedAt: checkedAt,
@@ -148,10 +148,10 @@ describe("provider update launch notification logic", () => {
 
   it("shows the active sidebar pill for an update on a non-default instance", () => {
     const view = getProviderUpdateSidebarPillView([
-      provider({ driver: driver("claudeAgent") }),
+      provider({ driver: driver("antigravity") }),
       provider({
-        driver: driver("claudeAgent"),
-        instanceId: instanceId("claude_work"),
+        driver: driver("antigravity"),
+        instanceId: instanceId("antigravity_work"),
         updateState: {
           status: "running",
           startedAt: checkedAt,
@@ -163,10 +163,10 @@ describe("provider update launch notification logic", () => {
     ]);
 
     expect(view).toMatchObject({
-      key: "loading:claudeAgent:running",
+      key: "loading:antigravity:running",
       tone: "loading",
-      title: "Updating Claude",
-      description: "Claude update in progress.",
+      title: "Updating Antigravity",
+      description: "Antigravity update in progress.",
     });
   });
 
@@ -174,7 +174,7 @@ describe("provider update launch notification logic", () => {
     const view = getProviderUpdateSidebarPillView(
       [
         provider({
-          driver: driver("claudeAgent"),
+          driver: driver("antigravity"),
           updateState: {
             status: "failed",
             startedAt: checkedAt,
@@ -184,8 +184,8 @@ describe("provider update launch notification logic", () => {
           },
         }),
         provider({
-          driver: driver("claudeAgent"),
-          instanceId: instanceId("claude_work"),
+          driver: driver("antigravity"),
+          instanceId: instanceId("antigravity_work"),
           version: "1.1.0",
           latestVersion: "1.1.0",
           advisoryStatus: "current",
@@ -202,9 +202,9 @@ describe("provider update launch notification logic", () => {
     );
 
     expect(view).toMatchObject({
-      key: "succeeded:claudeAgent:2026-04-23T10:01:00.000Z:Provider updated.",
+      key: "succeeded:antigravity:2026-04-23T10:01:00.000Z:Provider updated.",
       tone: "success",
-      title: "Claude updated: v1.1.0",
+      title: "Antigravity updated: v1.1.0",
     });
   });
 
@@ -213,7 +213,7 @@ describe("provider update launch notification logic", () => {
       getProviderUpdateSidebarPillView(
         [
           provider({
-            driver: driver("codex"),
+            driver: driver("acpRegistry"),
             updateState: {
               status: "failed",
               startedAt: checkedAt,
@@ -231,7 +231,7 @@ describe("provider update launch notification logic", () => {
   it("shows a newer success before falling back to an older failure", () => {
     const providers = [
       provider({
-        driver: driver("claudeAgent"),
+        driver: driver("antigravity"),
         updateState: {
           status: "failed",
           startedAt: checkedAt,
@@ -241,7 +241,7 @@ describe("provider update launch notification logic", () => {
         },
       }),
       provider({
-        driver: driver("codex"),
+        driver: driver("acpRegistry"),
         version: "1.2.0",
         latestVersion: "1.2.0",
         advisoryStatus: "current",
@@ -259,25 +259,25 @@ describe("provider update launch notification logic", () => {
       visibleAfterIso: sessionStartedAt,
     });
     expect(successView).toMatchObject({
-      key: "succeeded:codex:2026-04-23T10:01:00.000Z:Provider updated.",
+      key: "succeeded:acpRegistry:2026-04-23T10:01:00.000Z:Provider updated.",
       tone: "success",
-      title: "Codex updated: v1.2.0",
+      title: "ACP Registry updated: v1.2.0",
     });
 
     const failureView = getProviderUpdateSidebarPillView(providers, {
       visibleAfterIso: sessionStartedAt,
-      dismissedKeys: new Set(["succeeded:codex:2026-04-23T10:01:00.000Z:Provider updated."]),
+      dismissedKeys: new Set(["succeeded:acpRegistry:2026-04-23T10:01:00.000Z:Provider updated."]),
     });
     expect(failureView).toMatchObject({
-      key: "failed:claudeAgent:2026-04-23T10:00:00.000Z:Update command exited with code 1.",
+      key: "failed:antigravity:2026-04-23T10:00:00.000Z:Update command exited with code 1.",
       tone: "error",
-      title: "Claude v1.1.0 update failed",
+      title: "Antigravity v1.1.0 update failed",
     });
   });
 });
 
 it("does not offer incompatible latest versions and restores suggestions after policy relaxation", () => {
-  const installed = provider({ driver: driver("codex") });
+  const installed = provider({ driver: driver("acpRegistry") });
   for (const latestVersionStatus of ["broken", "unsupported", "supported", "unknown"] as const) {
     const snapshot: ServerProvider = {
       ...installed,
@@ -322,11 +322,11 @@ describe("getProviderUpdateRunToastView", () => {
     const view = getProviderUpdateRunToastView([
       run(
         "Mac Studio",
-        "codex",
+        "acpRegistry",
         AsyncResult.success({
           providers: [
             provider({
-              driver: driver("codex"),
+              driver: driver("acpRegistry"),
               updateState: updateState("succeeded", "Provider updated."),
             }),
           ],
@@ -334,24 +334,25 @@ describe("getProviderUpdateRunToastView", () => {
       ),
       run(
         "Mac Studio",
-        "claudeAgent",
+        "antigravity",
         AsyncResult.success({
           providers: [
             provider({
-              driver: driver("claudeAgent"),
+              driver: driver("antigravity"),
               updateState: updateState("failed", "npm exited with code 1."),
             }),
           ],
         }),
       ),
-      run("Laptop", "codex", AsyncResult.failure(Cause.die(new Error("WebSocket closed")))),
-      run("Server", "codex", AsyncResult.failure(Cause.interrupt())),
+      run("Laptop", "acpRegistry", AsyncResult.failure(Cause.die(new Error("WebSocket closed")))),
+      run("Server", "acpRegistry", AsyncResult.failure(Cause.interrupt())),
     ]);
 
     expect(view).toEqual({
       type: "error",
       title: "2 of 3 provider updates failed",
-      description: "Mac Studio · Claude: npm exited with code 1.\nLaptop · Codex: WebSocket closed",
+      description:
+        "Mac Studio · Antigravity: npm exited with code 1.\nLaptop · ACP Registry: WebSocket closed",
     });
   });
 });

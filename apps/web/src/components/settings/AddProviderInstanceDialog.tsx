@@ -5,9 +5,20 @@ import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type { ProviderClientDefinition } from "@t3tools/provider-core/client";
-import { type AcpRegistrySearchAgent, AuthProvidersManageScope, ProviderInstanceId, ProviderDriverKind, type EnvironmentId, type ProviderInstanceConfig, type ProviderInstanceEnvironmentVariable } from "@t3tools/contracts";
+import {
+  type AcpRegistrySearchAgent,
+  AuthProvidersManageScope,
+  ProviderInstanceId,
+  ProviderDriverKind,
+  type EnvironmentId,
+  type ProviderInstanceConfig,
+  type ProviderInstanceEnvironmentVariable,
+} from "@t3tools/contracts";
 
-import { useEnvironmentSettings, usePersistEnvironmentProviderInstanceMutation } from "../../hooks/useSettings";
+import {
+  useEnvironmentSettings,
+  usePersistEnvironmentProviderInstanceMutation,
+} from "../../hooks/useSettings";
 
 import { cn } from "../../lib/utils";
 import { normalizeProviderAccentColor } from "../../providerInstances";
@@ -25,7 +36,17 @@ import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./settingsLayout";
 import { ProviderSettingsForm, deriveProviderSettingsFields } from "./ProviderSettingsForm";
 import { WizardPanel, WizardPopup, WizardHeader, WizardFooter } from "../ui/wizard";
-import { ADD_PROVIDER_WIZARD_STEPS, ACP_REGISTRY_WIZARD_STEPS, LOCAL_ACP_WIZARD_STEPS, deriveAvailableInstanceId, resolveAcpRegistryWizardNavigation, resolveWizardNavigation, updateProviderIdentityDraft, type ProviderIdentityDraft, type WizardNavigation } from "./AddProviderInstanceDialog.logic";
+import {
+  ADD_PROVIDER_WIZARD_STEPS,
+  ACP_REGISTRY_WIZARD_STEPS,
+  LOCAL_ACP_WIZARD_STEPS,
+  deriveAvailableInstanceId,
+  resolveAcpRegistryWizardNavigation,
+  resolveWizardNavigation,
+  updateProviderIdentityDraft,
+  type ProviderIdentityDraft,
+  type WizardNavigation,
+} from "./AddProviderInstanceDialog.logic";
 import { AddProviderInstanceWizardSteps } from "./AddProviderInstanceWizardSteps";
 import { AcpRegistrySearchStep, useAcpRegistrySearch } from "./AcpRegistrySearchStep";
 import { ProviderWizardAuthenticationStep } from "./ProviderWizardAuthenticationStep";
@@ -48,7 +69,7 @@ function deriveInstanceId(driver: ProviderDriverKind, label: string): string {
 }
 
 const INSTANCE_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
-const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("codex");
+const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("antigravity");
 const ACP_REGISTRY_DRIVER_KIND = ProviderDriverKind.make("acpRegistry");
 const DEFAULT_DRIVER_OPTION = providerClients.definitions[0]!;
 const DRIVER_OPTIONS = providerClients.definitions.filter(
@@ -155,20 +176,13 @@ export function AddProviderInstanceDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [createdInstanceId, setCreatedInstanceId] = useState<ProviderInstanceId | null>(null);
 
-  // Reserve Codex/Claude default ids because they run before configuration; other unconfigured slots are
-  // available.
-  const existingIds = new Set([
-    "codex",
-    "claudeAgent",
-    ...Object.keys(settings.providerInstances ?? {}),
-  ]);
+  // Reserve the Antigravity default id because it runs before configuration.
+  const existingIds = new Set(["antigravity", ...Object.keys(settings.providerInstances ?? {})]);
 
   const driverOption = providerClients.get(driver) ?? DEFAULT_DRIVER_OPTION;
   const isAcpRegistry = driver === ACP_REGISTRY_DRIVER_KIND;
   const showRegistrySearch =
-    !createdInstanceId &&
-    wizardStep === 0 &&
-    !(isAcpRegistry && isManualAcpConfiguration);
+    !createdInstanceId && wizardStep === 0 && !(isAcpRegistry && isManualAcpConfiguration);
   // Searches while Show more is closed, so the fold opens on results.
   const registry = useAcpRegistrySearch(environmentId, showRegistrySearch);
   const isPreparingRegistryAgent = registry.preparingId !== null;
