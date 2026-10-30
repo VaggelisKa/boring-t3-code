@@ -61,7 +61,7 @@ export const ScheduledTaskWebhookSignature = Schema.Struct(
 export type ScheduledTaskWebhookSignature = typeof ScheduledTaskWebhookSignature.Type;
 
 /** Matches how long the relay holds a request for an offline environment. */
-export const MAX_WEBHOOK_DELIVERY_AGE_MINUTES = 24 * 60;
+const MAX_WEBHOOK_DELIVERY_AGE_MINUTES = 24 * 60;
 
 const WebhookMaxDeliveryAgeMinutes = Schema.Int.check(
   Schema.isBetween({ minimum: 1, maximum: MAX_WEBHOOK_DELIVERY_AGE_MINUTES }),
@@ -69,7 +69,7 @@ const WebhookMaxDeliveryAgeMinutes = Schema.Int.check(
   description: "Skip requests held offline over this many minutes. Omit to run all.",
 });
 
-export function isWebhookDedupeTemplate(template: string): boolean {
+function isWebhookDedupeTemplate(template: string): boolean {
   const placeholders = /\{\{\s*(?:(?:body|headers|query)(?:\.[^{}.\s]+)*|request)\s*\}\}/g;
   const matches = [...template.matchAll(placeholders)];
   const remainder = template.replace(placeholders, "");
@@ -88,7 +88,7 @@ const ScheduledTaskWebhookDedupe = Schema.Struct({
   description: "Replay and coalesce key templates. Window in seconds, default 120.",
 });
 
-export const MAX_WEBHOOK_FILTERS = 16;
+const MAX_WEBHOOK_FILTERS = 16;
 
 const WebhookFilterPath = TrimmedNonEmptyString.check(
   Schema.isPattern(/^(body|headers|query)(\.|$)/),

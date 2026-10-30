@@ -17,7 +17,6 @@ import {
   ThreadId,
   EnvironmentId,
   ORCHESTRATION_V2_WS_METHODS,
-  ScheduledTaskId,
   WS_METHODS,
   type AuthSessionState,
   type PeerLinkSummary,
@@ -58,7 +57,7 @@ const runtime = Atom.runtime(
     run: (_id: EnvironmentId, effect: Effect.Effect<unknown>) => effect,
   } as unknown as EnvironmentRegistry["Service"]),
 );
-const permissions = createCommandPermissions(runtime, WS_METHODS.scheduledTasksDelete);
+const permissions = createCommandPermissions(runtime, ORCHESTRATION_V2_WS_METHODS.forceStopThread);
 const setup = Effect.gen(function* () {
   const registry = AtomRegistry.make();
   registry.mount(sessions(env));
@@ -143,23 +142,24 @@ describe("command permissions", () => {
     ),
   );
 
-  it.effect.each([WS_METHODS.scheduledTasksDelete, ORCHESTRATION_V2_WS_METHODS.stopWorkflow])(
-    "uses the target grant for both availability and execution of %s",
-    (method) =>
-      Effect.scoped(
-        Effect.gen(function* () {
-          const registry = yield* setup;
-          const permissions = createCommandPermissions(runtime, method);
-          registry.set(sessions(env), AsyncResult.success(grant(true)));
-          expect(registry.get(permissions.permissionAtom(env))).toBe(true);
-          expect(permissions.permissionAtom(env)).toBe(permissions.permissionAtom(env));
-          yield* permissions.authorize(registry, env);
-          registry.set(sessions(other), AsyncResult.success(grant(false)));
-          expect(registry.get(permissions.permissionAtom(other))).toBe(false);
-          const denied = yield* permissions.authorize(registry, other).pipe(Effect.flip);
-          expect(denied._tag).toBe("EnvironmentAuthorizationError");
-        }),
-      ),
+  it.effect.each([
+    ORCHESTRATION_V2_WS_METHODS.forceStopThread,
+    ORCHESTRATION_V2_WS_METHODS.stopWorkflow,
+  ])("uses the target grant for both availability and execution of %s", (method) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const registry = yield* setup;
+        const permissions = createCommandPermissions(runtime, method);
+        registry.set(sessions(env), AsyncResult.success(grant(true)));
+        expect(registry.get(permissions.permissionAtom(env))).toBe(true);
+        expect(permissions.permissionAtom(env)).toBe(permissions.permissionAtom(env));
+        yield* permissions.authorize(registry, env);
+        registry.set(sessions(other), AsyncResult.success(grant(false)));
+        expect(registry.get(permissions.permissionAtom(other))).toBe(false);
+        const denied = yield* permissions.authorize(registry, other).pipe(Effect.flip);
+        expect(denied._tag).toBe("EnvironmentAuthorizationError");
+      }),
+    ),
   );
   it.effect("waits for an initial grant", () =>
     Effect.scoped(
@@ -208,18 +208,18 @@ describe("command permissions", () => {
     });
     let calls = 0;
     const command = createEnvironmentRpcCommand(runtime, {
-      label: "test.delete",
-      tag: WS_METHODS.scheduledTasksDelete,
+      label: "test.force-stop",
+      tag: ORCHESTRATION_V2_WS_METHODS.forceStopThread,
       concurrency: { mode: "serial", key: () => "target" },
       execute: () =>
         Effect.promise(async () => {
           calls++;
           started();
           await gate;
-          return { id: ScheduledTaskId.make("task") };
+          return { outcome: "killed" as const, sharedWithThreadIds: [] };
         }),
     });
-    const target = { environmentId: env, input: { id: ScheduledTaskId.make("task") } };
+    const target = { environmentId: env, input: { threadId: ThreadId.make("thread") } };
     try {
       const first = command.run(registry, target);
       await entered;
@@ -497,10 +497,10 @@ it.effect("rejects protected unary and streamed RPCs outside a guarded command",
     let writes = 0;
     const session = {
       client: {
-        [WS_METHODS.scheduledTasksDelete]: () =>
+        [ORCHESTRATION_V2_WS_METHODS.forceStopThread]: () =>
           Effect.sync(() => {
             writes++;
-            return { id: ScheduledTaskId.make("task") };
+            return { outcome: "killed", sharedWithThreadIds: [] };
           }),
         [WS_METHODS.gitRunStackedAction]: () =>
           Stream.fromEffect(
@@ -514,8 +514,8 @@ it.effect("rejects protected unary and streamed RPCs outside a guarded command",
       target: { environmentId: env, label: "target" },
       session: yield* SubscriptionRef.make(Option.some(session)),
     } as unknown as EnvironmentSupervisor["Service"];
-    const unary = yield* requestGuarded(WS_METHODS.scheduledTasksDelete, {
-      id: ScheduledTaskId.make("task"),
+    const unary = yield* requestGuarded(ORCHESTRATION_V2_WS_METHODS.forceStopThread, {
+      threadId: ThreadId.make("thread"),
     }).pipe(Effect.provideService(EnvironmentSupervisor, supervisor), Effect.flip);
     expect(unary._tag).toBe("EnvironmentAuthorizationError");
     const streamed = yield* runStreamGuarded(WS_METHODS.gitRunStackedAction, {

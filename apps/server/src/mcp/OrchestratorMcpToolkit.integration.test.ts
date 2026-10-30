@@ -41,7 +41,6 @@ import {
 } from "@t3tools/provider-testing/replayTranscript";
 import * as ProviderRegistryMock from "../provider/testUtils/providerRegistryMock.ts";
 import * as ProjectService from "../project/ProjectService.ts";
-import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
@@ -173,24 +172,6 @@ const layerMemorySecretStore = Layer.sync(ServerSecretStore.ServerSecretStore, (
   });
 });
 
-const layerUnusedScheduledTaskStub = Layer.succeed(
-  ScheduledTaskService.ScheduledTaskService,
-  ScheduledTaskService.ScheduledTaskService.of({
-    list: () => Effect.succeed({ tasks: [] }),
-    subscribeList: () => Stream.succeed({ tasks: [] }),
-    upsert: () => Effect.die("ScheduledTaskService.upsert is unused in this test"),
-    setEnabled: () => Effect.die("ScheduledTaskService.setEnabled is unused in this test"),
-    delete: () => Effect.die("ScheduledTaskService.delete is unused in this test"),
-    deleteForThread: () => Effect.die("unused in this test"),
-    moveThreadTasks: () => Effect.die("unused in this test"),
-    runNow: () => Effect.die("ScheduledTaskService.runNow is unused in this test"),
-    rotateWebhookToken: () => Effect.die("unused in this test"),
-    listWebhookDeliveries: () => Effect.die("unused in this test"),
-    getWebhookDelivery: () => Effect.die("unused in this test"),
-    triggerWebhook: () => Effect.die("unused in this test"),
-  }),
-);
-
 describe("orchestrator MCP toolkit", () => {
   it.live.each([
     { label: "distinct", result: queuedFollowupResult, latestSummary: queuedFollowupResult },
@@ -239,7 +220,6 @@ describe("orchestrator MCP toolkit", () => {
           ),
           Layer.provide(layerProviderRegistry),
           Layer.provide(ServerSettings.layerTest()),
-          Layer.provide(layerUnusedScheduledTaskStub),
           Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
           Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
           Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),

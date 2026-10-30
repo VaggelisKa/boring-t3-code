@@ -810,8 +810,6 @@ const HANDOFF_TOOLS: ReadonlySet<string> = new Set([
   "t3_thread_launch",
   "t3_thread_send",
   "t3_thread_send_attachments",
-  "schedule_task",
-  "run_scheduled_task_now",
 ]);
 
 /** Tool actions that hand work over with only a `{ sequence }` result; the input names the thread. */

@@ -40,7 +40,6 @@ import {
 } from "./assets/AttachmentUpload.ts";
 import * as BrowserTraceCollector from "./observability/BrowserTraceCollector.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
-import { traceRelayRequest } from "./cloud/traceRelayRequest.ts";
 import {
   annotateEnvironmentRequest,
   failEnvironmentScopeRequired,
@@ -48,7 +47,6 @@ import {
   failEnvironmentInternal,
 } from "./auth/http.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
-import { WEBHOOK_ROUTE_PREFIX } from "./scheduledTasks/ScheduledTaskService.ts";
 import {
   browserApiCorsAllowedHeaders,
   browserApiCorsAllowedMethods,
@@ -321,7 +319,7 @@ export const layerServerEnvironmentHttpApi = HttpApiBuilder.group(
       Effect.fn("environment.metadata.descriptor")(function* (args) {
         yield* annotateEnvironmentRequest(args.endpoint.name);
         return yield* serverEnvironment.getDescriptor;
-      }, traceRelayRequest),
+      }),
     );
   }),
 );
@@ -394,7 +392,6 @@ const layerUntracedRequests = Layer.succeed(HttpMiddleware.TracerDisabledWhen)((
   // Signed URLs carry bearer tokens in the path, so they never reach a trace.
   return (
     UNTRACED_REQUEST_PATHS.has(path) ||
-    path.startsWith(`${WEBHOOK_ROUTE_PREFIX}/`) ||
     path.startsWith(`${ASSET_ROUTE_PREFIX}/`) ||
     path.startsWith(`${ATTACHMENT_UPLOAD_ROUTE_PREFIX}/`)
   );

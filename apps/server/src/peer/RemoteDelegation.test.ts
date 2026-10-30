@@ -52,7 +52,6 @@ import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as RepositoryIdentityResolver from "../project/RepositoryIdentityResolver.ts";
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
-import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as CommandReceiptStore from "../orchestration-v2/CommandReceiptStore.ts";
@@ -483,7 +482,6 @@ const boxToolkitLayer = (thread: BoxThread) => {
     ),
     Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
     Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-    Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
     Layer.provide(
       Layer.mock(ProjectService.ProjectService)({
         getById: () => Effect.succeedNone,
@@ -592,7 +590,6 @@ const makeLaptop = (
       Layer.provideMerge(layerThreads),
       Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
       Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-      Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
       Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
       Layer.provide(Layer.mock(SecretRequests.SecretRequests)({})),
       Layer.provide(Layer.mock(ThreadLaunch.ThreadLaunchService)({})),

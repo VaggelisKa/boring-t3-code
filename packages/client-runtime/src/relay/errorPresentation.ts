@@ -1,9 +1,5 @@
 import type { DpopFailureReason } from "@t3tools/contracts";
-import {
-  T3CHAT_PLAN_TUNNEL_LIMITS,
-  type RelayEnvironmentStatusResponse,
-  type RelayProtectedError,
-} from "@t3tools/contracts/relay";
+import { T3CHAT_PLAN_TUNNEL_LIMITS, type RelayProtectedError } from "@t3tools/contracts/relay";
 
 export const DPOP_CLOCK_HINT =
   "Hint: Check that automatic date and time is enabled on both devices, then try again.";
@@ -92,18 +88,4 @@ export function relayRequestFailureDetail(error: {
   if (error.status === 504) return RELAY_GATEWAY_TIMEOUT_MESSAGE;
   if (error.status !== undefined) return `Relay returned an unexpected HTTP ${error.status}.`;
   return null;
-}
-
-const RELAY_TUNNEL_RELEASED_MESSAGE =
-  "Offline for a while, so its T3 Connect tunnel was removed. Start T3 Code on that computer and update it to the latest version to reconnect.";
-
-export function relayOfflineReasonMessage(
-  status: Pick<RelayEnvironmentStatusResponse, "offlineReason">,
-): string | null {
-  switch (status.offlineReason) {
-    case "tunnel_released":
-      return RELAY_TUNNEL_RELEASED_MESSAGE;
-    case undefined:
-      return null;
-  }
 }

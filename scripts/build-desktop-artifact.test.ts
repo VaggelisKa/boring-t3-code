@@ -30,7 +30,6 @@ import {
   createBuildConfig,
   DESKTOP_FILE_EXCLUSIONS,
   InvalidMacPasskeyRpDomainError,
-  InvalidMacPasskeyPublishableKeyError,
   UnsupportedDesktopBuildArchitectureError,
   MacPasskeySigningConfigurationResolutionError,
   MissingMacPasskeyProvisioningProfileError,
@@ -1381,21 +1380,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it("derives macOS passkey signing configuration from the Clerk publishable key", () => {
-    const configuration = resolveMacPasskeySigningConfiguration({
-      T3CODE_APPLE_TEAM_ID: "abc1234567",
-      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      T3CODE_CLERK_PUBLISHABLE_KEY: `pk_test_${btoa("example.clerk.accounts.dev$")}`,
-    });
-
-    assert.deepStrictEqual(configuration, {
-      appId: "com.t3tools.t3code",
-      teamId: "ABC1234567",
-      rpDomains: ["example.clerk.accounts.dev"],
-      provisioningProfilePath: "/tmp/t3code.provisionprofile",
-    });
-  });
-
   it("normalizes explicit macOS passkey RP domains and renders required entitlements", () => {
     const configuration = resolveMacPasskeySigningConfiguration({
       T3CODE_APPLE_TEAM_ID: "ABC1234567",
@@ -1420,6 +1404,19 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     assert.match(entitlements, /<key>com\.apple\.security\.device\.audio-input<\/key>\s*<true\/>/u);
     assert.notInclude(entitlements, "keychain-access-groups");
     assert.notInclude(entitlements, "com.apple.developer.web-browser.public-key-credential");
+
+    const withoutDomains = resolveMacPasskeySigningConfiguration({
+      T3CODE_APPLE_TEAM_ID: "ABC1234567",
+      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+    });
+    assert.deepStrictEqual(withoutDomains.rpDomains, []);
+    assert.notInclude(
+      renderMacPasskeyEntitlements(withoutDomains, {
+        touchIdKeychainAccessGroup: undefined,
+        browserPasskeys: false,
+      }),
+      "com.apple.developer.associated-domains",
+    );
   });
 
   it("grants in-app browser passkey entitlements only when the provisioning profile does", () => {
@@ -1536,16 +1533,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         }),
       /Invalid passkey RP domain/u,
     );
-    const invalidPublishableKeyError = captureError({
-      T3CODE_APPLE_TEAM_ID: "ABC1234567",
-      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      T3CODE_CLERK_PUBLISHABLE_KEY: "pk_test_%",
-    });
-    assert.instanceOf(invalidPublishableKeyError, InvalidMacPasskeyPublishableKeyError);
-    assert.ok(invalidPublishableKeyError.cause);
-    assert.equal(invalidPublishableKeyError.message, "T3CODE_CLERK_PUBLISHABLE_KEY is invalid.");
-    assert.notProperty(invalidPublishableKeyError, "publishableKey");
-    assert.notInclude(invalidPublishableKeyError.message, "pk_test_%");
   });
 
   it("wraps unknown passkey signing configuration defects without copying cause text", () => {

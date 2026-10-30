@@ -1,18 +1,9 @@
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-  type ComponentType,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 import {
   ArchiveIcon,
   FlaskConicalIcon,
   BotIcon,
   createLucideIcon,
-  CalendarClockIcon,
   FileDiffIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -39,7 +30,6 @@ import { Button } from "../ui/button";
 import { Kbd } from "../ui/kbd";
 import {
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarMenu,
   SidebarMenuButton,
@@ -72,17 +62,6 @@ const SnapShotIcon = createLucideIcon("snap-shot", [
   ["circle", { cx: "12", cy: "12", r: "1.5", key: "lens" }],
 ]);
 
-const T3ConnectSidebarSignIn = lazy(() =>
-  import("../clerk/T3ConnectSidebarSignIn").then((module) => ({
-    default: module.T3ConnectSidebarSignIn,
-  })),
-);
-const T3ConnectSidebarAvatar = lazy(() =>
-  import("../clerk/T3ConnectSidebarSignIn").then((module) => ({
-    default: module.T3ConnectSidebarAvatar,
-  })),
-);
-
 const SETTINGS_SECTION_ICONS: Readonly<
   Record<SettingsPath, ComponentType<{ className?: string }>>
 > = {
@@ -98,7 +77,6 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/threads": MessagesSquareIcon,
   "/settings/browser": GlobeIcon,
   "/settings/devices": SmartphoneIcon,
-  "/settings/scheduled-tasks": CalendarClockIcon,
   "/settings/source-control": GitBranchIcon,
   "/settings/worktrees": FolderTreeIcon,
   "/settings/connections": ServerIcon,
@@ -433,14 +411,6 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
           </div>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="max-md:hidden">
-        <Suspense fallback={null}>
-          <T3ConnectSidebarSignIn />
-        </Suspense>
-        <Suspense fallback={null}>
-          <T3ConnectSidebarAvatar />
-        </Suspense>
-      </SidebarFooter>
     </nav>
   );
 }

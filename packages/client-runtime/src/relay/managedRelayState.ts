@@ -5,8 +5,7 @@ import * as Clock from "effect/Clock";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as Stream from "effect/Stream";
-import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
+import { Atom, AtomRegistry } from "effect/reactivity";
 
 import { findErrorTraceId } from "../errors/errorTrace.ts";
 import * as ManagedRelay from "./managedRelay.ts";
@@ -153,16 +152,6 @@ export function setManagedRelaySession(
   registry.set(managedRelaySessionAtom, createManagedRelaySession(input));
 }
 
-export function managedRelayAccountChanges(
-  registry: AtomRegistry.AtomRegistry,
-): Stream.Stream<string | null> {
-  return AtomRegistry.toStream(registry, managedRelaySessionAtom).pipe(
-    Stream.map((session) => session?.accountId ?? null),
-    Stream.changes,
-    Stream.drop(1),
-  );
-}
-
 function readSessionClerkToken(
   session: ManagedRelaySession,
 ): Effect.Effect<string, ManagedRelaySessionError> {
@@ -206,27 +195,6 @@ export const deregisterManagedRelayEnvironment = Effect.fn(
   yield* relay.unlinkEnvironment({ clerkToken, environmentId: input.environmentId });
 });
 
-/** Returns the T3 Chat page URL where the signed-in user confirms the link. */
-export const createManagedRelayT3ChatLinkRequest = Effect.fn(
-  "clientRuntime.managedRelaySession.createT3ChatLinkRequest",
-)(function* (registry: AtomRegistry.AtomRegistry, input: { readonly accountId: string }) {
-  const clerkToken = yield* requireSessionClerkToken(registry, input.accountId, "linking T3 Chat");
-  const relay = yield* ManagedRelay.ManagedRelayClient;
-  return (yield* relay.createT3ChatLinkRequest({ clerkToken })).url;
-});
-
-export const unlinkManagedRelayT3Chat = Effect.fn("clientRuntime.managedRelaySession.unlinkT3Chat")(
-  function* (registry: AtomRegistry.AtomRegistry, input: { readonly accountId: string }) {
-    const clerkToken = yield* requireSessionClerkToken(
-      registry,
-      input.accountId,
-      "unlinking T3 Chat",
-    );
-    const relay = yield* ManagedRelay.ManagedRelayClient;
-    yield* relay.unlinkT3Chat({ clerkToken });
-  },
-);
-
 function requireClerkToken(
   get: Atom.AtomContext,
   accountId: string,
@@ -255,18 +223,6 @@ function describeManagedRelayFailure(cause: Cause.Cause<unknown>): {
           ? error.message
           : "Could not load T3 Connect data.",
     traceId: findErrorTraceId(error),
-  };
-}
-
-export function readManagedRelaySnapshotState<A>(
-  result: AsyncResult.AsyncResult<A, unknown>,
-): ManagedRelaySnapshotState<A> {
-  const failure = result._tag === "Failure" ? describeManagedRelayFailure(result.cause) : null;
-  return {
-    data: AsyncResult.getOrElse(result, () => null),
-    error: failure?.message ?? null,
-    errorTraceId: failure?.traceId ?? null,
-    isPending: result.waiting,
   };
 }
 
