@@ -8,6 +8,7 @@ everything the fork removed.
 ## Last reviewed upstream commit
 
 <!-- upstream-sync:last-reviewed -->
+
 `fa4e4677c0ecc437aece2dcea39f76ef31414152` (the fork point, 2026-10-30)
 <!-- /upstream-sync:last-reviewed -->
 
