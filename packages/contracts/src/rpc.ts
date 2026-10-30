@@ -26,8 +26,6 @@ import {
   PeerLinkRequestError,
   PeerLinkSummary,
 } from "./peerLink.ts";
-import {
-} from "./providerSetup.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";

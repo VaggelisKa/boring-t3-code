@@ -12,12 +12,10 @@ import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
-import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { EnvironmentId, DEFAULT_SERVER_SETTINGS, PROVIDER_WORKSPACE_SNAPSHOT_TTL_MS, ProviderDriverKind, ProviderInstanceId, ServerSettings, ServerSettingsError, ServerProvider, type ServerSettings as ContractServerSettings } from "@t3tools/contracts";
 import { HttpClient, HttpClientResponse } from "effect/http";
-import { ChildProcessSpawner } from "effect/process";
 import { deepMerge } from "@t3tools/shared/Struct";
 import { createModelCapabilities } from "@t3tools/shared/model";
 import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
@@ -59,7 +57,6 @@ const disabledDefaultSlots = (
 
 
 
-const encoder = new TextEncoder();
 const TEST_EPOCH = DateTime.makeUnsafe("1970-01-01T00:00:00.000Z");
 const withBundledCompatibility = (snapshot: ServerProvider) =>
   applyProviderCompatibility(
@@ -123,38 +120,6 @@ function booleanDescriptor(id: string, label: string) {
     label,
     type: "boolean" as const,
   };
-}
-
-function mockHandle(result: { stdout: string; stderr: string; code: number }) {
-  return ChildProcessSpawner.makeHandle({
-    pid: ChildProcessSpawner.ProcessId(1),
-    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(result.code)),
-    isRunning: Effect.succeed(false),
-    kill: () => Effect.void,
-    unref: Effect.succeed(Effect.void),
-    stdin: Sink.drain,
-    stdout: Stream.make(encoder.encode(result.stdout)),
-    stderr: Stream.make(encoder.encode(result.stderr)),
-    all: Stream.empty,
-    getInputFd: () => Sink.drain,
-    getOutputFd: () => Stream.empty,
-  });
-}
-
-function layerMockSpawner(
-  handler: (args: ReadonlyArray<string>) => {
-    stdout: string;
-    stderr: string;
-    code: number;
-  },
-) {
-  return Layer.succeed(
-    ChildProcessSpawner.ChildProcessSpawner,
-    ChildProcessSpawner.make((command) => {
-      const cmd = command as unknown as { args: ReadonlyArray<string> };
-      return Effect.succeed(mockHandle(handler(cmd.args)));
-    }),
-  );
 }
 
 function makeMutableServerSettingsService(

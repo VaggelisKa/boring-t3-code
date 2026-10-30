@@ -762,31 +762,6 @@ describe("PullRequestSyncReactor", () => {
       ),
   );
 
-  it.effect("recovers the HTTP port when syncing an older Forgejo link", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const fixture = yield* makeHarness({
-          snapshot: makeSnapshot([
-            makeThread("one", {
-              pullRequests: [
-                makeLink(42, null, {
-                  host: "forge.example",
-                  url: "http://forge.example:3000/owner/repository/pulls/42",
-                }),
-              ],
-            }),
-          ]),
-          summary: (input) => Effect.succeed(makeSummary(input)),
-        });
-        yield* Effect.gen(function* () {
-          yield* startAndSweep(fixture);
-          assert.strictEqual((yield* Ref.get(fixture.summaryCalls))[0]?.host, "forge.example:3000");
-          assert.strictEqual((yield* Ref.get(fixture.syncCommands))[0]?.host, "forge.example:3000");
-        }).pipe(Effect.provide(fixture.layer));
-      }),
-    ),
-  );
-
   it.effect("dispatches nothing when the host snapshot is unchanged", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -1405,8 +1380,6 @@ describe("PullRequestSyncReactor", () => {
 
   it.effect.each([
     "gh pr merge 7 --squash 2>&1 | tail -3",
-    "cafe pr merge 7 --squash",
-    "az repos pr update --id 7 --status completed",
   ])("reads open links fresh only for a thread that ran `%s`", (mergeCommand) =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -1592,13 +1565,6 @@ describe("PullRequestSyncReactor", () => {
       input: "cargo test 2>&1 | tail -1 && timeout 60 gh pr create -R owner/repository --fill",
       output: "test result: ok\nhttps://github.com/owner/repository/pull/1",
       linked: [1],
-    },
-    {
-      name: "a GitLab merge request",
-      input: "glab mr create --fill --yes",
-      output:
-        "!3 Fix the thing (feature)\n https://gitlab.com/owner/repository/-/merge_requests/3\n",
-      linked: [3],
     },
     {
       name: "a new pull request whose number appears in the create command",

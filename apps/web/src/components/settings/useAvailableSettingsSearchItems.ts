@@ -9,13 +9,12 @@ import { useEnvironmentQuery } from "~/state/query";
 import { useEnvironmentScope } from "~/state/session";
 import { isWslSettingsRowVisible } from "./ConnectionsSettings.logic";
 import { isProviderSettingsEnvironmentAvailable } from "./ProviderSettingsPanel.logic";
-import type { SettingsScopeSearch } from "./settingsScope";
 import {
   filterAvailableSettingsSearchItems,
   getThreadAutoSettlementSearchAvailability,
 } from "./settingsSearch";
 
-export function useAvailableSettingsSearchItems(scopeSearch: SettingsScopeSearch = {}) {
+export function useAvailableSettingsSearchItems() {
   const { environments } = useEnvironments();
   // Explicit booleans keep flags out of the filter cache so environment updates do not rebuild the list.
   const hasEnvironment =

@@ -1,12 +1,6 @@
 import * as Schema from "effect/Schema";
 
-import {
-  EnvironmentId,
-  ForwardCompatibleArray,
-  ForwardCompatibleOptional,
-  IsoDateTime,
-  TrimmedNonEmptyString,
-} from "./baseSchemas.ts";
+import { ForwardCompatibleArray, ForwardCompatibleOptional, IsoDateTime, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ProviderDriverKind, ProviderInstanceId } from "./providerInstance.ts";
 
 export const ProviderSetupInput = Schema.Struct({

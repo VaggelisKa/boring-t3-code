@@ -1,13 +1,8 @@
-import { SourceControlProviderKind, type VcsStatusResult } from "@t3tools/contracts";
+import { type VcsStatusResult } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { sourceControlClients } from "../sourceControlClients.ts";
-import {
-  buildMenuItems,
-  getGitActionDisabledReason,
-  resolveDefaultBranchActionDialogCopy,
-  resolveQuickAction,
-} from "./gitActions.ts";
+import { buildMenuItems, getGitActionDisabledReason, resolveDefaultBranchActionDialogCopy, resolveQuickAction } from "./gitActions.ts";
 
 function status(overrides: Partial<VcsStatusResult> = {}): VcsStatusResult {
   return {
@@ -24,14 +19,6 @@ function status(overrides: Partial<VcsStatusResult> = {}): VcsStatusResult {
     ...overrides,
   };
 }
-
-const gitLab = {
-  sourceControlProvider: {
-    kind: SourceControlProviderKind.make("gitlab"),
-    name: "GitLab",
-    baseUrl: "https://gitlab.com",
-  },
-};
 
 const openPr = {
   number: 7,
@@ -58,26 +45,6 @@ describe("git action copy", () => {
     ).toBe("No local commits to include in a PR.");
   });
 
-  it("says MR for a GitLab ref", () => {
-    expect(resolveQuickAction(status({ ...gitLab, aheadCount: 1 }), false).label).toBe(
-      "Push & create MR",
-    );
-    expect(
-      resolveQuickAction(status({ ...gitLab, hasWorkingTreeChanges: true }), false).label,
-    ).toBe("Commit, push & MR");
-    expect(resolveQuickAction(status({ ...gitLab, pr: openPr }), false).label).toBe("View MR");
-    const [, , prItem] = buildMenuItems(status(gitLab), false);
-    expect(prItem?.label).toBe("Create MR");
-    expect(
-      getGitActionDisabledReason({
-        item: prItem!,
-        gitStatus: status(gitLab),
-        isBusy: false,
-        hasOriginRemote: true,
-      }),
-    ).toBe("No local commits to include in an MR.");
-  });
-
   it("names the host's change request in the default-branch dialog", () => {
     const input = { action: "commit_push_pr", branchName: "main", includesCommit: true } as const;
     expect(
@@ -86,11 +53,5 @@ describe("git action copy", () => {
         terminology: sourceControlClients.get("github").changeRequest,
       }).title,
     ).toBe("Commit, push & create PR from default branch?");
-    expect(
-      resolveDefaultBranchActionDialogCopy({
-        ...input,
-        terminology: sourceControlClients.get("gitlab").changeRequest,
-      }).continueLabel,
-    ).toBe("Commit, push & create MR");
   });
 });

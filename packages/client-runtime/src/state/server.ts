@@ -33,7 +33,6 @@ import {
   createEnvironmentQueryAtomFamily,
   createEnvironmentRpcQueryAtomFamily,
   createEnvironmentRpcSubscriptionAtomFamily,
-  createEnvironmentSubscriptionAtomFamily,
   createRuntimeCommand,
   scheduleAtomCommandEffect,
 } from "./runtime.ts";

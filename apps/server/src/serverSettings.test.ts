@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { DEFAULT_SERVER_SETTINGS, ModelSelection, ProjectId, ProjectScript, ProviderDriverKind, ProviderInstanceId, resolveProviderInstanceEnabled, ServerSettings } from "@t3tools/contracts";
+import { DEFAULT_SERVER_SETTINGS, ModelSelection, ProjectId, ProjectScript, ProviderDriverKind, ProviderInstanceId, ServerSettings } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { assert, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
@@ -526,10 +526,8 @@ it.layer(NodeServices.layer)("server settings", (it) => {
 
         yield* serverSettings.updateSettings({ usagePriceOverrides: { "example-model": prices } });
         const usageModelAliases = { "example-preview": "example-model" };
-        const saved = yield* serverSettings.updateSettings({
-          usageModelAliases,
-        });
-        const updated = yield* serverSettings.updateSettings({
+        yield* serverSettings.updateSettings({ usageModelAliases });
+        yield* serverSettings.updateSettings({
           storageCleanup: { worktreeSettledAfterDays: 0, worktreeKeepWhen: "any-local-files" },
         });
         const persisted = yield* readPersisted;
@@ -1382,7 +1380,6 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
       const serverConfig = yield* ServerConfig.ServerConfig;
       const fileSystem = yield* FileSystem.FileSystem;
-      const path = yield* Path.Path;
       const instanceId = ProviderInstanceId.make("antigravity_terminal");
 
       yield* serverSettings.updateSettings({

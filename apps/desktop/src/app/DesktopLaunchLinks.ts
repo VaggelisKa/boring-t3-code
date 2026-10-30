@@ -5,7 +5,6 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 
-import * as ElectronShell from "../electron/ElectronShell.ts";
 import { providerAuthReturnUrl } from "@t3tools/shared/providerAuthReturnUrl";
 import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
 import { readPairingAppLink } from "@t3tools/shared/remote";
@@ -35,7 +34,6 @@ export class DesktopLaunchLinks extends Context.Service<
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const electronApp = yield* ElectronApp.ElectronApp;
-  const shell = yield* ElectronShell.ElectronShell;
 
   // Must not yield: userData has to be set before Electron is ready.
   const userDataPath = yield* DesktopUserData.resolveUserDataPath(environment);

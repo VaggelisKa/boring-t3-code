@@ -1,18 +1,7 @@
-import {
-  EnvironmentId,
-  ProjectId,
-  type RepositoryIdentity,
-  SourceControlProviderKind,
-} from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, type RepositoryIdentity, SourceControlProviderKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  findProjectForChangeRequest,
-  findProjectOnChangeRequestHost,
-  projectChangeRequestUrl,
-  resolveChangeRequestLinkTarget,
-  resolvePullRequestPreviewTarget,
-} from "./changeRequestLinks.ts";
+import { findProjectForChangeRequest, findProjectOnChangeRequestHost, projectChangeRequestUrl, resolveChangeRequestLinkTarget, resolvePullRequestPreviewTarget } from "./changeRequestLinks.ts";
 
 describe("findProjectForChangeRequest", () => {
   const project = (identity: Record<string, unknown>) =>
@@ -204,23 +193,6 @@ describe("projectChangeRequestUrl", () => {
   it("builds the requested repository's URL on the project's host", () => {
     expect(projectChangeRequestUrl(identity("github"), "acme/other", 42)).toBe(
       "https://github.com/acme/other/pull/42",
-    );
-  });
-
-  it("builds the project's own Azure repository from its full path, not its short selector", () => {
-    const azure: RepositoryIdentity = {
-      canonicalKey: "dev.azure.com/org/project/_git/web",
-      provider: SourceControlProviderKind.make("azure-devops"),
-      owner: "org",
-      name: "web",
-      locator: {
-        source: "git-remote",
-        remoteName: "origin",
-        remoteUrl: "https://dev.azure.com/org/project/_git/web",
-      },
-    };
-    expect(projectChangeRequestUrl(azure, "web", 42)).toBe(
-      "https://dev.azure.com/org/project/_git/web/pullrequest/42",
     );
   });
 

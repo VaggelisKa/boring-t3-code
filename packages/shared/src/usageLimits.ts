@@ -305,11 +305,11 @@ export function collectLimitAccounts(presentations: LimitPresentations): readonl
     });
   };
   const resolveKey = accountKeyResolver(
-    [...presentations.values()].flatMap((presentation) => [
-      ...(presentation.serverConfig?.providers ?? [])
+    [...presentations.values()].flatMap((presentation) =>
+      (presentation.serverConfig?.providers ?? [])
         .filter((provider) => provider.enabled)
         .map(nativeReport),
-    ]),
+    ),
   );
   for (const [environmentId, presentation] of presentations) {
     const label = presentation.entry.target.label;

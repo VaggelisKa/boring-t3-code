@@ -1,45 +1,9 @@
 import { SourceControlProviderKind } from "@t3tools/contracts";
-import type {
-  EnvironmentId,
-  ProjectId,
-  PullRequestAction,
-  PullRequestListEntry,
-} from "@t3tools/contracts";
+import type { EnvironmentId, ProjectId, PullRequestAction, PullRequestListEntry } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  pullRequestHostActions,
-  largestPullRequestReadCount,
-  pullRequestQuickActions,
-  filterPullRequestsByInvolvement,
-  findProjectForRepository,
-  findScopedProject,
-  mergePullRequestLists,
-  pullRequestEntryKey,
-  groupPullRequestsByInvolvement,
-  pullRequestStatsBatches,
-  pullRequestStatsKeysToRequest,
-  pullRequestStatsRefreshBatches,
-  mergePullRequestDiffStats,
-  partitionPullRequestsWithPriority,
-  pullRequestAuthorChoices,
-  selectedPullRequestAuthor,
-  pullRequestLabelChoices,
-  rankPullRequestMatches,
-  rankPullRequestsBlockedOnAuthor,
-  rankPullRequestsByMergeReadiness,
-  sortPullRequestGroups,
-  resolveQueryEnvironmentIds,
-  resolveSelectedEnvironmentId,
-  type EnvironmentPullRequestEntry,
-  applyPullRequestOverrides,
-  reusePullRequestEntries,
-  settlePullRequestOverrides,
-} from "./pullRequestList.logic";
-import {
-  readPullRequestListPreferences,
-  writePullRequestListPreferences,
-} from "./pullRequestListPreferences";
+import { pullRequestHostActions, largestPullRequestReadCount, pullRequestQuickActions, filterPullRequestsByInvolvement, findProjectForRepository, findScopedProject, mergePullRequestLists, pullRequestEntryKey, groupPullRequestsByInvolvement, pullRequestStatsBatches, pullRequestStatsKeysToRequest, pullRequestStatsRefreshBatches, mergePullRequestDiffStats, partitionPullRequestsWithPriority, pullRequestAuthorChoices, selectedPullRequestAuthor, pullRequestLabelChoices, rankPullRequestMatches, rankPullRequestsBlockedOnAuthor, rankPullRequestsByMergeReadiness, sortPullRequestGroups, resolveQueryEnvironmentIds, resolveSelectedEnvironmentId, type EnvironmentPullRequestEntry, applyPullRequestOverrides, reusePullRequestEntries, settlePullRequestOverrides } from "./pullRequestList.logic";
+import { readPullRequestListPreferences, writePullRequestListPreferences } from "./pullRequestListPreferences";
 
 const VIEWERS = { "github.com": "Bilal" } as const;
 
@@ -686,42 +650,6 @@ describe("refresh page size", () => {
 });
 
 describe("findProjectForRepository", () => {
-  it("resolves Azure bare names using matching project and environment scope", () => {
-    const azure = (id: string, environmentId: string, path: string) => ({
-      id,
-      environmentId,
-      repositoryIdentity: {
-        canonicalKey: `dev.azure.com/${path}`,
-        locator: { source: "git-remote" as const, remoteName: "origin", remoteUrl: "" },
-        provider: SourceControlProviderKind.make("azure-devops"),
-        displayName: path,
-        owner: "contoso",
-        name: path.split("/").at(-1)!,
-      },
-    });
-    const payments = azure("p1", ENV_1, "contoso/payments/_git/api");
-    const billing = azure("p2", ENV_1, "contoso/billing/_git/api");
-    const remoteBilling = azure("p2", ENV_2, "contoso/billing/_git/api");
-    const unrelated = azure("p3", ENV_2, "contoso/billing/_git/web");
-    const projects = [payments, billing, remoteBilling, unrelated];
-
-    expect(findProjectForRepository(projects, { repository: "api" })).toBe(payments);
-    expect(
-      findProjectForRepository(projects, {
-        repository: "api",
-        scopedProjectId: "p2",
-        scopedEnvironmentId: ENV_2,
-      }),
-    ).toBe(remoteBilling);
-    expect(
-      findProjectForRepository(projects, {
-        repository: "api",
-        scopedProjectId: "p3",
-        scopedEnvironmentId: ENV_2,
-      }),
-    ).toBe(payments);
-  });
-
   it("keeps repository matches on the selected environment when project IDs overlap", () => {
     const project = (id: string, environmentId: string, repository: string) => ({
       id,

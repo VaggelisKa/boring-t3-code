@@ -143,14 +143,6 @@ describe("pace", () => {
 
 describe("pools", () => {
   const checkedAt = "2026-09-03T11:00:00.000Z";
-  const weekly = {
-    id: "seven_day",
-    kind: "weekly",
-    label: "Weekly",
-    windowDurationMins: 7 * 24 * 60,
-    resetsAt: "2026-09-06T12:00:00.000Z",
-  } as const;
-  const claude = ProviderDriverKind.make("claudeAgent");
   const laptop = { entry: { target: { label: "Laptop" } } };
 
   it("merges OpenCode Go limits from machines with the same API key", () => {

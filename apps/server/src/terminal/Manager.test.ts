@@ -1,14 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
-import {
-  DEFAULT_TERMINAL_ID,
-  type TerminalAttachStreamEvent,
-  type TerminalEvent,
-  type TerminalOpenInput,
-  ProviderDriverKind,
-  ProviderInstanceId,
-  TerminalProviderInstanceNotFoundError,
-} from "@t3tools/contracts";
+import { DEFAULT_TERMINAL_ID, type TerminalAttachStreamEvent, type TerminalEvent, type TerminalOpenInput, ProviderInstanceId, TerminalProviderInstanceNotFoundError } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
@@ -32,7 +24,6 @@ import * as TestClock from "effect/testing/TestClock";
 import { expect, vi } from "vite-plus/test";
 
 import * as ProcessRunner from "../processRunner.ts";
-import * as ServerSettings from "../serverSettings.ts";
 import * as TerminalManager from "./Manager.ts";
 import { terminalOutputStream } from "./OutputProtocol.ts";
 import * as PtyAdapter from "@t3tools/shared/PtyAdapter";
