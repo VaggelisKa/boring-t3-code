@@ -1,13 +1,11 @@
 import type { EnvironmentId } from "@t3tools/contracts";
 
-interface OnboardingEnvironment {
-  readonly environmentId: EnvironmentId;
-  readonly connection: { readonly phase: string };
-}
-
 /** Waits only for first connection attempts; offline, failing, or unsupported computers cannot block setup. */
 export function resolveOnboardingSetup(
-  environments: ReadonlyArray<Pick<OnboardingEnvironment, "environmentId" | "connection">>,
+  environments: ReadonlyArray<{
+    readonly environmentId: EnvironmentId;
+    readonly connection: { readonly phase: string };
+  }>,
   selectedIds: ReadonlySet<EnvironmentId>,
 ): {
   readonly ready: boolean;

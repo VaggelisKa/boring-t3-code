@@ -363,49 +363,56 @@ function vcsRefsCacheKey(environmentId: EnvironmentId, cwd: string) {
   return `${environmentId}:${cwd}`;
 }
 
-const isLegacySshRecord = (value: unknown) =>
-  typeof value === "object" &&
-  value !== null &&
-  "_tag" in value &&
-  (value._tag === "SshConnectionTarget" || value._tag === "SshConnectionProfile");
+const LEGACY_RECORD_TAGS = new Set([
+  "SshConnectionTarget",
+  "SshConnectionProfile",
+  "RelayConnectionTarget",
+]);
 
-const legacySshConnectionId = (value: unknown) =>
+const isLegacyRecord = (value: unknown) =>
   typeof value === "object" &&
   value !== null &&
-  isLegacySshRecord(value) &&
+  (("_tag" in value && typeof value._tag === "string" && LEGACY_RECORD_TAGS.has(value._tag)) ||
+    ("authorization" in value && value.authorization === "t3-connect"));
+
+const recordConnectionId = (value: unknown) =>
+  typeof value === "object" &&
+  value !== null &&
   "connectionId" in value &&
   typeof value.connectionId === "string"
     ? value.connectionId
     : null;
 
-// Catalogs saved before SSH hosts were removed can still hold their records and credentials.
-function dropLegacySshRecords(document: unknown): unknown {
+// Catalogs saved before SSH hosts and the relay were removed can still hold their records,
+// the learned routes that borrowed a relay credential, and the credentials themselves.
+function dropLegacyRecords(document: unknown): unknown {
   if (typeof document !== "object" || document === null) return document;
-  const record = document as Record<string, unknown>;
-  const sshConnectionIds = new Set(
+  const { remoteDpopTokens: _remoteDpopTokens, ...record } = document as Record<string, unknown>;
+  const legacyConnectionIds = new Set(
     [record.targets, record.profiles].flatMap((value) =>
-      Array.isArray(value) ? value.map(legacySshConnectionId).filter((id) => id !== null) : [],
+      Array.isArray(value)
+        ? value
+            .filter(isLegacyRecord)
+            .map(recordConnectionId)
+            .filter((id) => id !== null)
+        : [],
     ),
   );
   const filter = (value: unknown) =>
-    Array.isArray(value) ? value.filter((entry) => !isLegacySshRecord(entry)) : value;
-  const credentials = Array.isArray(record.credentials)
-    ? record.credentials.filter(
-        (entry: unknown) =>
-          !(
-            typeof entry === "object" &&
-            entry !== null &&
-            "connectionId" in entry &&
-            typeof entry.connectionId === "string" &&
-            sshConnectionIds.has(entry.connectionId)
-          ),
-      )
-    : record.credentials;
+    Array.isArray(value)
+      ? value.filter((entry) => {
+          const connectionId = recordConnectionId(entry);
+          return (
+            !isLegacyRecord(entry) &&
+            (connectionId === null || !legacyConnectionIds.has(connectionId))
+          );
+        })
+      : value;
   return {
     ...record,
     targets: filter(record.targets),
     profiles: filter(record.profiles),
-    credentials,
+    credentials: filter(record.credentials),
   };
 }
 
@@ -414,7 +421,7 @@ const decodeCatalogJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Schem
 const decodeCatalog = Effect.fn("web.connectionStorage.decodeCatalog")(
   function* (raw: string) {
     const parsed = yield* decodeCatalogJson(raw);
-    return yield* decodeConnectionCatalogDocument(dropLegacySshRecords(parsed));
+    return yield* decodeConnectionCatalogDocument(dropLegacyRecords(parsed));
   },
   Effect.mapError((cause) => catalogError("decode", cause)),
 );
