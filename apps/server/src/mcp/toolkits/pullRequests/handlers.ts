@@ -93,10 +93,7 @@ const resolveTarget = Effect.fn("PullRequestsToolkit.resolveTarget")(function* (
   const repository = input.repository.toLowerCase();
   // Without a URL, a public forge host says what shape its change request URLs take;
   // any other host is taken to run the project's own forge.
-  const recognizedKind = sourceControlDefinitions.recognizeRemote(`https://${host}`)?.kind;
-  const kind =
-    sourceControlDefinitions.findByPublicHost(host)?.kind ??
-    (recognizedKind === "gitcafe" ? recognizedKind : projectHost.kind);
+  const kind = sourceControlDefinitions.findByPublicHost(host)?.kind ?? projectHost.kind;
   const url =
     kind === null
       ? null
