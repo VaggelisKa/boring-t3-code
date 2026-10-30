@@ -1,4 +1,4 @@
-import type { DesktopBridge, DesktopUpdateState } from "@t3tools/contracts";
+import type { DesktopBridge } from "@t3tools/contracts";
 
 const FALLBACK_TRIAGE_COMMAND = "npx t3 triage";
 const DOWNLOAD_URL = "https://t3.codes/download";
@@ -8,8 +8,6 @@ const REPEAT_FAILURE_MS = 5 * 60_000;
 const MAX_CAUSES = 3;
 const MAX_ERROR_CHARS = 6_000;
 const COPY_BLOCKED = "Copy was blocked. The text is selected so you can copy it manually.";
-const UPDATE_DOWNLOAD_FAILED = "The update download failed. Try Download update again.";
-const UPDATE_INSTALL_FAILED = "The update install failed. Try Restart to update again.";
 
 /** The Windows launcher is a `.cmd` run from PowerShell, which needs `&` to run a quoted path. */
 function launcherCommand(launcherPath: string) {
@@ -35,20 +33,6 @@ export async function resolveTriageCommand(bridge: DesktopBridge | undefined) {
     console.warn("Could not read the desktop CLI state.", error);
   }
   return FALLBACK_TRIAGE_COMMAND;
-}
-
-/** The update button only appears when the desktop updater has a newer build to offer. */
-export function updateActionFor(state: DesktopUpdateState | null | undefined) {
-  switch (state?.status) {
-    case "available":
-      return { kind: "download" } as const;
-    case "downloading":
-      return { kind: "downloading", percent: Math.round(state.downloadPercent ?? 0) } as const;
-    case "downloaded":
-      return { kind: "install" } as const;
-    default:
-      return null;
-  }
 }
 
 function safeString(value: unknown) {
@@ -198,62 +182,6 @@ function copyText(target: HTMLElement, onCopied: () => void, onBlocked: (hint: s
   clipboard.writeText(target.textContent ?? "").then(onCopied, fallback);
 }
 
-function mountUpdateButton(
-  bridge: DesktopBridge,
-  button: HTMLButtonElement,
-  note: HTMLParagraphElement,
-  announce: (text: string) => void,
-) {
-  let action: ReturnType<typeof updateActionFor> = null;
-  const render = (state: DesktopUpdateState) => {
-    action = updateActionFor(state);
-    button.hidden = action === null;
-    // aria-disabled keeps keyboard focus on the button while the download runs.
-    button.setAttribute("aria-disabled", String(action?.kind === "downloading"));
-    if (action?.kind === "download") button.textContent = "Download update";
-    if (action?.kind === "downloading")
-      button.textContent = `Downloading update (${action.percent}%)`;
-    if (action?.kind === "install") button.textContent = "Restart to update";
-    const failure = !action
-      ? ""
-      : state.errorContext === "download"
-        ? UPDATE_DOWNLOAD_FAILED
-        : state.errorContext === "install"
-          ? UPDATE_INSTALL_FAILED
-          : "";
-    if (failure === note.textContent) return;
-    note.textContent = failure;
-    note.hidden = !failure;
-    if (failure) announce(failure);
-  };
-  button.addEventListener("click", () => {
-    const run =
-      action?.kind === "install"
-        ? bridge.installUpdate()
-        : action?.kind === "download"
-          ? bridge.downloadUpdate()
-          : undefined;
-    run?.then(
-      (result) => render(result.state),
-      (error: unknown) => console.warn("Could not update T3 Code.", error),
-    );
-  });
-  // A pushed state is newer than the initial read, so the read must not overwrite it.
-  let pushed = false;
-  try {
-    bridge.onUpdateState((state) => {
-      pushed = true;
-      render(state);
-    });
-    bridge.getUpdateState().then(
-      (state) => pushed || render(state),
-      (error: unknown) => console.warn("Could not read the desktop update state.", error),
-    );
-  } catch (error) {
-    console.warn("Could not read the desktop update state.", error);
-  }
-}
-
 export function showBootError(error: unknown) {
   console.error("T3 Code failed to start.", error);
   const bootShell = document.getElementById("boot-shell");
@@ -289,9 +217,6 @@ export function showBootError(error: unknown) {
     textContent: "Reload",
   });
   reload.addEventListener("click", () => window.location.reload());
-  const update = element("button", { id: "boot-error-update", type: "button", hidden: true });
-  const updateNote = element("p", { id: "boot-error-update-note", hidden: true });
-  if (bridge) mountUpdateButton(bridge, update, updateNote, announce);
 
   const command = element("code", { textContent: FALLBACK_TRIAGE_COMMAND });
   const copyCommand = element("button", {
@@ -386,8 +311,7 @@ export function showBootError(error: unknown) {
   bootShell.replaceChildren(
     element("div", { id: "boot-error" }, [
       message,
-      element("div", { id: "boot-error-actions" }, [reload, update]),
-      updateNote,
+      element("div", { id: "boot-error-actions" }, [reload]),
       more,
       status,
     ]),

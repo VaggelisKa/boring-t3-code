@@ -113,8 +113,6 @@ export class ConnectionBlockedError extends Schema.TaggedError<ConnectionBlocked
     detail: Schema.String,
     traceId: Schema.optionalKey(Schema.String),
     ...ConnectionFailureFields,
-
-    serverUpdateRequired: Schema.optionalKey(Schema.Boolean),
   },
 ) {
   override get message(): string {

@@ -50,17 +50,6 @@ export class ConnectionResolver extends Context.Service<
     readonly prepare: (
       entry: ConnectionCatalogEntry,
     ) => Effect.Effect<PreparedConnection, ConnectionAttemptError>;
-    /**
-     * Authorizes a socket without the orchestration protocol gate, for hosts
-     * too old to connect normally. Only update RPCs may run over it.
-     */
-    readonly prepareForUpdate: (entry: ConnectionCatalogEntry) => Effect.Effect<
-      {
-        readonly prepared: PreparedConnection;
-        readonly descriptor: ExecutionEnvironmentDescriptor;
-      },
-      ConnectionAttemptError
-    >;
   }
 >()("@t3tools/client-runtime/connection/resolver/ConnectionResolver") {}
 
@@ -246,7 +235,7 @@ export const make = Effect.gen(function* () {
     };
   });
 
-  return ConnectionResolver.of({ prepare, prepareForUpdate: authorize });
+  return ConnectionResolver.of({ prepare });
 });
 
 export const layer = Layer.effect(ConnectionResolver, make);

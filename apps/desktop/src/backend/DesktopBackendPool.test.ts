@@ -50,10 +50,6 @@ function layerPool(labelRef: Ref.Ref<string>): Layer.Layer<DesktopBackendPool.De
           encoded: Stream.empty,
           handleControlForSource: () => Effect.void,
           removeControlSource: () => Effect.void,
-          publishUpdateReport: () => Effect.void,
-          updateRequests: Stream.empty,
-          updateCommits: Stream.empty,
-          updateCancellations: Stream.empty,
         }),
         DesktopBrowserHost.layer,
         Layer.succeed(DesktopBackendConfiguration.DesktopBackendConfiguration, {

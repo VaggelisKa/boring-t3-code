@@ -22,16 +22,7 @@ export function orchestrationProtocolCompatibilityError(
     : new ConnectionBlockedError({
         reason: "unsupported",
         detail: `This client requires a newer server. Update T3 Code on ${descriptor.label} to connect.`,
-        ...(canSelfUpdate(descriptor) ? { serverUpdateRequired: true } : {}),
       });
-}
-
-function canSelfUpdate(descriptor: ExecutionEnvironmentDescriptor): boolean {
-  const { serverSelfUpdate, desktopAppUpdate } = descriptor.capabilities;
-  return (
-    serverSelfUpdate !== undefined &&
-    (serverSelfUpdate !== "desktop-managed" || desktopAppUpdate === true)
-  );
 }
 
 export function appendOrchestrationProtocol(socketUrl: string): string {

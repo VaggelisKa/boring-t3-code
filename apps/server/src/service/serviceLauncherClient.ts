@@ -1,4 +1,3 @@
-import type { ServerSelfUpdateOutcome } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -12,6 +11,7 @@ import {
   SERVICE_LAUNCHER_CONTEXT_ENV,
   type ServiceLauncherChildMessage,
   type ServiceLauncherParentMessage,
+  type ServiceUpdateOutcome,
 } from "./serviceProtocol.ts";
 
 export class ServiceLauncherClientError extends Schema.TaggedError<ServiceLauncherClientError>()(
@@ -102,7 +102,7 @@ export class ServiceLauncherClient extends Context.Service<
       readonly dbPath: string;
     }) => Effect.Effect<string, ServiceLauncherClientError | ServiceLauncherRejectedError>;
     readonly prepareTrial: Effect.Effect<
-      ServerSelfUpdateOutcome | undefined,
+      ServiceUpdateOutcome | undefined,
       ServiceLauncherClientError
     >;
   }

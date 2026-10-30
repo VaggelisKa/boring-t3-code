@@ -18,5 +18,3 @@ export * as EnvironmentRegistry from "./registry.ts";
 export { EnvironmentNotRegisteredError, PlatformEnvironmentRemovalError } from "./registry.ts";
 export * as EnvironmentSupervisor from "./supervisor.ts";
 export * as Wakeups from "./wakeups.ts";
-// Flat so consumers' inferred command types can name it.
-export { OutdatedHostUpdateError } from "./outdatedHostUpdate.ts";

@@ -56,13 +56,10 @@ import {
 
 function unsupportedState(
   entry: ConnectionCatalogEntry,
-): Pick<ConnectionCatalogEntry, "unsupportedReason" | "serverUpdateRequired"> {
-  return {
-    ...(entry.unsupportedReason === undefined
-      ? {}
-      : { unsupportedReason: entry.unsupportedReason }),
-    ...(entry.serverUpdateRequired === true ? { serverUpdateRequired: true } : {}),
-  };
+): Pick<ConnectionCatalogEntry, "unsupportedReason"> {
+  return entry.unsupportedReason === undefined
+    ? {}
+    : { unsupportedReason: entry.unsupportedReason };
 }
 
 export class EnvironmentNotRegisteredError extends Schema.TaggedError<EnvironmentNotRegisteredError>()(
@@ -532,7 +529,7 @@ export const make = Effect.gen(function* () {
     if (pullRequestRoutingConnectionKey(previous) === pullRequestRoutingConnectionKey(next)) {
       return { entry: next, addressesChanged: false };
     }
-    const { unsupportedReason: _reason, serverUpdateRequired: _update, ...rest } = next;
+    const { unsupportedReason: _reason, ...rest } = next;
     return { entry: rest, addressesChanged: true };
   };
 
@@ -1022,7 +1019,7 @@ export const make = Effect.gen(function* () {
           yield* registrations.setEnabled(environmentId, enabled);
         }
         // A cached rejection can outlive a server update.
-        const { unsupportedReason: _reason, serverUpdateRequired: _update, ...rest } = entry;
+        const { unsupportedReason: _reason, ...rest } = entry;
         const next: ConnectionCatalogEntry = { ...(retryUnsupported ? rest : entry), enabled };
         // Update the lease in place so the supervisor keeps its generation and
         // durable streams; `installEntryLocked` would tear it down instead.
@@ -1085,17 +1082,9 @@ export const make = Effect.gen(function* () {
       environmentId,
       Effect.gen(function* () {
         const entry = (yield* SubscriptionRef.get(entries)).get(environmentId);
-        if (
-          entry === undefined ||
-          (entry.unsupportedReason === (error?.message ?? undefined) &&
-            entry.serverUpdateRequired === (error?.serverUpdateRequired ?? undefined))
-        )
+        if (entry === undefined || entry.unsupportedReason === (error?.message ?? undefined))
           return;
-        const {
-          unsupportedReason: _previousReason,
-          serverUpdateRequired: _previousUpdateRequired,
-          ...rest
-        } = entry;
+        const { unsupportedReason: _previousReason, ...rest } = entry;
         // Compatibility pauses connections without changing the user's saved on/off choice.
         const next: ConnectionCatalogEntry =
           error === null
@@ -1103,7 +1092,6 @@ export const make = Effect.gen(function* () {
             : {
                 ...rest,
                 unsupportedReason: error.message,
-                ...(error.serverUpdateRequired === true ? { serverUpdateRequired: true } : {}),
               };
         const lease = (yield* SubscriptionRef.get(serviceScopes)).get(environmentId);
         if (lease !== undefined) {

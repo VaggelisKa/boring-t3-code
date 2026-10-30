@@ -59,9 +59,6 @@ function locate(input: ConnectionDiagnosisInput): Located | null {
   if (input.state.network === "offline" || input.state.phase === "offline") {
     return { hop: "device", cause: "offline" };
   }
-  if (failure?._tag === "ConnectionBlockedError" && failure.serverUpdateRequired) {
-    return { hop: "server", cause: "outdated" };
-  }
   if (failure?.hop !== undefined) {
     return { hop: failure.hop, cause: failure.failureCause ?? null };
   }

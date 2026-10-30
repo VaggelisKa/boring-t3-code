@@ -19,7 +19,54 @@ import {
 } from "../service/pinnedRuntime.ts";
 import { projectLocationFlags, resolveCliAuthConfig } from "./config.ts";
 import * as CliService from "./service.ts";
-import { findWindowsShim, resolveLauncherPath } from "./update.ts";
+
+/** Node preserves argv0's spelling; resolve bare names on PATH to find the launcher symlink. */
+const resolveLauncherPath = Effect.gen(function* () {
+  const path = yield* Path.Path;
+  const fs = yield* FileSystem.FileSystem;
+  const invokedAs = yield* HostProcess.InvokedAs;
+  const cwd = yield* HostProcess.WorkingDirectory;
+  const environment = yield* HostProcess.Environment;
+  const platform = yield* HostProcess.Platform;
+  if (invokedAs.includes("/") || invokedAs.includes("\\")) {
+    return path.resolve(cwd, invokedAs);
+  }
+  const delimiter = platform === "win32" ? ";" : ":";
+  for (const directory of (environment["PATH"] ?? "").split(delimiter)) {
+    if (directory.length === 0) continue;
+    const candidate = path.join(directory, invokedAs);
+    if (yield* fs.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
+      return candidate;
+    }
+  }
+  return undefined;
+});
+
+/** Windows executables see their own path, so find the installer shim by matching t3.cmd targets on PATH. */
+const findWindowsShim = Effect.fn("cli.uninstall.find_windows_shim")(function* (
+  executablePath: string,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const environment = yield* HostProcess.Environment;
+  const candidates = [
+    ...(environment["T3CODE_INSTALL_BIN_DIR"] ? [environment["T3CODE_INSTALL_BIN_DIR"]] : []),
+    ...(environment["PATH"] ?? environment["Path"] ?? "").split(";"),
+  ].filter((entry) => entry.trim().length > 0);
+  for (const directory of candidates) {
+    const shimPath = path.join(directory, "t3.cmd");
+    const contents = yield* fs.readFileString(shimPath).pipe(Effect.option);
+    if (Option.isNone(contents)) continue;
+    const target = windowsShimTarget(contents.value);
+    if (
+      target !== undefined &&
+      path.resolve(target).toLowerCase() === path.resolve(executablePath).toLowerCase()
+    ) {
+      return shimPath;
+    }
+  }
+  return undefined;
+});
 
 export class CliUninstallError extends Schema.TaggedError<CliUninstallError>()(
   "CliUninstallError",

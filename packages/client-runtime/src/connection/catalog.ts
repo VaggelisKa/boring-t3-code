@@ -45,7 +45,6 @@ export interface ConnectionCatalogEntry {
   readonly alternateRoutes?: ReadonlyArray<ConnectionRoute>;
   readonly enabled: boolean;
   readonly unsupportedReason?: string;
-  readonly serverUpdateRequired?: boolean;
 }
 
 export class BearerConnectionCredential extends Schema.TaggedClass<BearerConnectionCredential>()(

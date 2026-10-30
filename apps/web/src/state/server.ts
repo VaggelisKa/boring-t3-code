@@ -16,7 +16,6 @@ import {
   type EnvironmentPresentation,
 } from "@t3tools/client-runtime/connection";
 import { createServerEnvironmentAtoms } from "@t3tools/client-runtime/state/server";
-import { createOutdatedServerUpdateCommand } from "@t3tools/client-runtime/state/outdatedServerUpdate";
 import { createEnvironmentServerConfigsAtom } from "@t3tools/client-runtime/state/shell";
 import { mergeWithDefaultKeybindings } from "@t3tools/shared/keybindings";
 import * as Option from "effect/Option";
@@ -25,7 +24,6 @@ import { AsyncResult, Atom } from "effect/reactivity";
 import { isConnectedWithConfig } from "../components/settings/scopedSettings";
 import { environmentCatalog } from "../connection/catalog";
 import { connectionAtomRuntime } from "../connection/runtime";
-import { environmentAtomList } from "./environmentAtomList";
 import { primaryEnvironmentIdAtom } from "./primaryEnvironment";
 import { environmentSession } from "./session";
 import { reuseProvidersIgnoringCheckedAt } from "./serverProviders.logic";
@@ -36,11 +34,6 @@ export const serverEnvironment = createServerEnvironmentAtoms(connectionAtomRunt
   environmentThemes: true,
   usageLimitsCommand: true,
 });
-export const environmentUpdateStatesAtom = environmentAtomList(
-  "web-environment-update-states",
-  serverEnvironment.updateStateAtom,
-);
-export const updateOutdatedServer = createOutdatedServerUpdateCommand(connectionAtomRuntime);
 export const environmentServerConfigsAtom = createEnvironmentServerConfigsAtom({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
   serverConfigValueAtom: serverEnvironment.configValueAtom,

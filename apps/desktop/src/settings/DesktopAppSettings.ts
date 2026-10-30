@@ -1,4 +1,3 @@
-import { DesktopUpdateChannelSchema, type DesktopUpdateChannel } from "@t3tools/contracts";
 import { fromLenientJson } from "@t3tools/shared/schemaJson";
 import { resolveSymlinkTarget } from "@t3tools/shared/symlink";
 import * as Context from "effect/Context";
@@ -17,7 +16,6 @@ import {
   normalizeLinuxPasswordStorePreference,
   type LinuxPasswordStorePreference,
 } from "../linuxSecretStorage.ts";
-import { desktopUpdateChannelOf } from "@t3tools/shared/cliRelease";
 import { isValidDistroName } from "../wsl/wslPathParsing.ts";
 
 export interface DesktopSettings {
@@ -25,8 +23,6 @@ export interface DesktopSettings {
   readonly linuxPasswordStore: LinuxPasswordStorePreference;
   readonly mainWindowBounds: DesktopWindowBounds | null;
   readonly mainWindowMaximized: boolean;
-  readonly updateChannel: DesktopUpdateChannel;
-  readonly updateChannelConfiguredByUser: boolean;
   readonly wslBackendEnabled: boolean;
   readonly wslDistro: string | null;
   // Requires restart because the pool chooses its primary spec at layer initialization.
@@ -59,8 +55,6 @@ export const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
   linuxPasswordStore: DEFAULT_LINUX_PASSWORD_STORE,
   mainWindowBounds: null,
   mainWindowMaximized: false,
-  updateChannel: "latest",
-  updateChannelConfiguredByUser: false,
   wslBackendEnabled: false,
   wslDistro: null,
   wslOnly: false,
@@ -78,8 +72,6 @@ const DesktopSettingsDocument = Schema.Struct({
   linuxPasswordStore: Schema.optionalKey(Schema.Unknown),
   mainWindowBounds: Schema.optionalKey(Schema.NullOr(DesktopWindowBoundsDocument)),
   mainWindowMaximized: Schema.optionalKey(Schema.Boolean),
-  updateChannel: Schema.optionalKey(DesktopUpdateChannelSchema),
-  updateChannelConfiguredByUser: Schema.optionalKey(Schema.Boolean),
   wslBackendEnabled: Schema.optionalKey(Schema.Boolean),
   wslMode: Schema.optionalKey(Schema.Literals(["local", "wsl"])),
   wslDistro: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -135,9 +127,6 @@ export class DesktopAppSettings extends Context.Service<
       bounds: DesktopWindowBounds,
       isMaximized: boolean,
     ) => Effect.Effect<DesktopSettingsChange, DesktopSettingsWriteError>;
-    readonly setUpdateChannel: (
-      channel: DesktopUpdateChannel,
-    ) => Effect.Effect<DesktopSettingsChange, DesktopSettingsWriteError>;
     readonly setWslBackendEnabled: (
       enabled: boolean,
     ) => Effect.Effect<DesktopSettingsChange, DesktopSettingsWriteError>;
@@ -155,13 +144,6 @@ export class DesktopAppSettings extends Context.Service<
   }
 >()("@t3tools/desktop/settings/DesktopAppSettings") {}
 
-export function resolveDefaultDesktopSettings(appVersion: string): DesktopSettings {
-  return {
-    ...DEFAULT_DESKTOP_SETTINGS,
-    updateChannel: desktopUpdateChannelOf(appVersion),
-  };
-}
-
 function normalizeWslDistro(value: unknown): string | null {
   return typeof value === "string" && isValidDistroName(value) ? value : null;
 }
@@ -170,17 +152,8 @@ export function normalizeMainWindowBounds(value: unknown): DesktopWindowBounds |
   return Option.getOrNull(decodeDesktopWindowBounds(value));
 }
 
-function normalizeDesktopSettingsDocument(
-  parsed: DesktopSettingsDocument,
-  appVersion: string,
-): DesktopSettings {
-  const defaultSettings = resolveDefaultDesktopSettings(appVersion);
+function normalizeDesktopSettingsDocument(parsed: DesktopSettingsDocument): DesktopSettings {
   const mainWindowBounds = normalizeMainWindowBounds(parsed.mainWindowBounds);
-  const parsedUpdateChannel = Option.fromNullishOr(parsed.updateChannel);
-  const isLegacySettings = parsed.updateChannelConfiguredByUser === undefined;
-  const updateChannelConfiguredByUser =
-    parsed.updateChannelConfiguredByUser === true ||
-    (isLegacySettings && Option.contains(parsedUpdateChannel, "nightly"));
 
   const wslBackendEnabled =
     parsed.wslBackendEnabled === true ||
@@ -191,10 +164,6 @@ function normalizeDesktopSettingsDocument(
     linuxPasswordStore: normalizeLinuxPasswordStorePreference(parsed.linuxPasswordStore),
     mainWindowBounds,
     mainWindowMaximized: mainWindowBounds !== null && parsed.mainWindowMaximized === true,
-    updateChannel: updateChannelConfiguredByUser
-      ? Option.getOrElse(parsedUpdateChannel, () => defaultSettings.updateChannel)
-      : defaultSettings.updateChannel,
-    updateChannelConfiguredByUser,
     wslBackendEnabled,
     wslDistro: normalizeWslDistro(parsed.wslDistro),
     wslOnly: parsed.wslOnly === true,
@@ -219,12 +188,6 @@ function toDesktopSettingsDocument(
   }
   if (settings.mainWindowMaximized) {
     document.mainWindowMaximized = true;
-  }
-  if (settings.updateChannel !== defaults.updateChannel) {
-    document.updateChannel = settings.updateChannel;
-  }
-  if (settings.updateChannelConfiguredByUser !== defaults.updateChannelConfiguredByUser) {
-    document.updateChannelConfiguredByUser = settings.updateChannelConfiguredByUser;
   }
   if (settings.wslBackendEnabled !== defaults.wslBackendEnabled) {
     document.wslBackendEnabled = settings.wslBackendEnabled;
@@ -252,19 +215,6 @@ function setMainWindowBounds(
         ...settings,
         mainWindowBounds: bounds,
         mainWindowMaximized: isMaximized,
-      };
-}
-
-function setUpdateChannel(
-  settings: DesktopSettings,
-  requestedChannel: DesktopUpdateChannel,
-): DesktopSettings {
-  return settings.updateChannel === requestedChannel
-    ? settings
-    : {
-        ...settings,
-        updateChannel: requestedChannel,
-        updateChannelConfiguredByUser: true,
       };
 }
 
@@ -309,9 +259,8 @@ function applyWslWindowsFallback(settings: DesktopSettings): DesktopSettings {
 function readSettings(
   fileSystem: FileSystem.FileSystem,
   settingsPath: string,
-  appVersion: string,
 ): Effect.Effect<DesktopSettings> {
-  const defaultSettings = resolveDefaultDesktopSettings(appVersion);
+  const defaultSettings = DEFAULT_DESKTOP_SETTINGS;
 
   return fileSystem.readFileString(settingsPath).pipe(
     Effect.option,
@@ -320,7 +269,7 @@ function readSettings(
         onNone: () => Effect.succeed(defaultSettings),
         onSome: (raw) =>
           decodeDesktopSettingsJson(raw).pipe(
-            Effect.map((parsed) => normalizeDesktopSettingsDocument(parsed, appVersion)),
+            Effect.map(normalizeDesktopSettingsDocument),
             Effect.orElseSucceed(() => defaultSettings),
           ),
       }),
@@ -444,11 +393,7 @@ export const make = Effect.gen(function* () {
   return DesktopAppSettings.of({
     get: SynchronizedRef.get(settingsRef),
     load: Effect.gen(function* () {
-      const settings = yield* readSettings(
-        fileSystem,
-        environment.desktopSettingsPath,
-        environment.appVersion,
-      );
+      const settings = yield* readSettings(fileSystem, environment.desktopSettingsPath);
       return yield* SynchronizedRef.setAndGet(settingsRef, settings);
     }).pipe(Effect.withSpan("desktop.settings.load")),
     setMainWindowBounds: Effect.fn("desktop.settings.setMainWindowBounds")(
@@ -464,11 +409,6 @@ export const make = Effect.gen(function* () {
         return yield* persist((settings) => setMainWindowBounds(settings, bounds, isMaximized));
       },
     ),
-    setUpdateChannel: Effect.fn("desktop.settings.setUpdateChannel")(function* (channel) {
-      yield* Effect.annotateCurrentSpan({ channel });
-
-      return yield* persist((settings) => setUpdateChannel(settings, channel));
-    }),
     setWslBackendEnabled: Effect.fn("desktop.settings.setWslBackendEnabled")(function* (enabled) {
       yield* Effect.annotateCurrentSpan({ enabled });
 
@@ -527,9 +467,6 @@ export const layerTest = (initialSettings: DesktopSettings = DEFAULT_DESKTOP_SET
             return update((settings) => setMainWindowBounds(settings, bounds, isMaximized));
           },
         ),
-        setUpdateChannel: Effect.fn("DesktopAppSettings.setUpdateChannel")(function (channel) {
-          return update((settings) => setUpdateChannel(settings, channel));
-        }),
         setWslBackendEnabled: Effect.fn("DesktopAppSettings.setWslBackendEnabled")(
           function (enabled) {
             return update((settings) => setWslBackendEnabled(settings, enabled));

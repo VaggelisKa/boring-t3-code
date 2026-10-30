@@ -250,7 +250,6 @@ import {
 } from "./preview.ts";
 import {
   ServerConfigStreamEvent,
-  DesktopUpdateCommitInput,
   OtlpEndpointCheckInput,
   ServerPrepareTriageError,
   ServerPrepareTriageInput,
@@ -263,10 +262,6 @@ import {
   ServerRemoveKeybindingInput,
   ServerRemoveKeybindingResult,
   ServerProviderUpdatedPayload,
-  ServerSelfUpdateError,
-  ServerSelfUpdateInput,
-  ServerSelfUpdateProgressEvent,
-  ServerSelfUpdateResult,
   ServerTraceDiagnosticsResult,
   ServerProcessDiagnosticsResult,
   ServerProcessResourceHistoryInput,
@@ -400,9 +395,6 @@ export const WS_METHODS = {
   serverGetConfig: "server.getConfig",
   serverRefreshProviders: "server.refreshProviders",
   serverUpdateProvider: "server.updateProvider",
-  serverUpdateServer: "server.updateServer",
-  serverUpdateServerWithProgress: "server.updateServerWithProgress",
-  serverCommitDesktopUpdate: "server.commitDesktopUpdate",
   serverUpsertKeybinding: "server.upsertKeybinding",
   serverRemoveKeybinding: "server.removeKeybinding",
   serverRunStorageCleanup: "server.runStorageCleanup",
@@ -613,25 +605,6 @@ const WsProviderInstallRemoveRpc = Rpc.make(WS_METHODS.providerInstallRemove, {
   payload: ProviderSetupInput,
   success: ProviderInstallState,
   error: ProviderSetupRpcError,
-});
-
-const WsServerUpdateServerRpc = Rpc.make(WS_METHODS.serverUpdateServer, {
-  payload: ServerSelfUpdateInput,
-  success: ServerSelfUpdateResult,
-  error: Schema.Union([ServerSelfUpdateError, EnvironmentAuthorizationError]),
-});
-
-const WsServerUpdateServerWithProgressRpc = Rpc.make(WS_METHODS.serverUpdateServerWithProgress, {
-  payload: ServerSelfUpdateInput,
-  success: ServerSelfUpdateProgressEvent,
-  error: Schema.Union([ServerSelfUpdateError, EnvironmentAuthorizationError]),
-  stream: true,
-});
-
-const WsServerCommitDesktopUpdateRpc = Rpc.make(WS_METHODS.serverCommitDesktopUpdate, {
-  payload: DesktopUpdateCommitInput,
-  success: ServerSelfUpdateResult,
-  error: Schema.Union([ServerSelfUpdateError, EnvironmentAuthorizationError]),
 });
 
 const WsServerRunStorageCleanupRpc = Rpc.make(WS_METHODS.serverRunStorageCleanup, {
@@ -1647,9 +1620,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderInstallCancelRpc,
   WsProviderInstallSubscribeRpc,
   WsProviderInstallRemoveRpc,
-  WsServerUpdateServerRpc,
-  WsServerUpdateServerWithProgressRpc,
-  WsServerCommitDesktopUpdateRpc,
   WsServerUpsertKeybindingRpc,
   WsServerRemoveKeybindingRpc,
   WsServerRunStorageCleanupRpc,

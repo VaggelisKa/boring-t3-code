@@ -56,34 +56,12 @@ export const ContextMenuItemSchema: Schema.Codec<ContextMenuItemSchemaType> = Sc
   ),
 });
 
-export type DesktopUpdateStatus =
-  | "disabled"
-  | "idle"
-  | "checking"
-  | "up-to-date"
-  | "available"
-  | "downloading"
-  | "downloaded"
-  | "error";
-
 export type DesktopRuntimeArch = "arm64" | "x64" | "other";
 export type DesktopTheme = "light" | "dark" | "system";
-export type DesktopUpdateChannel = "latest" | "nightly";
 export type DesktopAppStageLabel = "Alpha" | "Beta" | "Dev" | "Nightly";
 
-export const DesktopUpdateStatusSchema = Schema.Literals([
-  "disabled",
-  "idle",
-  "checking",
-  "up-to-date",
-  "available",
-  "downloading",
-  "downloaded",
-  "error",
-]);
 export const DesktopRuntimeArchSchema = Schema.Literals(["arm64", "x64", "other"]);
 export const DesktopThemeSchema = Schema.Literals(["light", "dark", "system"]);
-export const DesktopUpdateChannelSchema = Schema.Literals(["latest", "nightly"]);
 export const DesktopAppStageLabelSchema = Schema.Literals(["Alpha", "Beta", "Dev", "Nightly"]);
 
 export interface DesktopAppBranding {
@@ -104,67 +82,6 @@ export interface DesktopRuntimeInfo {
   runningUnderArm64Translation: boolean;
 }
 
-export interface DesktopUpdateState {
-  enabled: boolean;
-  status: DesktopUpdateStatus;
-  channel: DesktopUpdateChannel;
-  currentVersion: string;
-  hostArch: DesktopRuntimeArch;
-  appArch: DesktopRuntimeArch;
-  runningUnderArm64Translation: boolean;
-  availableVersion: string | null;
-  downloadedVersion: string | null;
-  releaseNotes: ReadonlyArray<DesktopUpdateReleaseNote>;
-  omittedReleaseCount: number;
-  downloadPercent: number | null;
-  checkedAt: string | null;
-  message: string | null;
-  errorContext: "check" | "download" | "install" | null;
-  canRetry: boolean;
-  notAppliedVersion?: string;
-}
-
-export interface DesktopUpdateReleaseNote {
-  version: string;
-  items: ReadonlyArray<string>;
-  totalItems: number;
-  /** ISO time from the update feed for the offered version, else `YYYY-MM-DD` from a prerelease version. */
-  releasedAt?: string;
-  /** Generated summaries only: the highlights paragraph. `items` then holds the fixes. */
-  intro?: string;
-  /** Generated summaries only, for example "275 changes from 22 contributors". */
-  stats?: string;
-}
-
-export const DesktopUpdateReleaseNoteSchema = Schema.Struct({
-  version: Schema.String,
-  items: Schema.Array(Schema.String),
-  totalItems: Schema.Number,
-  releasedAt: Schema.optionalKey(Schema.String),
-  intro: Schema.optionalKey(Schema.String),
-  stats: Schema.optionalKey(Schema.String),
-});
-
-export const DesktopUpdateStateSchema = Schema.Struct({
-  enabled: Schema.Boolean,
-  status: DesktopUpdateStatusSchema,
-  channel: DesktopUpdateChannelSchema,
-  currentVersion: Schema.String,
-  hostArch: DesktopRuntimeArchSchema,
-  appArch: DesktopRuntimeArchSchema,
-  runningUnderArm64Translation: Schema.Boolean,
-  availableVersion: Schema.NullOr(Schema.String),
-  downloadedVersion: Schema.NullOr(Schema.String),
-  releaseNotes: Schema.Array(DesktopUpdateReleaseNoteSchema),
-  omittedReleaseCount: Schema.Number,
-  downloadPercent: Schema.NullOr(Schema.Number),
-  checkedAt: Schema.NullOr(Schema.String),
-  message: Schema.NullOr(Schema.String),
-  errorContext: Schema.NullOr(Schema.Literals(["check", "download", "install"])),
-  canRetry: Schema.Boolean,
-  notAppliedVersion: Schema.optionalKey(Schema.String),
-});
-
 export const DesktopCliCommandStateSchema = Schema.Struct({
   supported: Schema.Boolean,
   installedPath: Schema.NullOr(Schema.String),
@@ -174,28 +91,6 @@ export const DesktopCliCommandStateSchema = Schema.Struct({
   launcherPath: Schema.NullOr(Schema.String),
 });
 export type DesktopCliCommandState = typeof DesktopCliCommandStateSchema.Type;
-
-export interface DesktopUpdateActionResult {
-  accepted: boolean;
-  completed: boolean;
-  state: DesktopUpdateState;
-}
-
-export const DesktopUpdateActionResultSchema = Schema.Struct({
-  accepted: Schema.Boolean,
-  completed: Schema.Boolean,
-  state: DesktopUpdateStateSchema,
-});
-
-export interface DesktopUpdateCheckResult {
-  checked: boolean;
-  state: DesktopUpdateState;
-}
-
-export const DesktopUpdateCheckResultSchema = Schema.Struct({
-  checked: Schema.Boolean,
-  state: DesktopUpdateStateSchema,
-});
 
 export const PRIMARY_LOCAL_ENVIRONMENT_ID = "primary";
 
@@ -783,17 +678,6 @@ export interface DesktopBridge {
   getWindowFullscreenState: () => boolean;
   onWindowFullscreenStateChange: (listener: (fullscreen: boolean) => void) => () => void;
   getWindowZoomFactor: () => number;
-  getUpdateState: () => Promise<DesktopUpdateState>;
-  /** `minimumVersion` is a track switch's checked release; nothing older is offered after. */
-  setUpdateChannel: (
-    channel: DesktopUpdateChannel,
-    minimumVersion?: string,
-  ) => Promise<DesktopUpdateState>;
-  checkForUpdate: () => Promise<DesktopUpdateCheckResult>;
-  downloadUpdate: () => Promise<DesktopUpdateActionResult>;
-  /** With a version, installs only that downloaded build. */
-  installUpdate: (expectedVersion?: string) => Promise<DesktopUpdateActionResult>;
-  onUpdateState: (listener: (state: DesktopUpdateState) => void) => () => void;
   cliCommand: {
     getState: () => Promise<DesktopCliCommandState>;
     install: () => Promise<DesktopCliCommandState>;

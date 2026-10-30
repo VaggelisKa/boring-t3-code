@@ -1,13 +1,20 @@
 import { SessionPermissions } from "./SessionPermissions";
 import { ChevronRightIcon, EllipsisIcon } from "lucide-react";
-import { useAtomValue } from "@effect/atom-react";
 import { useState } from "react";
-import { AuthAccessReadScope, AuthAccessWriteScope, AuthEnvironmentMaintainScope, type AuthClientSession, type AuthPairingLink, type DesktopWslState, resolveEnvironmentMachineKind } from "@t3tools/contracts";
+import {
+  AuthAccessReadScope,
+  AuthAccessWriteScope,
+  AuthEnvironmentMaintainScope,
+  type AuthClientSession,
+  type AuthPairingLink,
+  type DesktopWslState,
+  resolveEnvironmentMachineKind,
+} from "@t3tools/contracts";
 import { settlePromise } from "@t3tools/client-runtime/state/runtime";
 import * as Cause from "effect/Cause";
 
 import { isLocalEnvironmentDisabled } from "../../localEnvironment";
-import { applyWslEnableSelection, isWslSettingsRowVisible, resolveLocalVersionStatusLabel } from "./ConnectionsSettings.logic";
+import { applyWslEnableSelection, isWslSettingsRowVisible } from "./ConnectionsSettings.logic";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
 import { searchableSetting } from "./settingsSearch";
@@ -16,7 +23,15 @@ import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { LoadBalancingSettings } from "./LoadBalancingSettings";
 import { PullRequestRoutingSettings } from "./PullRequestRoutingSettings";
 import { ScrollArea } from "../ui/scroll-area";
-import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "../ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { Spinner } from "../ui/spinner";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
@@ -24,34 +39,31 @@ import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Button } from "../ui/button";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
-import { revokeOtherServerClientSessions, revokeServerClientSession, revokeServerPairingLink, type ServerClientSessionRecord } from "~/environments/primary";
+import {
+  revokeOtherServerClientSessions,
+  revokeServerClientSession,
+  revokeServerPairingLink,
+  type ServerClientSessionRecord,
+} from "~/environments/primary";
 import { isDesktopLocalConnectionTarget } from "~/connection/desktopLocal";
-import { resolveServerConfigVersionMismatch, resolveServerSelfUpdateCapability, supportsDesktopAppUpdate } from "~/versionSkew";
 import { authEnvironment } from "~/state/auth";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
 import { desktopWslStateAtom, refreshDesktopWslState } from "~/state/desktopWslState";
-import { useDesktopUpdateState } from "~/state/desktopUpdate";
 import { useEnvironments, usePrimaryEnvironment } from "~/state/environments";
-import { serverEnvironment } from "~/state/server";
-import { ServerUpdateAction, ServerUpdateProgress } from "../ServerUpdateAction";
-import { sortDesktopPairingLinks, summarizeAuthorizedClients, sortDesktopClientSessions, toDesktopPairingLinkRecord, toDesktopClientSessionRecord } from "./ConnectionsSettings.logic";
+import {
+  sortDesktopPairingLinks,
+  summarizeAuthorizedClients,
+  sortDesktopClientSessions,
+  toDesktopPairingLinkRecord,
+  toDesktopClientSessionRecord,
+} from "./ConnectionsSettings.logic";
 import { AuthorizedClientsHeaderAction, PairingClientsList } from "./AuthorizedClientsSettings";
 import { ITEM_ROW_CLASSNAME } from "./itemRows";
 
 // Colons are invalid in distro names, keeping picker sentinels collision-free.
 const BACKEND_VALUE_DEFAULT_WSL = "backend:default-wsl";
 const BACKEND_VALUE_WSL_OFF = "backend:wsl-off";
-
-// Subscribes on its own so desktop download progress does not re-render the page.
-function LocalVersionStatusLabel() {
-  const updateState = useDesktopUpdateState();
-  return (
-    <span className="text-xs text-muted-foreground">
-      {resolveLocalVersionStatusLabel(updateState)}
-    </span>
-  );
-}
 
 /** Environments lists the machines this app connects to; access covers who may reach this one. */
 export function ConnectionsSettings({ view }: { readonly view: "environments" | "access" }) {
@@ -86,10 +98,6 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
   const [pendingWslChange, setPendingWslChange] = useState<PendingWslChange | null>(null);
   const isWslConfirmDialogOpen = pendingWslChange !== null;
   const primaryServerConfig = primaryEnvironment?.serverConfig ?? null;
-  const primaryVersionMismatch = resolveServerConfigVersionMismatch(primaryServerConfig);
-  const primaryServerUpdateState = useAtomValue(
-    serverEnvironment.updateStateAtom(primaryEnvironmentId),
-  );
   const canReadAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessReadScope);
   const canWriteAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessWriteScope);
   const canMaintain = useEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope);
@@ -526,42 +534,12 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
               <SettingsRow
                 title="Version"
                 description={
-                  primaryServerUpdateState.status !== "idle" ? (
-                    <ServerUpdateProgress state={primaryServerUpdateState} />
-                  ) : (
-                    [
-                      primaryServerConfig?.environment.serverVersion ?? null,
-                      primaryEnvironment?.displayUrl ?? null,
-                    ]
-                      .filter((value): value is string => value !== null)
-                      .join(" · ") || "Loading…"
-                  )
-                }
-                control={
-                  primaryVersionMismatch &&
-                  primaryEnvironmentId !== null &&
-                  primaryServerUpdateState.status !== "running" ? (
-                    <ServerUpdateAction
-                      size="sm"
-                      environmentId={primaryEnvironmentId}
-                      serverLabel={
-                        primaryEnvironment ? `${primaryEnvironment.label} server` : "server"
-                      }
-                      selfUpdate={resolveServerSelfUpdateCapability(primaryServerConfig)}
-                      installation={
-                        primaryServerConfig?.environment.capabilities.serverInstallation
-                      }
-                      desktopAppUpdate={supportsDesktopAppUpdate(primaryServerConfig)}
-                      targetVersion={primaryVersionMismatch.clientVersion}
-                      label={
-                        primaryServerUpdateState.status === "failed"
-                          ? "Retry update"
-                          : `Update to ${primaryVersionMismatch.clientVersion}`
-                      }
-                    />
-                  ) : primaryServerUpdateState.status === "idle" && primaryServerConfig ? (
-                    <LocalVersionStatusLabel />
-                  ) : undefined
+                  [
+                    primaryServerConfig?.environment.serverVersion ?? null,
+                    primaryEnvironment?.displayUrl ?? null,
+                  ]
+                    .filter((value): value is string => value !== null)
+                    .join(" · ") || "Loading…"
                 }
               />
             ) : null}
