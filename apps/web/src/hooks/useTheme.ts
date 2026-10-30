@@ -4,7 +4,9 @@ import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
 import * as Schema from "effect/Schema";
 import { useSyncExternalStore } from "react";
 import {
+  DEFAULT_THEME_ID,
   applyThemePalette,
+  themeFollowsSystemByDefault,
   CUSTOM_THEMES_STORAGE_KEY,
   invalidateCustomThemes,
   canonicalThemePreference,
@@ -41,7 +43,7 @@ type DesktopThemeBridge = Pick<DesktopBridge, "setTheme">;
 const STORAGE_KEY = "t3code:theme";
 const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
-  theme: "system",
+  theme: DEFAULT_THEME_ID,
   resolvedTheme: "light",
   systemDark: false,
   followSystem: true,
@@ -144,7 +146,8 @@ function getSystemDark() {
 }
 
 function readStoredFollowSystem(theme: Theme): boolean {
-  if (typeof window === "undefined") return theme === "system";
+  const followsByDefault = themeFollowsSystemByDefault(theme);
+  if (typeof window === "undefined") return followsByDefault;
 
   try {
     const raw = window.localStorage.getItem(THEME_FOLLOW_SYSTEM_STORAGE_KEY);
@@ -152,7 +155,7 @@ function readStoredFollowSystem(theme: Theme): boolean {
     if (raw === "false") return false;
   } catch {}
 
-  return theme === "system";
+  return followsByDefault;
 }
 
 function isThemePreferenceMode(value: string | null): value is ThemePreferenceMode {

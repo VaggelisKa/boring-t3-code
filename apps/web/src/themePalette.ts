@@ -7,7 +7,9 @@ import { Atom } from "effect/reactivity";
 import "culori/css";
 import { converter, parse } from "culori/fn";
 import {
+  ATOM_THEME,
   BUILT_IN_THEMES,
+  DEFAULT_THEME_ID,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -32,7 +34,16 @@ import {
 import { appAtomRegistry, subscribeAtomChanges } from "./rpc/atomRegistry";
 import { primaryServerEnvironmentThemesAtom } from "./state/server";
 
-export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, T3_CHAT_THEME, THEME_COLOR_ROLES };
+export {
+  ATOM_THEME,
+  DEFAULT_THEME_ID,
+  EMBER_THEME,
+  GROVE_THEME,
+  IRIS_THEME,
+  OCEAN_THEME,
+  T3_CHAT_THEME,
+  THEME_COLOR_ROLES,
+};
 export type { ThemeAppearance, ThemeColorRole, ThemeColors, ThemeDefinition, ThemeVariants };
 
 const T3_CHAT_THEME_ID = "t3-chat" as const;
@@ -1632,6 +1643,11 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
   applyContextChipVariables(root, getStandardPaintedThemeColors(appearance ?? "light"));
 }
 
+/** Whether a theme with no stored appearance mode follows the OS. */
+export function themeFollowsSystemByDefault(theme: ThemePreference): boolean {
+  return theme === "system" || theme === DEFAULT_THEME_ID;
+}
+
 export function resolveThemeAppearance(
   theme: ThemePreference,
   systemDark: boolean,
@@ -1640,7 +1656,8 @@ export function resolveThemeAppearance(
   halves?: ThemeHalves | null,
 ): "light" | "dark" {
   const systemAppearance = systemDark ? "dark" : "light";
-  const mode = appearanceMode ?? ((followSystem ?? theme === "system") ? "system" : null);
+  const mode =
+    appearanceMode ?? ((followSystem ?? themeFollowsSystemByDefault(theme)) ? "system" : null);
   if (mode === "system") {
     if (halves?.[systemAppearance]) return systemAppearance;
     const definition = getThemeDefinition(theme);
@@ -1664,7 +1681,8 @@ export function resolveDesktopTheme(
   appearanceMode?: ThemePreferenceMode,
   halves?: ThemeHalves | null,
 ): "light" | "dark" | "system" {
-  const mode = appearanceMode ?? ((followSystem ?? theme === "system") ? "system" : null);
+  const mode =
+    appearanceMode ?? ((followSystem ?? themeFollowsSystemByDefault(theme)) ? "system" : null);
   if (mode === "system") {
     const definition = getThemeDefinition(theme);
     const hasLightMode =
