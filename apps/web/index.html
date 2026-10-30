@@ -51,6 +51,20 @@
         // Keep this small boot-time copy in sync with the built-in palettes so
         // the selected theme is visible before the app has mounted.
         const BUILT_IN_THEME_PALETTES = {
+          atom: {
+            light: {
+              background: "oklch(0.985104 0 0)",
+              foreground: "oklch(0.349645 0.014137 274.503)",
+              accent: "oklch(0.602023 0.215495 270.037)",
+              chrome: "oklch(0.985104 0 0)",
+            },
+            dark: {
+              background: "oklch(0.292519 0.015665 264.297)",
+              foreground: "oklch(0.762093 0.020162 262.987)",
+              accent: "oklch(0.656189 0.182595 262.736)",
+              chrome: "oklch(0.292519 0.015665 264.297)",
+            },
+          },
           "t3-chat": {
             light: {
               background: "oklch(0.982446 0.010114 325.653)",
@@ -132,6 +146,7 @@
           "system",
           "light",
           "dark",
+          "atom",
           "t3-chat",
           "grove",
           "ocean",
@@ -213,7 +228,9 @@
         };
 
         try {
-          const storedTheme = window.localStorage.getItem("t3code:theme");
+          // Matches DEFAULT_THEME_ID in packages/shared/src/themePalettes.ts.
+          const DEFAULT_THEME_ID = "atom";
+          const rawStoredTheme = window.localStorage.getItem("t3code:theme");
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           const LEGACY_THEME_IDS = {
             "t3-chat-dark": "t3-chat",
@@ -222,9 +239,17 @@
             "t3-ember": "ember",
             "t3-iris": "iris",
           };
+          const rawThemeId = LEGACY_THEME_IDS[rawStoredTheme] ?? rawStoredTheme;
+          const storedTheme =
+            rawStoredTheme === "light" ||
+            rawStoredTheme === "dark" ||
+            rawStoredTheme === "system" ||
+            (rawStoredTheme !== null &&
+              (BUILT_IN_THEME_MODES[rawThemeId] || findCustomTheme(rawThemeId)))
+              ? rawStoredTheme
+              : DEFAULT_THEME_ID;
           const isLegacyT3ChatDark = storedTheme === "t3-chat-dark";
-          const themeId =
-            storedTheme === null ? "" : (LEGACY_THEME_IDS[storedTheme] ?? storedTheme);
+          const themeId = LEGACY_THEME_IDS[storedTheme] ?? storedTheme;
           const legacyMode = isLegacyT3ChatDark ? "dark" : null;
           const builtInModes = BUILT_IN_THEME_MODES[themeId] ?? null;
           const customTheme = builtInModes ? null : findCustomTheme(themeId);
@@ -256,7 +281,7 @@
               ? "system"
               : storedFollowSystem === "false"
                 ? preferenceMode
-                : theme === "system"
+                : theme === "system" || theme === DEFAULT_THEME_ID
                   ? "system"
                   : preferenceMode;
           // A valid mix half for the wanted appearance takes over: it decides
