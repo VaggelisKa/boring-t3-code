@@ -89,8 +89,10 @@ export function ConnectionsSettings() {
   const primaryServerConfig = primaryEnvironment?.serverConfig ?? null;
   const canReadAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessReadScope);
   const canWriteAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessWriteScope);
-  const canMaintain = useEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope);
-  const canManageLocalBackend = canMaintain;
+  const canManageLocalBackend = useEnvironmentScope(
+    primaryEnvironmentId,
+    AuthEnvironmentMaintainScope,
+  );
   const authAccessChanges = useEnvironmentQuery(
     canReadAccess && primaryEnvironmentId !== null
       ? authEnvironment.accessChanges({

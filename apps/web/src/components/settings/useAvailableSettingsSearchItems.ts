@@ -27,8 +27,10 @@ export function useAvailableSettingsSearchItems() {
   const hasThreadAutoSettlement =
     getThreadAutoSettlementSearchAvailability(environments).eligibleEnvironmentIds.length > 0;
   const primaryEnvironmentId = usePrimaryEnvironmentId();
-  const canMaintain = useEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope);
-  const canManageLocalBackend = canMaintain;
+  const canManageLocalBackend = useEnvironmentScope(
+    primaryEnvironmentId,
+    AuthEnvironmentMaintainScope,
+  );
   const desktopWsl = useEnvironmentQuery(
     isElectron && canManageLocalBackend ? desktopWslStateAtom : null,
   );

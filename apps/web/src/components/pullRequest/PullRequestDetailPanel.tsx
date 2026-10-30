@@ -47,7 +47,6 @@ import {
 
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
 import { type PullRequestDetailTab, useRightPanelStore } from "~/rightPanelStore";
-import { useEnvironmentSettings } from "~/hooks/useSettings";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { isCommandPaletteOpen } from "~/commandPaletteBus";
@@ -352,10 +351,8 @@ export function PullRequestDetailPanel({
     detail,
   } = usePullRequestDetail(environmentId, reference, matchingListEntry);
   const [selectedTab, setTab] = useState<PullRequestDetailTab>(initialTab);
-  const reviewGuidesEnabled = useEnvironmentSettings(
-    environmentId,
-    (settings) => settings.reviewGuidesEnabled,
-  );
+  // Only Codex and Claude can write review guides, so the Guide tab stays hidden.
+  const reviewGuidesEnabled = false;
   const guideKey = guideRunKey(environmentId, reference);
   const pageTab = useGuideRunStore((state) =>
     tabOnPage && state.pageDetailTab?.key === guideKey ? state.pageDetailTab.tab : null,
