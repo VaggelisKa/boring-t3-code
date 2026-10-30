@@ -33,7 +33,7 @@ Encode the prompt for a URL. In JavaScript, use `encodeURIComponent`.
 ## Open a link
 
 Links copied in the browser point at the server you copied them from. Links copied in the desktop
-app are `t3code://` links that open the desktop app.
+app are `t3code://` links, which open the desktop app on macOS.
 
 - **No `repo`**: the draft opens without a project, on the machine you used last.
 - **`repo`**: the draft opens in your most recently used project for that repository. A fork

@@ -1,6 +1,4 @@
-import type { UsageProviderKind } from "@t3tools/contracts";
-
-import { ProviderDriverKind } from "@t3tools/contracts";
+import { ProviderDriverKind, UsageProviderKind } from "@t3tools/contracts";
 
 type UsageProviderPresentation = {
   readonly label: string;
@@ -8,7 +6,8 @@ type UsageProviderPresentation = {
   readonly driverKind: ProviderDriverKind;
 };
 
-// The contract still names upstream's usage sources; this build only reads Antigravity transcripts.
+// The contract still names upstream's usage sources. This build only reads Antigravity transcripts,
+// but rows from an upstream server still get a band and a filter so totals add up.
 const PROVIDER_PRESENTATION: Partial<Record<UsageProviderKind, UsageProviderPresentation>> = {
   antigravity: {
     label: "Antigravity",
@@ -17,14 +16,17 @@ const PROVIDER_PRESENTATION: Partial<Record<UsageProviderKind, UsageProviderPres
   },
 };
 
-export const PROVIDER_ORDER = Object.keys(PROVIDER_PRESENTATION) as UsageProviderKind[];
+export const PROVIDER_ORDER: readonly UsageProviderKind[] = [
+  "antigravity",
+  ...UsageProviderKind.literals.filter((provider) => provider !== "antigravity"),
+];
 
 export function providerPresentation(provider: UsageProviderKind): UsageProviderPresentation {
   return (
     PROVIDER_PRESENTATION[provider] ?? {
       label: provider,
       color: "var(--muted-foreground)",
-      driverKind: ProviderDriverKind.make(provider),
+      driverKind: ProviderDriverKind.make(provider === "claude" ? "claudeAgent" : provider),
     }
   );
 }

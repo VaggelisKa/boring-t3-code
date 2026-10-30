@@ -31,11 +31,14 @@ export function promptLinkFor(
   if (/^https?:$/.test(window.location.protocol)) {
     return buildNewThreadLink({ prompt: trimmed, ...context, origin: window.location.origin });
   }
-  // The desktop renderer's custom scheme can't be opened from outside, so hand out its deep link.
+  // The renderer origin can't be opened from outside; only macOS builds register this deep-link scheme.
   const link = new URL(
     buildNewThreadLink({ prompt: trimmed, ...context, origin: "https://app.invalid" }),
   );
-  return promptLinkDeepLink(`${link.pathname}${link.search}`);
+  return promptLinkDeepLink(
+    `${link.pathname}${link.search}`,
+    window.location.protocol.slice(0, -1),
+  );
 }
 
 export function promptLinkRepositoryOf(

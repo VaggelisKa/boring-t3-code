@@ -206,6 +206,13 @@ export function UsagePage() {
     refresh,
   } = useUsage(window, selectedEnvironmentIds, hiddenProviders);
   const merged = shown?.merged ?? answeredUsage;
+  const reportedProviders = new Set(providersWithUsage(merged.providers));
+  const filterableProviders = PROVIDER_ORDER.filter(
+    (provider) =>
+      provider === "antigravity" ||
+      reportedProviders.has(provider) ||
+      hiddenProviders.has(provider),
+  );
   const shownWindow = shown?.window ?? window;
   const shownHourly = shownWindow.resolution === "hour";
   const refreshingUsage = isRefreshing && !showingLimits;
@@ -363,6 +370,7 @@ export function UsagePage() {
         <WorkspaceBreadcrumbSeparator />
         <WorkspaceBreadcrumbItem current className="min-w-10">
           <UsageProviderFilter
+            providers={filterableProviders}
             hiddenProviders={hiddenProviders}
             onChange={(next) => updatePreferences({ hiddenProviders: next })}
           />
@@ -1225,15 +1233,17 @@ function UsageEnvironmentFilter({
 }
 
 function UsageProviderFilter({
+  providers,
   hiddenProviders,
   onChange,
 }: {
+  readonly providers: readonly UsageProviderKind[];
   readonly hiddenProviders: ReadonlySet<UsageProviderKind>;
   readonly onChange: (hiddenProviders: readonly UsageProviderKind[]) => void;
 }) {
-  const visible = PROVIDER_ORDER.filter((provider) => !hiddenProviders.has(provider));
+  const visible = providers.filter((provider) => !hiddenProviders.has(provider));
   const label =
-    visible.length === PROVIDER_ORDER.length
+    visible.length === providers.length
       ? "All providers"
       : visible.length === 0
         ? "No providers"
@@ -1254,12 +1264,12 @@ function UsageProviderFilter({
         <MenuCheckboxItem
           checked={hiddenProviders.size === 0}
           closeOnClick={false}
-          onCheckedChange={(checked) => onChange(checked ? [] : PROVIDER_ORDER)}
+          onCheckedChange={(checked) => onChange(checked ? [] : providers)}
         >
           All providers
         </MenuCheckboxItem>
         <MenuSeparator />
-        {PROVIDER_ORDER.map((provider) => (
+        {providers.map((provider) => (
           <MenuCheckboxItem
             key={provider}
             checked={!hiddenProviders.has(provider)}
@@ -1292,7 +1302,7 @@ function UsageSkeleton() {
             <Skeleton className="h-10 w-36" />
             <Skeleton className="h-4 w-32" />
           </div>
-          {PROVIDER_ORDER.map((provider) => (
+          {PROVIDER_ORDER.slice(0, 1).map((provider) => (
             <div key={provider} className="flex flex-col gap-1">
               <div className="flex min-h-5 items-center justify-between gap-4">
                 <span className="flex items-center gap-2">
