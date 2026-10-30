@@ -15,15 +15,14 @@ import {
  * messages the owner must send or dismiss. The thread projection holds this public state; the
  * credentials are derived from the share id with a server key and never stored.
  */
-export const GUEST_SHARE_TTL_MS = 24 * 60 * 60 * 1000;
+
 export const GUEST_MESSAGE_MAX_LENGTH = 4_000;
 export const GUEST_NAME_MAX_LENGTH = 40;
 export const GUEST_PENDING_MESSAGE_LIMIT = 3;
 /** Resolved messages kept so the guest can see what happened to what they sent. */
 export const GUEST_RESOLVED_MESSAGE_LIMIT = 20;
 /** Files a guest can attach to one message, and their total size. */
-export const GUEST_MESSAGE_MAX_ATTACHMENTS = 4;
-export const GUEST_MESSAGE_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
 /** Total size of the files in a share's waiting messages, so a guest cannot fill the disk. */
 export const GUEST_PENDING_ATTACHMENT_BYTES_LIMIT = 20 * 1024 * 1024;
 
@@ -115,34 +114,23 @@ export const GuestSubmitRequest = Schema.Struct({
   text: TrimmedString.check(Schema.isMaxLength(GUEST_MESSAGE_MAX_LENGTH)),
 });
 export type GuestSubmitRequest = typeof GuestSubmitRequest.Type;
-
-export const GUEST_ROUTE_PREFIX = "/api/guest";
-/** The guest page and guest routes name the share they mean with this query parameter. */
-export const GUEST_SHARE_PARAM = "share";
-
-/**
- * One session cookie per share, so a guest keeps every link they joined on a host, and a page
- * for one share never acts with another share's session.
- */
-export const guestSessionCookieName = (shareId: string) => `t3_guest_${shareId}`;
 /** Serves one HTML render in the shared thread: `?share=<share id>&item=<turn item id>`. */
-export const GUEST_RENDER_ROUTE = `${GUEST_ROUTE_PREFIX}/render`;
+
 /** One item of the shared thread, as an expanded row loads it: `?share=<share id>&item=<id>`. */
-export const GUEST_ITEM_ROUTE = `${GUEST_ROUTE_PREFIX}/item`;
+
 /**
  * Older turns of the shared thread, as the owner's "Load earlier turns" pages them:
  * `?share=<share id>&cursor=<history cursor>`.
  */
-export const GUEST_HISTORY_ROUTE = `${GUEST_ROUTE_PREFIX}/history`;
+
 /** Server-sent output frames of one command in the shared thread: `?share=<share id>&item=<id>`. */
-export const GUEST_COMMAND_OUTPUT_ROUTE = `${GUEST_ROUTE_PREFIX}/command-output`;
+
 /**
  * A file in the shared thread or a guest's waiting message: `?share=<share id>&id=<attachment id>`.
  * Images load inline; other files download.
  */
-export const GUEST_ATTACHMENT_ROUTE = `${GUEST_ROUTE_PREFIX}/attachment`;
+
 /**
  * An image file on the host that an agent message in the shared thread embeds:
  * `?share=<share id>&path=<absolute path>`.
  */
-export const GUEST_MEDIA_ROUTE = `${GUEST_ROUTE_PREFIX}/media`;

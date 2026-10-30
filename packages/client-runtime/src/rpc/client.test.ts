@@ -1,6 +1,6 @@
 import {
   EnvironmentId,
-  type RelayClientInstallProgressEvent,
+  type GitActionProgressEvent,
   type ServerLifecycleStreamEvent,
   WS_METHODS,
 } from "@t3tools/contracts";
@@ -26,7 +26,12 @@ import {
 import * as EnvironmentSupervisor from "../connection/supervisor.ts";
 import * as RpcSession from "../rpc/session.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
-import { runStream, subscribe, subscribeDynamicWithSession } from "./client.ts";
+import {
+  RpcPermissionGuard,
+  runStreamGuarded,
+  subscribe,
+  subscribeDynamicWithSession,
+} from "./client.ts";
 
 const TARGET = new PrimaryConnectionTarget({
   environmentId: EnvironmentId.make("environment-1"),
@@ -35,13 +40,18 @@ const TARGET = new PrimaryConnectionTarget({
   wsBaseUrl: "wss://environment.example.test",
 });
 
-const INSTALL_CHECKING: RelayClientInstallProgressEvent = {
-  type: "progress",
-  stage: "checking",
+const COMMIT_STARTED: GitActionProgressEvent = {
+  actionId: "action-1",
+  cwd: "/repo",
+  action: "commit",
+  kind: "phase_started",
+  phase: "commit",
+  label: "Committing",
 };
-const INSTALL_DOWNLOADING: RelayClientInstallProgressEvent = {
-  type: "progress",
-  stage: "downloading",
+const PUSH_STARTED: GitActionProgressEvent = {
+  ...COMMIT_STARTED,
+  phase: "push",
+  label: "Pushing",
 };
 
 function session(client: WsRpcProtocolClient): RpcSession.RpcSession {
@@ -82,31 +92,36 @@ const makeHarness = Effect.fn("TestEnvironmentRpc.makeHarness")(function* () {
 describe("environment RPC", () => {
   it.effect("binds finite streaming commands to one active session", () =>
     Effect.gen(function* () {
-      const firstEvents = yield* Queue.unbounded<RelayClientInstallProgressEvent>();
-      const secondEvents = yield* Queue.unbounded<RelayClientInstallProgressEvent>();
+      const firstEvents = yield* Queue.unbounded<GitActionProgressEvent>();
+      const secondEvents = yield* Queue.unbounded<GitActionProgressEvent>();
       const firstClient = {
-        [WS_METHODS.cloudInstallRelayClient]: () => Stream.fromQueue(firstEvents),
+        [WS_METHODS.gitRunStackedAction]: () => Stream.fromQueue(firstEvents),
       } as unknown as WsRpcProtocolClient;
       const secondClient = {
-        [WS_METHODS.cloudInstallRelayClient]: () => Stream.fromQueue(secondEvents),
+        [WS_METHODS.gitRunStackedAction]: () => Stream.fromQueue(secondEvents),
       } as unknown as WsRpcProtocolClient;
       const { activeSession, supervisor } = yield* makeHarness();
 
       yield* SubscriptionRef.set(activeSession, Option.some(session(firstClient)));
-      const resultFiber = yield* runStream(WS_METHODS.cloudInstallRelayClient, {}).pipe(
+      const resultFiber = yield* runStreamGuarded(WS_METHODS.gitRunStackedAction, {
+        actionId: "action-1",
+        cwd: "/repo",
+        action: "commit",
+      }).pipe(
         Stream.take(2),
         Stream.runCollect,
         Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(RpcPermissionGuard, { authorize: () => Effect.void }),
         Effect.forkChild,
       );
       yield* Effect.yieldNow;
 
-      yield* Queue.offer(firstEvents, INSTALL_CHECKING);
+      yield* Queue.offer(firstEvents, COMMIT_STARTED);
       yield* SubscriptionRef.set(activeSession, Option.some(session(secondClient)));
-      yield* Queue.offer(secondEvents, INSTALL_DOWNLOADING);
-      yield* Queue.offer(firstEvents, INSTALL_DOWNLOADING);
+      yield* Queue.offer(secondEvents, PUSH_STARTED);
+      yield* Queue.offer(firstEvents, PUSH_STARTED);
 
-      expect(yield* Fiber.join(resultFiber)).toEqual([INSTALL_CHECKING, INSTALL_DOWNLOADING]);
+      expect(yield* Fiber.join(resultFiber)).toEqual([COMMIT_STARTED, PUSH_STARTED]);
     }),
   );
 

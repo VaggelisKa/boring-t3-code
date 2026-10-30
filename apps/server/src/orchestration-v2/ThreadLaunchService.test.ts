@@ -1,5 +1,4 @@
 import * as DocumentText from "../provider/DocumentText.ts";
-import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
@@ -9,7 +8,6 @@ import * as ServerConfig from "../config.ts";
 import { createPendingAttachmentId, resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ThreadMessageIntake from "./ThreadMessageIntake.ts";
 import { assert, it, vi } from "@effect/vitest";
-import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import {
   ChatAttachmentId,
   ComposerContextId,
@@ -21,7 +19,6 @@ import {
   ProjectId,
   ProviderDriverKind,
   ProviderInstanceId,
-  OrchestrationV2ThreadProjectionJson,
   ScheduledTaskId,
   type ServerProvider,
   ThreadId,
@@ -37,8 +34,6 @@ import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import * as Stream from "effect/Stream";
-import * as Schema from "effect/Schema";
-import * as SqlClient from "effect/sql/SqlClient";
 import * as TestClock from "effect/testing/TestClock";
 
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
@@ -49,10 +44,7 @@ import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.t
 import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ProviderRegistryMock from "../provider/testUtils/providerRegistryMock.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import * as ScheduledTasks from "../scheduledTasks/ScheduledTaskService.ts";
-import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
-import { ClaudeProviderCapabilitiesV2 } from "./Adapters/ClaudeAdapterV2.ts";
 import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
 import * as CommandReceiptStore from "./CommandReceiptStore.ts";
 import * as EffectOutbox from "./EffectOutbox.ts";
@@ -63,12 +55,10 @@ import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as ThreadManagement from "./ThreadManagementService.ts";
 import * as ThreadTitleRegeneration from "./ThreadTitleRegenerationService.ts";
 import * as ProviderReplayHarness from "./testkit/ProviderReplayHarness.ts";
-import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 
 const projectId = ProjectId.make("project:launch-test");
 const otherProjectId = ProjectId.make("project:launch-other");
-const encodeThreadProjection = Schema.encodeEffect(OrchestrationV2ThreadProjectionJson);
 const modelSelection = {
   instanceId: ProviderInstanceId.make("codex"),
   model: "gpt-5.1-codex",
@@ -98,18 +88,6 @@ const adapter = {
   instanceId: modelSelection.instanceId,
   driver: ProviderDriverKind.make("codex"),
   getCapabilities: () => Effect.succeed(CodexProviderCapabilitiesV2),
-  planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" as const }),
-  openSession: () => Effect.die("provider execution is disabled in launch tests"),
-} as ProviderAdapter.ProviderAdapterV2["Service"];
-
-const claudeModelSelection = {
-  instanceId: ProviderInstanceId.make("claudeAgent"),
-  model: "claude-opus-5-5",
-} as const;
-const claudeAdapter = {
-  instanceId: claudeModelSelection.instanceId,
-  driver: ProviderDriverKind.make("claudeAgent"),
-  getCapabilities: () => Effect.succeed(ClaudeProviderCapabilitiesV2),
   planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" as const }),
   openSession: () => Effect.die("provider execution is disabled in launch tests"),
 } as ProviderAdapter.ProviderAdapterV2["Service"];
@@ -307,166 +285,6 @@ function launchInput(input: {
     creationSource: "web" as const,
   };
 }
-
-it.effect.each(
-  (["new", "existing"] as const).flatMap((target) =>
-    (["user", "agent"] as const).map((createdBy) => ({ target, createdBy })),
-  ),
-)(
-  "attributes $createdBy-configured automations in $target threads without changing their prompt",
-  ({ target, createdBy }) => {
-    const harness = makeHarness();
-    const layerScheduledTasks = ScheduledTasks.layer.pipe(
-      Layer.provide(
-        Layer.mergeAll(
-          harness.layer,
-          NodeCrypto.layer,
-          Scheduler.layer,
-          Layer.mock(SecretRequests.SecretRequests)({}),
-          Layer.mock(RemoteDelegation.RemoteDelegation)({}),
-        ),
-      ),
-    );
-    return Effect.gen(function* () {
-      const tasks = yield* ScheduledTasks.ScheduledTaskService;
-      const launches = yield* ThreadLaunch.ThreadLaunchService;
-      const threads = yield* ThreadManagement.ThreadManagementService;
-      const existing =
-        target === "existing"
-          ? yield* launches.launch(
-              launchInput({ command: "command:existing", thread: "thread:existing" }),
-            )
-          : null;
-      const { task } = yield* tasks.upsert({
-        id: ScheduledTaskId.make("scheduled-task:attribution"),
-        title: "Daily audit",
-        prompt: "Audit performance and crashes.",
-        enabled: false,
-        schedule: { type: "interval", everyMs: 60_000 },
-        projectId,
-        threadId: existing?.threadId ?? null,
-        workspaceStrategy: { type: "root" },
-        modelSelection,
-        runtimeMode: "full-access",
-        interactionMode: "default",
-        createdBy,
-        creationSource: createdBy === "agent" ? "mcp" : "web",
-      });
-      const result = yield* tasks.runNow({ id: task.id });
-      assert.equal(result.task.lastRunStatus, "succeeded");
-      const projectThreads = yield* threads.listProjectThreads({
-        projectId,
-        includeSubagents: false,
-      });
-      const thread =
-        projectThreads.find((candidate) => candidate.id === existing?.threadId) ??
-        projectThreads[0];
-      assert.isDefined(thread);
-      assert.equal(result.threadId, thread!.id);
-      const projection = yield* threads.getThreadProjection(thread!.id);
-      const wire = yield* encodeThreadProjection(projection);
-      assert.equal(wire.messages[0]?.text, task.prompt);
-      assert.equal(wire.messages[0]?.scheduledTaskId, task.id);
-      assert.equal(wire.messages[0]?.createdBy, createdBy);
-      const turnItem = wire.turnItems.find(
-        (item): item is Extract<typeof item, { type: "user_message" }> =>
-          item.type === "user_message",
-      );
-      assert.equal(turnItem?.text, task.prompt);
-      assert.equal(turnItem?.scheduledTaskId, task.id);
-    }).pipe(Effect.provide(Layer.mergeAll(harness.layer, layerScheduledTasks)));
-  },
-);
-
-it.effect(
-  "returns no dispatched thread when sending an automation to a missing thread fails",
-  () => {
-    const harness = makeHarness();
-    const layerScheduledTasks = ScheduledTasks.layer.pipe(
-      Layer.provide(
-        Layer.mergeAll(
-          harness.layer,
-          NodeCrypto.layer,
-          Scheduler.layer,
-          Layer.mock(SecretRequests.SecretRequests)({}),
-        ),
-      ),
-    );
-    return Effect.gen(function* () {
-      const tasks = yield* ScheduledTasks.ScheduledTaskService;
-      const threadId = ThreadId.make("thread:missing");
-      const { task } = yield* tasks.upsert({
-        title: "Daily audit",
-        prompt: "Audit performance and crashes.",
-        enabled: false,
-        schedule: { type: "interval", everyMs: 60_000 },
-        projectId,
-        threadId,
-        workspaceStrategy: { type: "root" },
-        modelSelection,
-        runtimeMode: "full-access",
-        interactionMode: "default",
-        createdBy: "user",
-        creationSource: "web",
-      });
-      const result = yield* tasks.runNow({ id: task.id });
-      assert.equal(result.task.lastRunStatus, "failed");
-      assert.isNull(result.threadId);
-      assert.equal(result.task.threadId, threadId);
-    }).pipe(Effect.provide(Layer.mergeAll(harness.layer, layerScheduledTasks)));
-  },
-);
-
-it.effect("runs a thread-bound automation on the provider the thread uses now", () => {
-  const harness = makeHarness({ adapters: [adapter, claudeAdapter] });
-  const layerScheduledTasks = ScheduledTasks.layer.pipe(
-    Layer.provide(
-      Layer.mergeAll(
-        harness.layer,
-        NodeCrypto.layer,
-        Scheduler.layer,
-        Layer.mock(SecretRequests.SecretRequests)({}),
-      ),
-    ),
-  );
-  return Effect.gen(function* () {
-    const tasks = yield* ScheduledTasks.ScheduledTaskService;
-    const launches = yield* ThreadLaunch.ThreadLaunchService;
-    const threads = yield* ThreadManagement.ThreadManagementService;
-    const launched = yield* launches.launch(
-      launchInput({ command: "command:switched", thread: "thread:switched" }),
-    );
-    const { task } = yield* tasks.upsert({
-      id: ScheduledTaskId.make("scheduled-task:switched"),
-      title: "Hourly check",
-      prompt: "Check on the delegated workers.",
-      enabled: false,
-      schedule: { type: "interval", everyMs: 3_600_000 },
-      projectId,
-      threadId: launched.threadId,
-      workspaceStrategy: { type: "root" },
-      modelSelection,
-      runtimeMode: "full-access",
-      interactionMode: "default",
-      createdBy: "agent",
-      creationSource: "mcp",
-    });
-    yield* threads.dispatch({
-      type: "thread.model-selection.set",
-      commandId: CommandId.make("command:switch-selection"),
-      threadId: launched.threadId,
-      modelSelection: claudeModelSelection,
-    });
-
-    const result = yield* tasks.runNow({ id: task.id });
-    assert.equal(result.task.lastRunStatus, "succeeded");
-    const projection = yield* threads.getThreadProjection(launched.threadId);
-    const message = projection.messages.find((item) => item.scheduledTaskId === task.id);
-    const run = projection.runs.find((item) => item.id === message?.runId);
-    assert.deepStrictEqual(run?.modelSelection, claudeModelSelection);
-    assert.deepStrictEqual(projection.thread.modelSelection, claudeModelSelection);
-  }).pipe(Effect.provide(Layer.mergeAll(harness.layer, layerScheduledTasks)));
-});
 
 it.effect("retains automation and sender attribution while a message waits in the queue", () => {
   const harness = makeHarness({ runSetup: () => Effect.never });
@@ -882,21 +700,7 @@ function scratchHarness() {
             },
           } as never),
   });
-  const layerScheduledTasks = ScheduledTasks.layer.pipe(
-    Layer.provide(
-      Layer.mergeAll(
-        harness.layer,
-        NodeCrypto.layer,
-        Scheduler.layer,
-        Layer.mock(SecretRequests.SecretRequests)({}),
-      ),
-    ),
-  );
-  return {
-    ...harness,
-    claimed,
-    layer: Layer.mergeAll(harness.layer, layerScheduledTasks),
-  };
+  return { ...harness, claimed };
 }
 
 const worktreeStrategy = { type: "worktree", baseRef: "main", startFromOrigin: true } as const;
@@ -916,22 +720,6 @@ const preparationSettled = (threadId: ThreadId) =>
     );
     return yield* threads.getThreadProjection(threadId);
   });
-
-function scheduledTaskInput(id: string, targetProjectId: ProjectId) {
-  return {
-    id: ScheduledTaskId.make(id),
-    title: "Daily summary",
-    prompt: "Summarize the day.",
-    enabled: false,
-    schedule: { type: "interval" as const, everyMs: 60_000 },
-    projectId: targetProjectId,
-    threadId: null,
-    workspaceStrategy: worktreeStrategy,
-    modelSelection,
-    runtimeMode: "full-access" as const,
-    interactionMode: "default" as const,
-  };
-}
 
 it.effect("launches a worktree request for Scratch at the root, in its own folder", () => {
   const harness = scratchHarness();
@@ -972,52 +760,6 @@ it.effect("launches a worktree request for Scratch at the root, in its own folde
     assert.equal(git.thread.worktreePath, "/other-repo-worktrees/feature");
     assert.equal(harness.createWorktree.mock.calls[0]?.[0]?.cwd, "/other-repo");
     assert.deepEqual(harness.claimed, [launched.threadId]);
-  }).pipe(Effect.provide(harness.layer));
-});
-
-it.effect("stores a Scratch scheduled task at the root and keeps worktrees elsewhere", () => {
-  const harness = scratchHarness();
-  return Effect.gen(function* () {
-    const tasks = yield* ScheduledTasks.ScheduledTaskService;
-    const scratch = yield* tasks.upsert(
-      scheduledTaskInput("scheduled-task:scratch-upsert", projectId),
-    );
-    assert.deepEqual(scratch.task.workspaceStrategy, { type: "root" });
-    const git = yield* tasks.upsert(
-      scheduledTaskInput("scheduled-task:git-upsert", otherProjectId),
-    );
-    assert.deepEqual(git.task.workspaceStrategy, worktreeStrategy);
-  }).pipe(Effect.provide(harness.layer));
-});
-
-it.effect("runs a Scratch scheduled task saved with a worktree in its own folder", () => {
-  const harness = scratchHarness();
-  return Effect.gen(function* () {
-    const tasks = yield* ScheduledTasks.ScheduledTaskService;
-    const threads = yield* ThreadManagement.ThreadManagementService;
-    const sql = yield* SqlClient.SqlClient;
-    const { task } = yield* tasks.upsert(
-      scheduledTaskInput("scheduled-task:scratch-stored", projectId),
-    );
-    // Tasks saved before Scratch was coerced still hold a worktree strategy.
-    yield* sql`
-      UPDATE scheduled_tasks
-      SET workspace_strategy_json = ${JSON.stringify(worktreeStrategy)}
-      WHERE task_id = ${task.id}
-    `;
-    const ran = yield* tasks.runNow({ id: task.id });
-    assert.equal(ran.task.lastRunStatus, "succeeded");
-    const [thread] = yield* threads.listProjectThreads({ projectId, includeSubagents: false });
-    assert.isDefined(thread);
-    const projection = yield* preparationSettled(thread!.id);
-    assert.equal(projection.runs[0]?.status, "starting");
-    assert.equal(projection.thread.worktreePath, "/scratch/folder-1");
-    assert.deepEqual(projection.runs[0]?.workspacePreparation, {
-      type: "existing_worktree",
-      worktreePath: "/scratch/folder-1",
-    });
-    assert.equal(harness.runSetup.mock.calls[0]?.[0]?.worktreePath, "/scratch/folder-1");
-    assert.equal(harness.createWorktree.mock.calls.length, 0);
   }).pipe(Effect.provide(harness.layer));
 });
 

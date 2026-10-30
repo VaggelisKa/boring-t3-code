@@ -14,7 +14,6 @@ import * as Schema from "effect/Schema";
 
 import { threadHasUnfinishedWork } from "../orchestration-v2/Orchestrator.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
-import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as ManagedProjectFolders from "./ManagedProjectFolders.ts";
 import * as ProjectService from "./ProjectService.ts";
 
@@ -47,7 +46,6 @@ const make = Effect.gen(function* () {
   const managedFolders = yield* ManagedProjectFolders.ManagedProjectFolders;
   const projects = yield* ProjectService.ProjectService;
   const threads = yield* ThreadManagementService.ThreadManagementService;
-  const scheduledTasks = yield* ScheduledTaskService.ScheduledTaskService;
   const crypto = yield* Crypto.Crypto;
   const path = yield* Path.Path;
 
@@ -109,9 +107,6 @@ const make = Effect.gen(function* () {
     return yield* Effect.uninterruptible(
       Effect.gen(function* () {
         const projectId = yield* createProject(thread.title, folder);
-        yield* scheduledTasks
-          .moveThreadTasks({ threadIds: [...moveSet.keys()], projectId })
-          .pipe(Effect.mapError(fail("Could not move the thread's scheduled tasks.")));
         for (const candidate of moveSet.values()) {
           const commandId = CommandId.make(`scratch-promotion:${yield* randomId}`);
           yield* threads

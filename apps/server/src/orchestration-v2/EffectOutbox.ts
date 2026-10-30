@@ -95,6 +95,7 @@ export const OrchestrationEffectRequestV2 = Schema.Union([
     runId: RunId,
     scopeId: CheckpointScopeId,
   }),
+  // Queued only by older versions, which had scheduled tasks; now a no-op.
   Schema.Struct({
     type: Schema.Literal("scheduled-tasks.cleanup"),
   }),

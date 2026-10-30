@@ -335,10 +335,6 @@ export const parseTailscaleExitNode = (
     }),
   );
 
-export const readTailscaleExitNode = readTailscaleOutput("status", ["status", "--json"]).pipe(
-  Effect.flatMap(parseTailscaleExitNode),
-);
-
 const TailscalePrefsJson = Schema.Struct({
   RunSSH: Schema.optional(Schema.Unknown),
   WantRunning: Schema.optional(Schema.Unknown),

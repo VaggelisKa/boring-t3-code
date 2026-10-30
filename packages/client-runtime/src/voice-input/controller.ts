@@ -12,12 +12,6 @@ export type VoiceInputState = {
   readonly errorAction: "retry" | "settings" | null;
 };
 
-export function voiceInputBlocksSubmission(state: VoiceInputState): boolean {
-  return (
-    state.phase === "preparing" || state.phase === "recording" || state.phase === "transcribing"
-  );
-}
-
 export type VoiceDraftSnapshot = {
   readonly ownerKey: string;
   readonly text: string;

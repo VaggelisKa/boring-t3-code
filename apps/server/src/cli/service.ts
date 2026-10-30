@@ -8,9 +8,9 @@ import { Command, Flag, GlobalFlag, Prompt } from "effect/cli";
 import { FetchHttpClient } from "effect/http";
 
 import packageJson from "../../package.json" with { type: "json" };
-import * as BootService from "../cloud/bootService.ts";
-import * as ServiceProtection from "../cloud/serviceProtection.ts";
-import { compareExactServiceVersions } from "../cloud/serviceProtocol.ts";
+import * as BootService from "../service/bootService.ts";
+import * as ServiceProtection from "../service/serviceProtection.ts";
+import { compareExactServiceVersions } from "../service/serviceProtocol.ts";
 import type * as ServerConfig from "../config.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { projectLocationFlags, resolveCliAuthConfig } from "./config.ts";

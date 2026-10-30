@@ -14,17 +14,11 @@ import {
   ProjectId,
   RunId,
   RuntimeRequestId,
-  ScheduledTaskId,
   SecretRef,
   ThreadId,
   TrimmedNonEmptyString,
   TurnItemId,
 } from "./baseSchemas.ts";
-import {
-  ScheduledTaskRunStatus,
-  ScheduledTaskSchedule,
-  ScheduledTaskUpsertSchedule,
-} from "./scheduledTask.ts";
 import { ProviderInteractionMode, ProviderRequestKind, RuntimeMode } from "./providerPolicy.ts";
 import { PullRequestState } from "./pullRequest.ts";
 import {
@@ -54,21 +48,6 @@ export const OrchestratorMcpClientRequestId = TrimmedNonEmptyString.check(Schema
     ),
   )
   .annotate({ description: "Reuse it to retry the same call. A new call gets a new key." });
-
-// OpenCode 1.15 serializes nested MCP union objects as JSON strings; decode that form at the boundary.
-const OrchestratorMcpScheduleFromJsonString = Schema.fromJsonString(
-  ScheduledTaskUpsertSchedule,
-).annotate({
-  description: "JSON-text schedule. Prefer the object form.",
-});
-
-const OrchestratorMcpSchedule = Schema.Union([
-  ScheduledTaskUpsertSchedule,
-  OrchestratorMcpScheduleFromJsonString,
-]).annotate({
-  description:
-    "Trigger: {type:'interval',everyMs}, {type:'fixed_time',timeOfDay,weekdays?}, or {type:'webhook'}.",
-});
 
 const OrchestratorMcpTargetOptionsFromRecord = Schema.Record(
   Schema.String,
@@ -643,87 +622,10 @@ export const OrchestratorMcpCapabilitiesResult = Schema.Struct({
     batchThreadCreation: Schema.Boolean,
     threadManagement: Schema.Boolean,
     incrementalThreadRead: Schema.Boolean,
-    scheduledTasks: Schema.Boolean,
     maxBatchThreads: Schema.Number,
   }),
 });
 export type OrchestratorMcpCapabilitiesResult = typeof OrchestratorMcpCapabilitiesResult.Type;
-
-export const OrchestratorMcpScheduleTaskInput = Schema.Struct({
-  environmentId: OrchestratorMcpEnvironmentTarget,
-  projectId: OrchestratorMcpProjectTarget,
-  prompt: OrchestratorMcpPrompt,
-  schedule: OrchestratorMcpSchedule,
-  title: Schema.optional(OrchestratorMcpTitle),
-  enabled: Schema.optional(Schema.Boolean.annotate({ description: "Default true." })),
-  bindToCurrentThread: Schema.optional(
-    Schema.Boolean.annotate({
-      description: "Default true: runs post in this thread. False: new thread per run.",
-    }),
-  ),
-  clientRequestId: Schema.optional(OrchestratorMcpClientRequestId),
-});
-export type OrchestratorMcpScheduleTaskInput = typeof OrchestratorMcpScheduleTaskInput.Type;
-
-/** `schedule_task` creates a task, or updates one when `scheduledTaskId` is given. */
-export const OrchestratorMcpSaveScheduledTaskInput = Schema.Struct({
-  ...OrchestratorMcpScheduleTaskInput.fields,
-  scheduledTaskId: Schema.optional(ScheduledTaskId),
-  prompt: Schema.optional(OrchestratorMcpPrompt),
-  schedule: Schema.optional(OrchestratorMcpSchedule),
-});
-export type OrchestratorMcpSaveScheduledTaskInput =
-  typeof OrchestratorMcpSaveScheduledTaskInput.Type;
-
-export const OrchestratorMcpScheduledTask = Schema.Struct({
-  scheduledTaskId: ScheduledTaskId,
-  title: Schema.String,
-  prompt: Schema.String,
-  enabled: Schema.Boolean,
-  projectId: ProjectId,
-  boundThreadId: Schema.NullOr(ThreadId),
-  schedule: ScheduledTaskSchedule,
-  nextRunAt: Schema.NullOr(IsoDateTime),
-  lastRunStatus: ScheduledTaskRunStatus,
-  webhookUrl: Schema.optional(Schema.String).annotate({
-    description:
-      "Public URL for the sender. Absent: no T3 Connect tunnel. The user must enable T3 Connect remote access.",
-  }),
-  webhookSignature: Schema.optional(Schema.Literals(["none", "set"])),
-});
-export type OrchestratorMcpScheduledTask = typeof OrchestratorMcpScheduledTask.Type;
-
-export const OrchestratorMcpScheduleTaskResult = OrchestratorMcpScheduledTask;
-export type OrchestratorMcpScheduleTaskResult = typeof OrchestratorMcpScheduleTaskResult.Type;
-
-export const OrchestratorMcpListScheduledTasksInput = Schema.Struct({
-  environmentId: OrchestratorMcpEnvironmentTarget,
-  projectId: Schema.optional(
-    ProjectId.annotate({
-      description: "Default: your thread's project, or all outside a thread.",
-    }),
-  ),
-});
-export type OrchestratorMcpListScheduledTasksInput =
-  typeof OrchestratorMcpListScheduledTasksInput.Type;
-
-export const OrchestratorMcpListScheduledTasksResult = Schema.Struct({
-  tasks: Schema.Array(OrchestratorMcpScheduledTask),
-});
-export type OrchestratorMcpListScheduledTasksResult =
-  typeof OrchestratorMcpListScheduledTasksResult.Type;
-
-export const OrchestratorMcpUpdateScheduledTaskInput = Schema.Struct({
-  environmentId: OrchestratorMcpEnvironmentTarget,
-  scheduledTaskId: ScheduledTaskId,
-  prompt: Schema.optional(OrchestratorMcpPrompt),
-  title: Schema.optional(OrchestratorMcpTitle),
-  schedule: Schema.optional(OrchestratorMcpSchedule),
-  enabled: Schema.optional(Schema.Boolean),
-  bindToCurrentThread: Schema.optional(Schema.Boolean),
-});
-export type OrchestratorMcpUpdateScheduledTaskInput =
-  typeof OrchestratorMcpUpdateScheduledTaskInput.Type;
 
 export const OrchestratorMcpRequestSecretInput = Schema.Struct({
   label: TrimmedNonEmptyString.annotate({
@@ -836,20 +738,6 @@ export const OrchestratorMcpEnvironmentUnlinkResult = Schema.Struct({
 });
 export type OrchestratorMcpEnvironmentUnlinkResult =
   typeof OrchestratorMcpEnvironmentUnlinkResult.Type;
-
-export const OrchestratorMcpDeleteScheduledTaskInput = Schema.Struct({
-  environmentId: OrchestratorMcpEnvironmentTarget,
-  scheduledTaskId: ScheduledTaskId,
-});
-export type OrchestratorMcpDeleteScheduledTaskInput =
-  typeof OrchestratorMcpDeleteScheduledTaskInput.Type;
-
-export const OrchestratorMcpDeleteScheduledTaskResult = Schema.Struct({
-  scheduledTaskId: ScheduledTaskId,
-  deleted: Schema.Boolean,
-});
-export type OrchestratorMcpDeleteScheduledTaskResult =
-  typeof OrchestratorMcpDeleteScheduledTaskResult.Type;
 
 export class OrchestratorMcpFailure extends Schema.TaggedError<OrchestratorMcpFailure>()(
   "OrchestratorMcpFailure",

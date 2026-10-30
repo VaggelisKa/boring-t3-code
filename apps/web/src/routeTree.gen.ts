@@ -11,9 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as PairRouteImport } from './routes/pair'
-import { Route as GuestRouteImport } from './routes/guest'
 import { Route as ConnectAgentRouteImport } from './routes/connect-agent'
-import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as ProjectsProjectKeyRouteImport } from './routes/projects.$projectKey'
@@ -27,7 +25,6 @@ import { Route as ChatSettingsStorageRouteImport } from './routes/_chat.settings
 import { Route as ChatSettingsSourceControlRouteImport } from './routes/_chat.settings.source-control'
 import { Route as ChatSettingsSnapShotRouteImport } from './routes/_chat.settings.snap-shot'
 import { Route as ChatSettingsSecretsRouteImport } from './routes/_chat.settings.secrets'
-import { Route as ChatSettingsScheduledTasksRouteImport } from './routes/_chat.settings.scheduled-tasks'
 import { Route as ChatSettingsProvidersRouteImport } from './routes/_chat.settings.providers'
 import { Route as ChatSettingsProjectsRouteImport } from './routes/_chat.settings.projects'
 import { Route as ChatSettingsOpenSourceLicensesRouteImport } from './routes/_chat.settings.open-source-licenses'
@@ -60,19 +57,9 @@ const PairRoute = PairRouteImport.update({
   path: '/pair',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GuestRoute = GuestRouteImport.update({
-  id: '/guest',
-  path: '/guest',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ConnectAgentRoute = ConnectAgentRouteImport.update({
   id: '/connect-agent',
   path: '/connect-agent',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConnectRoute = ConnectRouteImport.update({
-  id: '/connect',
-  path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -140,12 +127,6 @@ const ChatSettingsSecretsRoute = ChatSettingsSecretsRouteImport.update({
   path: '/secrets',
   getParentRoute: () => ChatSettingsRoute,
 } as any)
-const ChatSettingsScheduledTasksRoute =
-  ChatSettingsScheduledTasksRouteImport.update({
-    id: '/scheduled-tasks',
-    path: '/scheduled-tasks',
-    getParentRoute: () => ChatSettingsRoute,
-  } as any)
 const ChatSettingsProvidersRoute = ChatSettingsProvidersRouteImport.update({
   id: '/providers',
   path: '/providers',
@@ -257,9 +238,7 @@ const ChatEnvironmentIdThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
-  '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
-  '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
   '/new': typeof ChatNewRoute
@@ -288,7 +267,6 @@ export interface FileRoutesByFullPath {
   '/settings/open-source-licenses': typeof ChatSettingsOpenSourceLicensesRoute
   '/settings/projects': typeof ChatSettingsProjectsRoute
   '/settings/providers': typeof ChatSettingsProvidersRoute
-  '/settings/scheduled-tasks': typeof ChatSettingsScheduledTasksRoute
   '/settings/secrets': typeof ChatSettingsSecretsRoute
   '/settings/snap-shot': typeof ChatSettingsSnapShotRoute
   '/settings/source-control': typeof ChatSettingsSourceControlRoute
@@ -297,9 +275,7 @@ export interface FileRoutesByFullPath {
   '/settings/worktrees': typeof ChatSettingsWorktreesRoute
 }
 export interface FileRoutesByTo {
-  '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
-  '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
   '/new': typeof ChatNewRoute
@@ -329,7 +305,6 @@ export interface FileRoutesByTo {
   '/settings/open-source-licenses': typeof ChatSettingsOpenSourceLicensesRoute
   '/settings/projects': typeof ChatSettingsProjectsRoute
   '/settings/providers': typeof ChatSettingsProvidersRoute
-  '/settings/scheduled-tasks': typeof ChatSettingsScheduledTasksRoute
   '/settings/secrets': typeof ChatSettingsSecretsRoute
   '/settings/snap-shot': typeof ChatSettingsSnapShotRoute
   '/settings/source-control': typeof ChatSettingsSourceControlRoute
@@ -340,9 +315,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_chat': typeof ChatRouteWithChildren
-  '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
-  '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
   '/_chat/new': typeof ChatNewRoute
@@ -372,7 +345,6 @@ export interface FileRoutesById {
   '/_chat/settings/open-source-licenses': typeof ChatSettingsOpenSourceLicensesRoute
   '/_chat/settings/projects': typeof ChatSettingsProjectsRoute
   '/_chat/settings/providers': typeof ChatSettingsProvidersRoute
-  '/_chat/settings/scheduled-tasks': typeof ChatSettingsScheduledTasksRoute
   '/_chat/settings/secrets': typeof ChatSettingsSecretsRoute
   '/_chat/settings/snap-shot': typeof ChatSettingsSnapShotRoute
   '/_chat/settings/source-control': typeof ChatSettingsSourceControlRoute
@@ -384,9 +356,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/connect'
     | '/connect-agent'
-    | '/guest'
     | '/pair'
     | '/welcome'
     | '/new'
@@ -415,7 +385,6 @@ export interface FileRouteTypes {
     | '/settings/open-source-licenses'
     | '/settings/projects'
     | '/settings/providers'
-    | '/settings/scheduled-tasks'
     | '/settings/secrets'
     | '/settings/snap-shot'
     | '/settings/source-control'
@@ -424,9 +393,7 @@ export interface FileRouteTypes {
     | '/settings/worktrees'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/connect'
     | '/connect-agent'
-    | '/guest'
     | '/pair'
     | '/welcome'
     | '/new'
@@ -456,7 +423,6 @@ export interface FileRouteTypes {
     | '/settings/open-source-licenses'
     | '/settings/projects'
     | '/settings/providers'
-    | '/settings/scheduled-tasks'
     | '/settings/secrets'
     | '/settings/snap-shot'
     | '/settings/source-control'
@@ -466,9 +432,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_chat'
-    | '/connect'
     | '/connect-agent'
-    | '/guest'
     | '/pair'
     | '/welcome'
     | '/_chat/new'
@@ -498,7 +462,6 @@ export interface FileRouteTypes {
     | '/_chat/settings/open-source-licenses'
     | '/_chat/settings/projects'
     | '/_chat/settings/providers'
-    | '/_chat/settings/scheduled-tasks'
     | '/_chat/settings/secrets'
     | '/_chat/settings/snap-shot'
     | '/_chat/settings/source-control'
@@ -509,9 +472,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
-  ConnectRoute: typeof ConnectRoute
   ConnectAgentRoute: typeof ConnectAgentRoute
-  GuestRoute: typeof GuestRoute
   PairRoute: typeof PairRoute
   WelcomeRoute: typeof WelcomeRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
@@ -533,25 +494,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PairRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/guest': {
-      id: '/guest'
-      path: '/guest'
-      fullPath: '/guest'
-      preLoaderRoute: typeof GuestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/connect-agent': {
       id: '/connect-agent'
       path: '/connect-agent'
       fullPath: '/connect-agent'
       preLoaderRoute: typeof ConnectAgentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/connect': {
-      id: '/connect'
-      path: '/connect'
-      fullPath: '/connect'
-      preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_chat': {
@@ -643,13 +590,6 @@ declare module '@tanstack/react-router' {
       path: '/secrets'
       fullPath: '/settings/secrets'
       preLoaderRoute: typeof ChatSettingsSecretsRouteImport
-      parentRoute: typeof ChatSettingsRoute
-    }
-    '/_chat/settings/scheduled-tasks': {
-      id: '/_chat/settings/scheduled-tasks'
-      path: '/scheduled-tasks'
-      fullPath: '/settings/scheduled-tasks'
-      preLoaderRoute: typeof ChatSettingsScheduledTasksRouteImport
       parentRoute: typeof ChatSettingsRoute
     }
     '/_chat/settings/providers': {
@@ -822,7 +762,6 @@ interface ChatSettingsRouteChildren {
   ChatSettingsOpenSourceLicensesRoute: typeof ChatSettingsOpenSourceLicensesRoute
   ChatSettingsProjectsRoute: typeof ChatSettingsProjectsRoute
   ChatSettingsProvidersRoute: typeof ChatSettingsProvidersRoute
-  ChatSettingsScheduledTasksRoute: typeof ChatSettingsScheduledTasksRoute
   ChatSettingsSecretsRoute: typeof ChatSettingsSecretsRoute
   ChatSettingsSnapShotRoute: typeof ChatSettingsSnapShotRoute
   ChatSettingsSourceControlRoute: typeof ChatSettingsSourceControlRoute
@@ -851,7 +790,6 @@ const ChatSettingsRouteChildren: ChatSettingsRouteChildren = {
   ChatSettingsOpenSourceLicensesRoute: ChatSettingsOpenSourceLicensesRoute,
   ChatSettingsProjectsRoute: ChatSettingsProjectsRoute,
   ChatSettingsProvidersRoute: ChatSettingsProvidersRoute,
-  ChatSettingsScheduledTasksRoute: ChatSettingsScheduledTasksRoute,
   ChatSettingsSecretsRoute: ChatSettingsSecretsRoute,
   ChatSettingsSnapShotRoute: ChatSettingsSnapShotRoute,
   ChatSettingsSourceControlRoute: ChatSettingsSourceControlRoute,
@@ -888,9 +826,7 @@ const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
-  ConnectRoute: ConnectRoute,
   ConnectAgentRoute: ConnectAgentRoute,
-  GuestRoute: GuestRoute,
   PairRoute: PairRoute,
   WelcomeRoute: WelcomeRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,

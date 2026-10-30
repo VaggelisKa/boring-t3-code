@@ -9,7 +9,6 @@ export const THREAD_DETAILS_ITEMS = [
   { id: "gitActions", label: "Git actions", defaultVisible: true },
   { id: "changes", label: "Changes", defaultVisible: true },
   { id: "servers", label: "Servers", defaultVisible: true },
-  { id: "automations", label: "Automations", defaultVisible: true },
   { id: "lineage", label: "Lineage", defaultVisible: true },
   { id: "usage", label: "Usage", defaultVisible: false },
 ] as const;

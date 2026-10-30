@@ -9,8 +9,6 @@ const CONNECT_AUTHORIZE_PATH = "/connect";
 
 export const DEFAULT_HOSTED_APP_URL = "https://app.t3.codes";
 
-export const CONNECT_OAUTH_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
-
 export interface ConnectAuthorizeRequest {
   readonly state: string;
   readonly challenge: string;
@@ -55,23 +53,4 @@ function parseLoopbackPort(value: string): number | null {
 /** Must match the loopback redirect URI registered on the Clerk CLI OAuth app. */
 export function connectLoopbackRedirectUri(port: number): string {
   return `http://127.0.0.1:${port}${CONNECT_LOOPBACK_CALLBACK_PATH}`;
-}
-
-export function buildConnectClerkAuthorizeUrl(input: {
-  readonly authorizationEndpoint: string;
-  readonly clientId: string;
-  readonly redirectUri: string;
-  readonly scopes: ReadonlyArray<string>;
-  readonly state: string;
-  readonly challenge: string;
-}): string {
-  const url = new URL(input.authorizationEndpoint);
-  url.searchParams.set("client_id", input.clientId);
-  url.searchParams.set("redirect_uri", input.redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", input.scopes.join(" "));
-  url.searchParams.set("state", input.state);
-  url.searchParams.set("code_challenge", input.challenge);
-  url.searchParams.set("code_challenge_method", "S256");
-  return url.toString();
 }

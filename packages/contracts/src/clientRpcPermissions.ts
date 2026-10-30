@@ -54,16 +54,10 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
 
   // Starts an agent session on this environment that can read its logs and database.
   [WS_METHODS.serverPrepareTriage]: AuthOrchestrationOperateScope,
-  [WS_METHODS.scheduledTasksUpsert]: AuthOrchestrationOperateScope,
-  [WS_METHODS.scheduledTasksSetEnabled]: AuthOrchestrationOperateScope,
-  [WS_METHODS.scheduledTasksDelete]: AuthOrchestrationOperateScope,
-  [WS_METHODS.scheduledTasksRunNow]: AuthOrchestrationOperateScope,
-  [WS_METHODS.scheduledTasksRotateWebhookToken]: AuthOrchestrationOperateScope,
   [ORCHESTRATION_V2_WS_METHODS.stopWorkflow]: AuthOrchestrationOperateScope,
   // Force stop kills agent processes, as Stop on a terminal does.
   [ORCHESTRATION_V2_WS_METHODS.forceStopThread]: AuthOrchestrationOperateScope,
   // A guest link hands thread access to someone outside, like a pairing link.
-  [WS_METHODS.guestShareCreate]: AuthAccessWriteScope,
   [WS_METHODS.peerLinksLink]: AuthAccessWriteScope,
   [WS_METHODS.peerLinksUnlink]: AuthAccessWriteScope,
   // A link lets every agent here reach the other environment: Settings' bar.
