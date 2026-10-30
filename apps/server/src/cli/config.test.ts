@@ -670,7 +670,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         cwd: process.cwd(),
         baseDir,
         ...derivedPaths,
-        host: undefined,
+        host: "127.0.0.1",
         staticDir: resolved.staticDir,
         devUrl: undefined,
         noBrowser: true,
@@ -863,7 +863,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       }),
   );
 
-  it.effect("listens on private networks only under the service launcher with no host set", () =>
+  it.effect("listens on loopback unless a host is set, even under the service launcher", () =>
     Effect.gen(function* () {
       const { join } = yield* Path.Path;
       const baseDir = join(NodeOS.tmpdir(), "t3-cli-config-service-host");
@@ -894,7 +894,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         );
 
       expect(yield* resolveHost({ connected: true })).toEqual({
-        host: "0.0.0.0",
+        host: "127.0.0.1",
         privateNetworkOnly: true,
       });
       // `service.env` reaches the server as its environment.
@@ -905,7 +905,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       // Without the launcher's IPC channel the context was inherited, e.g. by
       // `t3 serve` started from an agent inside the service.
       expect(yield* resolveHost({ connected: false })).toEqual({
-        host: undefined,
+        host: "127.0.0.1",
         privateNetworkOnly: undefined,
       });
     }),

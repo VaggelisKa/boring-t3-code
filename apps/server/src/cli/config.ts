@@ -409,9 +409,8 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
     Option.fromUndefinedOr(env.host),
     Option.fromUndefinedOr(bootstrap?.host),
   );
-  // A background service exists to be reached from other devices, so it
-  // listens on private networks unless `service.env` sets `T3CODE_HOST`.
-  // Clients then learn its LAN address and prefer it over T3 Connect.
+  // Boring T3 Code listens on loopback only unless a host is set explicitly,
+  // including when it runs as a background service.
   const privateNetworkOnly =
     Option.isNone(explicitHost) &&
     mode === "web" &&
@@ -419,9 +418,7 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
       Effect.map((launcher) => launcher.managed),
       Effect.orElseSucceed(() => false),
     ));
-  const host = Option.getOrElse(explicitHost, () =>
-    privateNetworkOnly ? "0.0.0.0" : mode === "desktop" ? "127.0.0.1" : undefined,
-  );
+  const host = Option.getOrElse(explicitHost, () => "127.0.0.1");
   const logLevel = Option.getOrElse(cliLogLevel, () => env.logLevel);
 
   const otel = yield* OtelEnvironment.load;
