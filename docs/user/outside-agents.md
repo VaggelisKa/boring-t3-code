@@ -8,9 +8,7 @@ signs in once, and you choose what it may do.
 
 ## Get the MCP URL
 
-In **Settings → Environments**, open a saved environment's menu and choose
-**Copy MCP URL**. The URL is the environment's address followed by `/mcp`, for
-example:
+The MCP URL is the environment's address followed by `/mcp`, for example:
 
 ```text
 http://localhost:3773/mcp
@@ -26,7 +24,7 @@ The page names the agent, and approval returns to a `localhost` address on the
 computer that opened the page.
 
 Only approve a sign-in you just started. To approve, enter a pairing code from
-**Settings → Sharing & access** or from `t3 auth pairing create` on the host. A
+**Settings → Access** or from `t3 auth pairing create` on the host. A
 browser already signed in to the environment with permission to manage access
 can approve without a code.
 
@@ -90,6 +88,6 @@ result that always includes the thread id.
 
 ## Remove an agent
 
-Approved agents appear under **Settings → Sharing & access** like other clients.
+Approved agents appear under **Settings → Access** like other clients.
 Revoke one there to cut off its access immediately. A sign-in lasts 30 days;
 after that the agent asks you to approve it again.

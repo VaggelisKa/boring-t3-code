@@ -1,7 +1,6 @@
 import { AuthEnvironmentMaintainScope } from "@t3tools/contracts";
 
 import { isElectron } from "~/env";
-import { isLocalEnvironmentDisabled } from "~/localEnvironment";
 import { desktopWslStateAtom } from "~/state/desktopWslState";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
@@ -29,8 +28,7 @@ export function useAvailableSettingsSearchItems() {
     getThreadAutoSettlementSearchAvailability(environments).eligibleEnvironmentIds.length > 0;
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const canMaintain = useEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope);
-  const localEnvironmentDisabled = isLocalEnvironmentDisabled() === true;
-  const canManageLocalBackend = !localEnvironmentDisabled && canMaintain;
+  const canManageLocalBackend = canMaintain;
   const desktopWsl = useEnvironmentQuery(
     isElectron && canManageLocalBackend ? desktopWslStateAtom : null,
   );
@@ -38,7 +36,6 @@ export function useAvailableSettingsSearchItems() {
     isWslSettingsRowVisible({ state: desktopWsl.data, error: desktopWsl.error }) === true;
 
   return filterAvailableSettingsSearchItems({
-    localEnvironmentDisabled,
     hasEnvironment,
     hasProviderSettingsEnvironment,
     canManageLocalBackend,

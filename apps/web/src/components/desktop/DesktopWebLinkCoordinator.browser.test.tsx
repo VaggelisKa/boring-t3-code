@@ -8,7 +8,6 @@ const state = vi.hoisted(() => ({
   projects: [] as never[],
   navigate: vi.fn(async (): Promise<void> => undefined),
   openScratchProject: vi.fn(async () => null),
-  localEnvironmentDisabled: false,
 }));
 
 // One connected primary environment that can read pull requests. Its project list and
@@ -21,17 +20,11 @@ vi.mock(import("@tanstack/react-router"), async (original) => ({
 vi.mock(import("../../state/environments"), async (original) => ({
   ...(await original()),
   usePrimaryEnvironmentId: () => "local" as EnvironmentId,
-  usePrimaryEnvironment: (() =>
-    state.localEnvironmentDisabled
-      ? null
-      : {
-          environmentId: "local",
-          connection: { phase: "connected" },
-          serverConfig: {},
-        }) as never,
-}));
-vi.mock(import("../../localEnvironment"), () => ({
-  isLocalEnvironmentDisabled: () => state.localEnvironmentDisabled,
+  usePrimaryEnvironment: (() => ({
+    environmentId: "local",
+    connection: { phase: "connected" },
+    serverConfig: {},
+  })) as never,
 }));
 vi.mock(import("../../state/server"), async (original) => {
   const { Atom } = await import("effect/reactivity");
@@ -96,7 +89,6 @@ const pullRequestView = {
 
 function setup() {
   vi.clearAllMocks();
-  state.localEnvironmentDisabled = false;
   state.projects = [];
   appAtomRegistry.set(discoverySettled, false);
 }
@@ -145,11 +137,4 @@ it("holds a launch PR link until project discovery settles, then opens the PR vi
   });
   expect(state.navigate).toHaveBeenCalledExactlyOnceWith(pullRequestView);
   expect(state.openScratchProject).not.toHaveBeenCalled();
-});
-
-it("does not hold a PR link for project discovery that never settles with Local environment disabled", async () => {
-  setup();
-  state.localEnvironmentDisabled = true;
-  await using _coordinator = await mount(pullRequestUrl);
-  await vi.waitFor(() => expect(state.openScratchProject).toHaveBeenCalledOnce());
 });

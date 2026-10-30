@@ -853,10 +853,7 @@ export const make = Effect.gen(function* () {
     return window;
   }).pipe(Effect.withSpan("desktop.window.revealOrCreateMain"));
 
-  const waitingForBackend = Effect.gen(function* () {
-    if (yield* Ref.get(backendReadyRef)) return false;
-    return (yield* desktopSettings.get).localEnvironmentEnabled;
-  });
+  const waitingForBackend = Ref.get(backendReadyRef).pipe(Effect.map((ready) => !ready));
 
   const createMainIfBackendReady = Effect.gen(function* () {
     if (yield* Ref.get(desktopState.quitting)) return;

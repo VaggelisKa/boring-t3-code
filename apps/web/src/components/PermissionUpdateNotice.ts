@@ -48,7 +48,7 @@ function showPermissionNotice(
     timeout: 0,
     onClose: persistDismissal,
     actionProps: {
-      children: "Open Sharing & access",
+      children: "Open Access",
       onClick: () => {
         dismiss();
         void router.navigate({ to: "/settings/access" });

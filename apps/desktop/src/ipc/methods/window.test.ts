@@ -247,23 +247,6 @@ describe("pickProjectFavicon", () => {
       ]);
     }),
   );
-
-  it.effect("does not open a picker while the local environment is off", () =>
-    Effect.gen(function* () {
-      const pickFiles = vi.fn(() => Effect.succeed(["/pictures/icon.png"]));
-      const result = yield* pickProjectFavicon.handler("/project").pipe(
-        Effect.provide(
-          pickerLayer(pickFiles, {
-            ...DesktopAppSettings.DEFAULT_DESKTOP_SETTINGS,
-            localEnvironmentEnabled: false,
-          }),
-        ),
-      );
-
-      assert.strictEqual(result, null);
-      assert.strictEqual(pickFiles.mock.calls.length, 0);
-    }),
-  );
 });
 
 it.effect.skipIf(HostProcess.Platform.defaultValue() === "win32")(
