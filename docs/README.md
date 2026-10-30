@@ -46,3 +46,4 @@ source alone does not explain. Most code changes do not need an internal documen
 
 - [Development and local builds](./operations/development.md)
 - [Observability](./operations/observability.md)
+- [Upstream sync](./operations/upstream-sync.md)
