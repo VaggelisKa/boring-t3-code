@@ -6,8 +6,10 @@ describe("mcpToolPresentation", () => {
     "javascript:alert(1)",
     "file:///tmp/logo.png",
     "not a URL",
-    "https://example.com/" + "x".repeat(4096),
-  ])("ignores an invalid logo %s", (iconUrl) => {
+    "https://example.com/logo.png",
+    "https://www.google.com/s2/favicons?domain=firecrawl.dev&sz=64",
+    "data:text/html,<script>alert(1)</script>",
+  ])("ignores a logo that is not an inline image: %s", (iconUrl) => {
     expect(
       mcpToolPresentation({
         serverName: "weather",

@@ -1,7 +1,8 @@
 # Product usage data
 
-Boring T3 Code sends no product usage events, account identifiers, or crash reports anywhere.
-`T3CODE_TELEMETRY_ENABLED` has no effect.
+Boring T3 Code sends no product usage events or account identifiers anywhere. T3 Connect relay
+tracing and mobile crash reports belong to features this fork is removing; until they are gone,
+`T3CODE_TELEMETRY_ENABLED=false` still turns relay tracing off.
 
 ## Export diagnostics to your own receiver
 

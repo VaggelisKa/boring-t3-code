@@ -19,6 +19,13 @@ export function normalizeMcpHttpUrl(value: unknown): string | undefined {
   }
 }
 
+// Logos are never fetched from the network: a remote logo URL (often a favicon
+// service) would tell a third party which tools are in use.
+function normalizeMcpInlineImageUrl(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 65_536) return undefined;
+  return value.startsWith("data:image/") ? value : undefined;
+}
+
 export function mcpToolPresentation(input: {
   readonly toolName?: unknown;
   readonly serverName?: unknown;
@@ -49,11 +56,11 @@ export function mcpToolPresentation(input: {
     normalizeMcpText(server.replace(/[_-]+/gu, " ")) ??
     server;
   const logoUrl =
-    normalizeMcpHttpUrl(input.iconUrl) ??
-    normalizeMcpHttpUrl(source && Reflect.get(source, "logoUrl"));
+    normalizeMcpInlineImageUrl(input.iconUrl) ??
+    normalizeMcpInlineImageUrl(source && Reflect.get(source, "logoUrl"));
   const logoUrlDark =
-    normalizeMcpHttpUrl(input.iconUrlDark) ??
-    normalizeMcpHttpUrl(source && Reflect.get(source, "logoUrlDark"));
+    normalizeMcpInlineImageUrl(input.iconUrlDark) ??
+    normalizeMcpInlineImageUrl(source && Reflect.get(source, "logoUrlDark"));
   const icon = logoUrl
     ? { _tag: "themed-logo" as const, logoUrl, ...(logoUrlDark ? { logoUrlDark } : {}) }
     : undefined;

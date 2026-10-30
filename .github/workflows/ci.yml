@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -42,13 +42,17 @@ jobs:
       - name: Typecheck
         run: vp run -r --concurrency-limit 2 typecheck
 
-      # Server preview tests and web browser tests drive a headless Chromium.
+      # The desktop secret helper links libsecret; server preview and web browser
+      # tests drive a headless Chromium.
+      - name: Install system test dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
         working-directory: apps/web
 
-      - name: Server and package tests
-        run: vp test run apps/server packages
+      - name: Server, desktop and package tests
+        run: vp test run apps/server apps/desktop packages
 
       - name: Web tests
         run: vp test run --passWithNoTests --project unit --project browser
