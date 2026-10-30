@@ -63,15 +63,11 @@ Linux needs systemd user services. Setup enables lingering so T3 Code starts at
 boot and keeps running after logout. If this needs administrator permission,
 setup prints a recovery command before changing the service.
 
-macOS starts the service when you log in and stops it when you log out. Keep the
-Mac logged in and awake for unattended remote access. Installing over SSH while
+macOS starts the service when you log in and stops it when you log out. Installing over SSH while
 nobody is logged in at the Mac's screen can fail at the final start step; the
 service is still installed and will start at the next login.
 
 Windows background services are not supported.
-
-T3 Connect can offer service installation during setup, but the two are managed
-separately. Signing out of T3 Connect does not stop or uninstall the service.
 
 ## Keep the server responsive when agents use all memory
 
@@ -85,8 +81,8 @@ t3 service protect
 ```
 
 It shows the system settings it will change, asks before applying them, and
-then asks for your sudo password. If the machine runs Tailscale or SSH, it
-also offers to protect them, so you can still reach the machine. Memory
+then asks for your sudo password. If the machine runs SSH, it
+also offers to protect it, so you can still reach the machine. Memory
 protection takes effect at once. The server's protection from the kernel's
 out-of-memory killer takes effect after `t3 service restart`. `t3 service status` reports whether
 the protection is in place, and `t3 service protect --undo` removes it.
@@ -133,8 +129,7 @@ Downloads, it may need Full Disk Access for the `t3` executable listed in
 T3 Code removes superseded internal history on its own while it runs; your
 conversations are kept. Databases created before this shrank automatically
 still hold the freed space on disk until a one-time offline repair returns it
-and turns on automatic shrinking. Settings > Maintenance (web and desktop) or
-Settings > Maintenance (mobile) suggests the repair when at least 1 GiB can be
+and turns on automatic shrinking. **Settings > Maintenance** suggests the repair when at least 1 GiB can be
 reclaimed.
 
 Run `t3 doctor` on the machine that hosts the environment. It reports the

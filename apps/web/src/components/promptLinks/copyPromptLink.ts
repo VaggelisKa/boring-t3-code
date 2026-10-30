@@ -8,16 +8,16 @@ import {
   buildNewThreadLink,
   parsePromptLinkRepository,
   PROMPT_LINK_MAX_PROMPT_LENGTH,
+  promptLinkDeepLink,
   type PromptLinkRepository,
 } from "@t3tools/shared/promptLinks";
 
 import { type ComposerThreadTarget, useComposerDraftStore } from "~/composerDraftStore";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
-import { configuredHostedAppUrl } from "~/hostedPairing";
 
 import { stackedThreadToast, toastManager } from "../ui/toast";
 
-/** A shareable link to a prompt on the hosted app, or null when the prompt cannot fit in one. */
+/** A link to a prompt on this server, or null when the prompt cannot fit in one. */
 export function promptLinkFor(
   prompt: string,
   context?: {
@@ -28,7 +28,14 @@ export function promptLinkFor(
 ): string | null {
   const trimmed = prompt.trim();
   if (trimmed.length === 0 || trimmed.length > PROMPT_LINK_MAX_PROMPT_LENGTH) return null;
-  return buildNewThreadLink({ prompt: trimmed, ...context, origin: configuredHostedAppUrl() });
+  if (/^https?:$/.test(window.location.protocol)) {
+    return buildNewThreadLink({ prompt: trimmed, ...context, origin: window.location.origin });
+  }
+  // The desktop renderer's custom scheme can't be opened from outside, so hand out its deep link.
+  const link = new URL(
+    buildNewThreadLink({ prompt: trimmed, ...context, origin: "https://app.invalid" }),
+  );
+  return promptLinkDeepLink(`${link.pathname}${link.search}`);
 }
 
 export function promptLinkRepositoryOf(

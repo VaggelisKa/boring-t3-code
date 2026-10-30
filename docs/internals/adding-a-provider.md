@@ -10,11 +10,11 @@ whether a turn runs. This page lists the decisions and evidence a new driver nee
 - **ACP agents** start as [ACP Registry](../user/providers-acp.md) entries, which follow the ACP
   spec with no per-agent handling. An agent gets a dedicated driver only when it needs behavior the
   spec does not cover, and then it is a small flavor over the
-  [shared ACP adapter](../../packages/provider-acp/src/server/adapter.ts), like Grok
-  and Antigravity. Never add agent-id checks to the generic registry adapter.
+  [shared ACP adapter](../../packages/provider-acp/src/server/adapter.ts), like
+  Antigravity. Never add agent-id checks to the generic registry adapter.
 - **Other protocols** get a native adapter that implements
-  [`ProviderAdapterV2`](../../packages/provider-core/src/server/ProviderAdapter.ts), like Codex,
-  Claude, Cursor, OpenCode, Pi, and Muse.
+  [`ProviderAdapterV2`](../../packages/provider-core/src/server/ProviderAdapter.ts). This fork
+  ships none; upstream T3 Code's Codex and Claude drivers are examples.
 
 Provider-specific behavior stays in the adapter and driver. Orchestration and clients read
 capabilities, never the driver kind.
@@ -26,8 +26,7 @@ capabilities, never the driver kind.
   falls back, for example to portable context handoff for forks. A capability left on that fails
   at runtime is a bug.
 - **Permission modes.** Offer only modes the provider enforces natively, through
-  `supportedRuntimeModes` in the provider presentation ([Grok](../../packages/provider-grok/src/server/status.ts)
-  and [Pi](../../packages/provider-pi/src/server/status.ts) are examples). Do not imitate a missing
+  `supportedRuntimeModes` in the provider presentation. Do not imitate a missing
   mode by answering approvals in T3: T3's check is weaker than the agent's own enforcement. The
   server runs an unoffered stored mode as Supervised
   ([`RuntimePolicy.ts`](../../apps/server/src/orchestration-v2/RuntimePolicy.ts)).
@@ -103,13 +102,13 @@ produce catches them.
 
 ## Where a driver plugs in
 
-A provider lives in its own `packages/provider-<name>` package, with
-[Pi](../../packages/provider-pi) as the reference. Drivers not moved yet still live in
-[`provider/Drivers`](../../apps/server/src/provider/Drivers).
+A provider lives in its own `packages/provider-<name>` package, with the
+[ACP registry](../../packages/provider-acp-registry) as the reference. Drivers not moved yet, such
+as Antigravity, still live in [`provider/Drivers`](../../apps/server/src/provider/Drivers).
 
 - **Package exports.** `./settings` holds the instance settings schema, built with
   `makeProviderSettingsSchema` from contracts. `./client` exports a `ProviderClientDefinition`
-  (label, settings schema, plain-data icon, badge) and must stay browser- and React Native-safe.
+  (label, settings schema, plain-data icon, badge) and must stay browser-safe.
   `./server` exports the `ProviderDriver` and its adapter driver. `./testing` exposes internals
   the server's replay testkits drive; testkits that need the orchestrator stay in the server.
   Settings live in `providerInstances`; new providers are off by default.
@@ -121,7 +120,7 @@ A provider lives in its own `packages/provider-<name>` package, with
   adapter driver. Also its position in the [status order](../../apps/server/src/provider/providerStatusCache.ts), a
   compatibility policy in [`model-manifest.json`](../../apps/server/src/provider/model-manifest.json)
   (bump `updatedAt`; see [model manifest](./model-manifest.md)), and its default model in contracts.
-- **Client registration:** the client definition in the web and mobile provider registries, and
+- **Client registration:** the client definition in the web provider registry, and
   settings search terms. Clients draw the package icon; do not add a per-driver icon branch.
 - **Docs:** a `docs/user/providers-<name>.md` guide in the product's voice, a row in the
   [install](../user/install.md#providers) table, and any provider difference that changes the

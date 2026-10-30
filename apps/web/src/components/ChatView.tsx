@@ -3391,10 +3391,10 @@ export default function ChatView(props: ChatViewProps) {
                                     : isRevertingCheckpoint
                                       ? "Rewinding conversation"
                                       : threadDetailLoading
-                                          ? "Messages loading"
-                                          : worktreeSetupBlocksSend
-                                            ? "Preparing worktree"
-                                            : projectCloneSendBlockReason
+                                        ? "Messages loading"
+                                        : worktreeSetupBlocksSend
+                                          ? "Preparing worktree"
+                                          : projectCloneSendBlockReason
                               }
                               isPreparingWorktree={isPreparingWorktree && !sendQueuesBehindSetup}
                               bannerItems={isDraftHeroState ? [] : composerBannerItems}

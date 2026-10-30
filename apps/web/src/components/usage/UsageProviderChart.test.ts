@@ -11,9 +11,7 @@ describe("buildPeriodColumns", () => {
         day: "2026-08-01",
         costUsd: 42,
         totalTokens: 420,
-        byProvider: new Map([
-          ["antigravity" as const, { costUsd: 10, totalTokens: 100 }],
-        ]),
+        byProvider: new Map([["antigravity" as const, { costUsd: 10, totalTokens: 100 }]]),
       },
     ],
     [

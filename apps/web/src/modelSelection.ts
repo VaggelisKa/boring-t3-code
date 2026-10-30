@@ -272,10 +272,7 @@ export function resolveAppModelSelectionForInstance(
   if (resolvedSelection) {
     return resolvedSelection;
   }
-  if (
-    resolutionOptions?.preserveUnavailableSelection &&
-    entry.driverKind === "antigravity"
-  ) {
+  if (resolutionOptions?.preserveUnavailableSelection && entry.driverKind === "antigravity") {
     const unavailableSelection = normalizeCustomModelSlug(selectedModel);
     const hiddenModels = readInstanceModelPreferences(settings, entry.instanceId).hiddenModels;
     if (

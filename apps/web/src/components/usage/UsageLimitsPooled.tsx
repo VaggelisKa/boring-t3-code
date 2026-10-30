@@ -574,12 +574,7 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
         {label}
       </h2>
       {windows.map((window) => (
-        <PoolWindowCard
-          key={`${window.kind}:${window.id}`}
-          pool={window}
-          color={color}
-          now={now}
-        />
+        <PoolWindowCard key={`${window.kind}:${window.id}`} pool={window} color={color} now={now} />
       ))}
     </section>
   );

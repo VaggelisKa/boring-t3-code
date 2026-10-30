@@ -176,12 +176,7 @@ function getTraitsSectionVisibility(input: {
     showFastMode,
     showContextWindow,
     showAgent,
-    hasAnyControls:
-      showEffort ||
-      showThinking ||
-      showFastMode ||
-      showContextWindow ||
-      showAgent,
+    hasAnyControls: showEffort || showThinking || showFastMode || showContextWindow || showAgent,
   };
 }
 

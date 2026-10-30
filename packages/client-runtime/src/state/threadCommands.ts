@@ -3,20 +3,12 @@ import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
-import {
-  WS_METHODS,
-  type EnvironmentId,
-  type OrchestrationV2ShellSnapshot,
-} from "@t3tools/contracts";
+import { type EnvironmentId, type OrchestrationV2ShellSnapshot } from "@t3tools/contracts";
 
 import { createOptimisticThreadLifecycle } from "./threadLifecycle.ts";
 import * as DateTime from "effect/DateTime";
 
-import {
-  createAtomCommandScheduler,
-  createEnvironmentCommand,
-  createEnvironmentRpcCommand,
-} from "./runtime.ts";
+import { createAtomCommandScheduler, createEnvironmentCommand } from "./runtime.ts";
 import {
   type InterruptThreadTurnInput,
   archiveThread,

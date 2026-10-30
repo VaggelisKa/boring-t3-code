@@ -244,11 +244,6 @@ describe("instance-scoped model selection", () => {
 
   describe.each([
     {
-      driverName: "opencode",
-      availableModel: "opencode/big-pickle",
-      missingModel: "opencode/kimi-k3",
-    },
-    {
       driverName: "antigravity",
       availableModel: "gemini-3.1-pro",
       missingModel: "gemini-3.1-pro-high",
@@ -358,31 +353,6 @@ describe("instance-scoped model selection", () => {
 
     expect(state.selectedModel).toBe("gpt-5.6-sol");
     expect(dispatch.modelOptionsForDispatch).toBeUndefined();
-  });
-
-  it("preserves an explicit draft OpenCode selection while the catalog is empty", () => {
-    const instanceId = ProviderInstanceId.make("opencode_work");
-    const driver = ProviderDriverKind.make("opencode");
-    const draftSelection = createModelSelection(instanceId, "openrouter/kimi-k3", [
-      { id: "variant", value: "max" },
-      { id: "agent", value: "build" },
-    ]);
-    const providers = [provider({ provider: driver, instanceId, models: [] })];
-    const state = deriveEffectiveComposerModelState({
-      draft: {
-        activeProvider: instanceId,
-        modelSelectionByProvider: { [instanceId]: draftSelection },
-      },
-      providers,
-      selectedProvider: driver,
-      selectedInstanceId: instanceId,
-      threadModelSelection: null,
-      projectModelSelection: null,
-      settings: settingsWithProviderInstances(),
-    });
-
-    expect(state.selectedModel).toBe("openrouter/kimi-k3");
-    expect(state.modelOptions?.[instanceId]).toEqual(draftSelection.options);
   });
 
   it("preserves the Antigravity model in drafts and existing threads after sign-out", () => {
@@ -533,36 +503,6 @@ describe("instance-scoped model selection", () => {
         ANTIGRAVITY_DEFAULT_MODEL,
       ),
     ).toEqual([]);
-  });
-
-  it("preserves saved options through dispatch when the model is absent from the catalog", () => {
-    const instanceId = ProviderInstanceId.make("opencode");
-    const driver = ProviderDriverKind.make("opencode");
-    const providers = [provider({ provider: driver, instanceId, models: ["opencode/big-pickle"] })];
-    const saved = createModelSelection(instanceId, "opencode/kimi-k3", [
-      { id: "variant", value: "max" },
-      { id: "agent", value: "build" },
-    ]);
-    const state = deriveEffectiveComposerModelState({
-      draft: null,
-      providers,
-      selectedProvider: driver,
-      selectedInstanceId: instanceId,
-      threadModelSelection: saved,
-      projectModelSelection: null,
-      settings: settingsWithProviderInstances(),
-    });
-    const dispatch = getComposerProviderState({
-      provider: driver,
-      model: state.selectedModel,
-      models: providers[0]!.models,
-      modelOptions: state.modelOptions?.[instanceId],
-      planModeEnabled: false,
-    });
-
-    expect(
-      createModelSelection(instanceId, state.selectedModel, dispatch.modelOptionsForDispatch),
-    ).toEqual(saved);
   });
 
   it("keeps a custom-instance draft model while dropping unsupported options", () => {
@@ -724,7 +664,6 @@ describe("default model settings and new-thread composer parity", () => {
   it.each([
     ["hidden", "claudeAgent", "claude-opus-5", "claude-opus-5-5", "medium"],
     ["visible", "claudeAgent", "claude-opus-5", "claude-opus-5", "max"],
-    ["unavailable", "opencode", "openrouter/kimi-k3", "openrouter/kimi-k3", null],
   ] as const)(
     "resolves the %s default and its traits",
     (visibility, kind, model, expectedModel, effort) => {

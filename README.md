@@ -1,147 +1,127 @@
-# T3 Code
+# Boring T3 Code
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+A local-only fork of [T3 Code](https://github.com/pingdotgg/t3code), the GUI for coding agents.
+It runs a server on your computer and gives you a chat UI for your agents, in your browser or in
+an Electron desktop app.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, T3 Code can control them.
+What makes it boring:
 
-## "Wait, what are you selling me?"
+- Your code and prompts go only to the model provider you choose, and git operations go only to
+  your own git host. There is no telemetry, no T3 cloud relay or tunnel, no hosted web app and no
+  mobile app.
+- The server listens on `localhost` only.
+- Two providers: **Antigravity** and **GitHub Copilot** (through ACP).
+- Nothing updates itself. You update by pulling and rebuilding.
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+## Requirements
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+- [Node.js](https://nodejs.org) 26.12.1, the version in `package.json` `engines`.
+- [pnpm](https://pnpm.io) 12.14.0. With Node's Corepack, `corepack enable` picks it up from
+  `packageManager`.
+- Git.
+- An Antigravity account or a GitHub Copilot subscription. You can set either up from the app
+  after it starts.
 
-## Installation
-
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build, OpenCode, and Antigravity. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
-> - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
-
-### Command line
+The repository uses [Vite+](https://viteplus.dev). Its `vp` command comes with the dependencies,
+so `pnpm exec vp …` always works. To type plain `vp`, install it globally:
 
 ```bash
-curl -fsSL https://t3.codes/install.sh | sh
+# macOS and Linux
+curl -fsSL https://vite.plus | bash
 ```
-
-On Windows, in PowerShell:
 
 ```powershell
-irm https://t3.codes/install.ps1 | iex
+# Windows
+irm https://vite.plus/ps1 | iex
 ```
 
-Then run `t3` to start the server and open the local web app. `t3 service install` keeps it running in the background, `t3 update` moves to a newer release, and `t3 --help` has the full reference.
+## Build and run
 
-To try it once without installing, run `npx t3@latest` instead.
+```bash
+git clone https://github.com/VaggelisKa/boring-t3-code
+cd boring-t3-code
+vp i
+vp run build
+vp run start
+```
+
+`vp run start` starts the server and opens the web UI in your browser, at
+`http://localhost:3773` unless that port is taken. To start it in a project directory, run the
+server binary with a path:
+
+```bash
+node apps/server/dist/bin.mjs ~/code/my-project
+```
+
+`node apps/server/dist/bin.mjs --help` lists the other commands, such as `serve` to start without
+opening a browser and `service install` to keep the server running in the background on macOS
+and Linux ([details](./docs/user/background-service.md)).
+
+App data lives in `~/.t3` by default. Pass `--base-dir <path>` to keep a separate copy.
 
 ### Desktop app
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
+Build and run the Electron app from the checkout:
 
 ```bash
-winget install T3Tools.T3Code
+vp run build:desktop
+vp run start:desktop
 ```
 
-#### Windows (`scoop`)
+To make an installer for your machine, run one of these. Builds are unsigned and land in
+`release/`:
 
 ```bash
-scoop install extras/t3code
+vp run dist:desktop:dmg     # macOS
+vp run dist:desktop:linux   # Linux AppImage
+vp run dist:desktop:win     # Windows
 ```
 
-#### macOS (Homebrew)
+Linux and Windows builds need extra tools. See
+[Desktop artifacts](./docs/operations/development.md#desktop-artifacts).
+
+### Update
 
 ```bash
-brew install --cask t3-code
+git pull
+vp i
+vp run build
 ```
 
-#### Debian, Ubuntu (`.deb`)
+Then restart the server or the desktop app.
 
-Download the `.deb` from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), then:
+## Set up a provider
+
+Open **Settings → Providers**.
+
+- **Antigravity:** enable it, then use **Install Antigravity** and **Sign in with Google**. No
+  CLI is needed. [More](./docs/user/providers-antigravity.md)
+- **GitHub Copilot:** add it from the ACP registry list, then sign in.
+  [More](./docs/user/providers-acp.md)
+
+## Develop
 
 ```bash
-sudo apt install ./T3-Code-*.deb
+vp run dev
 ```
 
-#### Arch Linux (AUR)
+This starts the server and the web dev server with hot reload, using a separate data directory
+under the checkout's `.t3`. Read [AGENTS.md](./AGENTS.md) and
+[docs/operations/development.md](./docs/operations/development.md) before changing code.
 
-Stable:
-
-```bash
-yay -S t3code-bin
-```
-
-Nightly:
-
-```bash
-yay -S t3code-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
-
-#### Nix (nixpkgs)
-
-```bash
-nix profile add github:NixOS/nixpkgs/nixos-unstable#t3code
-```
-
-The package is maintained in [nixpkgs](https://github.com/NixOS/nixpkgs/tree/nixos-unstable/pkgs/by-name/t3/t3code)
-and includes the desktop app (`t3code-desktop`) and the `t3` command.
-See [Nix installation](./docs/user/install.md#nix-nixpkgs) for NixOS configuration and updates.
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
+Before you push, run `vp run typecheck` in each package you changed and `vp test run` on the
+files you changed. CI runs format, lint, knip, typecheck and the tests.
 
 ## Documentation
-
-Full docs live in [docs/](./docs). There's no docs site yet.
 
 - [FAQ](./docs/user/faq.md)
 - [Install and first run](./docs/user/install.md)
 - [Permission modes](./docs/user/permission-modes.md)
 - [Keyboard shortcuts](./docs/user/keybindings.md)
 - [Project settings](./docs/user/project-settings.md)
-- [Appearance preferences](./docs/user/appearance.md)
-- [Connect Claude Code, Codex, ChatGPT and other agents over MCP](./docs/user/outside-agents.md)
-- [Source control integrations](./docs/user/source-control.md)
-- [Run T3 Code as a background service](./docs/user/background-service.md)
+- [Source control](./docs/user/source-control.md)
+- [Architecture](./docs/internals/overview.md)
 
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
+## License
 
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
-
-```bash
-curl -fsSL https://vite.plus | bash
-```
-
-#### Windows
-
-```bash
-irm https://vite.plus/ps1 | iex
-```
-
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
-
-```bash
-vp i
-```
-
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
-
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+MIT, like upstream. See [LICENSE](./LICENSE).

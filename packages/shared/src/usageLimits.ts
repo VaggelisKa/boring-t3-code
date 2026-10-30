@@ -368,10 +368,7 @@ export function collectLimitPools(
       const window = account.limits.windows.find(
         (window) => orderWindow && poolKey(window) === poolKey(orderWindow),
       );
-      return (
-        (window ? resetMillis(window) : null) ??
-        Number.POSITIVE_INFINITY
-      );
+      return (window ? resetMillis(window) : null) ?? Number.POSITIVE_INFINITY;
     };
     const sorted = [...members].sort(
       (left, right) =>

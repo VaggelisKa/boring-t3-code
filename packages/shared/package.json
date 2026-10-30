@@ -203,10 +203,6 @@
       "types": "./src/searchRanking.ts",
       "import": "./src/searchRanking.ts"
     },
-    "./qrCode": {
-      "types": "./src/qrCode.ts",
-      "import": "./src/qrCode.ts"
-    },
     "./cliArgs": {
       "types": "./src/cliArgs.ts",
       "import": "./src/cliArgs.ts"

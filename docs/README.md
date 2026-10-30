@@ -38,11 +38,9 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Pull request file revisions](./internals/pull-request-file-revisions.md)
 - [Model classification](./internals/model-manifest.md)
 - [Resource telemetry](./internals/resource-telemetry.md)
-- [Product analytics](./internals/product-analytics.md)
 - [Environment auth](./internals/environment-auth.md)
 - [Assistant citations](./internals/assistant-citations.md)
 - [Terminal runtime](./internals/terminal-runtime.md)
-- [Voice input](./internals/voice-input.md)
 
 ### Runbooks
 
