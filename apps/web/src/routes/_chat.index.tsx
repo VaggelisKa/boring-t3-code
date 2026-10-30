@@ -8,7 +8,6 @@ import { isElectron } from "../env";
 import { NoProjectsHero } from "../components/NoProjectsHero";
 import { sortScopedProjectsForSidebar } from "../components/Sidebar.logic";
 import { Button } from "../components/ui/button";
-import { HostedEmptyState } from "../components/HostedEmptyState";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { SidebarInset } from "../components/ui/sidebar";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
@@ -19,19 +18,6 @@ import {
   useProjects,
   useThreadShells,
 } from "../state/entities";
-import { useEnvironments } from "../state/environments";
-
-function ChatIndexRouteView() {
-  const { authGateState } = Route.useRouteContext();
-  const { environments, isReady } = useEnvironments();
-
-  if (authGateState.status === "hosted-static") {
-    if (!isReady) return null;
-    if (environments.length === 0) return <HostedEmptyState />;
-  }
-
-  return <IndexDraftLanding />;
-}
 
 function IndexDraftLanding() {
   const projects = useProjects();
@@ -114,5 +100,5 @@ function DraftStartError({ onRetry }: { readonly onRetry: () => void }) {
 }
 
 export const Route = createFileRoute("/_chat/")({
-  component: ChatIndexRouteView,
+  component: IndexDraftLanding,
 });

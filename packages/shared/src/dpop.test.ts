@@ -11,6 +11,7 @@ import {
   type DpopPublicJwk,
   verifyDpopProof,
 } from "./dpop.ts";
+import { stableStringify } from "./dpopCommon.ts";
 
 function signDpopProof(input: {
   readonly method: string;
@@ -332,5 +333,21 @@ describe("verifyDpopProof", () => {
       assert.fail("Expected DPoP proof with private JWK material to fail.");
     }
     assert.equal(result.reason, "Invalid DPoP JWT header.");
+  });
+});
+
+describe("stableStringify", () => {
+  it("canonicalizes object keys recursively", () => {
+    assert.strictEqual(
+      stableStringify({
+        z: 1,
+        a: {
+          y: true,
+          b: null,
+        },
+        list: [{ c: "three", a: "one" }],
+      }),
+      '{"a":{"b":null,"y":true},"list":[{"a":"one","c":"three"}],"z":1}',
+    );
   });
 });

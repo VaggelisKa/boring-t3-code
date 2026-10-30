@@ -19,7 +19,6 @@ const emptyCatalog = {
   targets: [],
   profiles: [],
   credentials: [],
-  remoteDpopTokens: [],
   disabledEnvironmentIds: [],
 } as const;
 const decodeCatalog = Schema.decodeUnknownSync(Schema.fromJsonString(ConnectionCatalogDocument));
@@ -48,31 +47,89 @@ describe("ConnectionStorage.makeCatalogStore", () => {
     }),
   );
 
-  it.effect("drops saved SSH hosts and their credentials instead of quarantining", () =>
-    Effect.gen(function* () {
-      const quarantined: string[] = [];
-      const legacy = JSON.stringify({
-        ...emptyCatalog,
-        targets: [
-          {
-            _tag: "SshConnectionTarget",
-            environmentId: "env-ssh",
-            label: "Box",
-            connectionId: "ssh:box",
-          },
-        ],
-        profiles: [{ _tag: "SshConnectionProfile", connectionId: "ssh:box", host: "box" }],
-        credentials: [{ connectionId: "ssh:box", credential: { token: "secret" } }],
-      });
-      const store = yield* ConnectionStorage.makeCatalogStore({
-        read: Effect.succeed(legacy),
-        write: () => Effect.void,
-        quarantine: (raw) => Effect.sync(() => quarantined.push(raw)),
-      });
+  it.effect(
+    "drops saved SSH hosts and relay records with their credentials instead of quarantining",
+    () =>
+      Effect.gen(function* () {
+        const quarantined: string[] = [];
+        const bearerTarget = {
+          _tag: "BearerConnectionTarget",
+          environmentId: "env-bearer",
+          label: "Desk",
+          connectionId: "bearer:desk",
+        };
+        const bearerProfile = {
+          _tag: "BearerConnectionProfile",
+          connectionId: "bearer:desk",
+          environmentId: "env-bearer",
+          label: "Desk",
+          httpBaseUrl: "https://desk.example.test",
+          wsBaseUrl: "wss://desk.example.test",
+        };
+        const bearerCredential = {
+          connectionId: "bearer:desk",
+          credential: { _tag: "BearerConnectionCredential", token: "desk-token" },
+        };
+        const legacy = JSON.stringify({
+          ...emptyCatalog,
+          targets: [
+            {
+              _tag: "SshConnectionTarget",
+              environmentId: "env-ssh",
+              label: "Box",
+              connectionId: "ssh:box",
+            },
+            {
+              _tag: "RelayConnectionTarget",
+              environmentId: "env-relay",
+              label: "Relay",
+              connectionId: "relay:env-relay",
+            },
+            {
+              _tag: "BearerConnectionTarget",
+              environmentId: "env-relay",
+              label: "Relay",
+              connectionId: "learned:env-relay:http://192.168.1.10:3773@relay:env-relay",
+            },
+            bearerTarget,
+          ],
+          profiles: [
+            { _tag: "SshConnectionProfile", connectionId: "ssh:box", host: "box" },
+            {
+              _tag: "BearerConnectionProfile",
+              connectionId: "learned:env-relay:http://192.168.1.10:3773@relay:env-relay",
+              environmentId: "env-relay",
+              label: "Relay",
+              httpBaseUrl: "http://192.168.1.10:3773",
+              wsBaseUrl: "ws://192.168.1.10:3773",
+              learned: true,
+              authorization: "t3-connect",
+            },
+            bearerProfile,
+          ],
+          credentials: [
+            { connectionId: "ssh:box", credential: { token: "secret" } },
+            {
+              connectionId: "learned:env-relay:http://192.168.1.10:3773@relay:env-relay",
+              credential: { token: "borrowed" },
+            },
+            bearerCredential,
+          ],
+          remoteDpopTokens: [{ environmentId: "env-relay", token: "dpop" }],
+        });
+        const store = yield* ConnectionStorage.makeCatalogStore({
+          read: Effect.succeed(legacy),
+          write: () => Effect.void,
+          quarantine: (raw) => Effect.sync(() => quarantined.push(raw)),
+        });
 
-      expect(yield* store.read).toEqual(emptyCatalog);
-      expect(quarantined).toEqual([]);
-    }),
+        const catalog = yield* store.read;
+        expect(catalog.targets.map((target) => target.connectionId)).toEqual(["bearer:desk"]);
+        expect(catalog.profiles.map((profile) => profile.connectionId)).toEqual(["bearer:desk"]);
+        expect(catalog.credentials.map((entry) => entry.connectionId)).toEqual(["bearer:desk"]);
+        expect(catalog).not.toHaveProperty("remoteDpopTokens");
+        expect(quarantined).toEqual([]);
+      }),
   );
 
   it.effect("does not hide catalog read failures", () =>
