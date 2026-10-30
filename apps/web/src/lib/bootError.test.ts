@@ -1,12 +1,7 @@
-import type { DesktopBridge, DesktopCliCommandState, DesktopUpdateState } from "@t3tools/contracts";
+import type { DesktopBridge, DesktopCliCommandState } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import {
-  type BootErrorEnvironment,
-  buildErrorReport,
-  resolveTriageCommand,
-  updateActionFor,
-} from "./bootError";
+import { type BootErrorEnvironment, buildErrorReport, resolveTriageCommand } from "./bootError";
 
 const desktopWith = (getState: () => Promise<DesktopCliCommandState>) =>
   ({ cliCommand: { getState } }) as unknown as DesktopBridge;
@@ -112,22 +107,5 @@ describe("buildErrorReport", () => {
     expect(report).toContain("[truncated]");
     expect(report.length).toBeLessThan(7_000);
     expect(report).toContain("Time: 2026-10-26T00:00:00.000Z");
-  });
-});
-
-describe("updateActionFor", () => {
-  it("offers an action only when a newer build exists", () => {
-    const state = (status: DesktopUpdateState["status"], downloadPercent: number | null = null) =>
-      ({ status, downloadPercent }) as DesktopUpdateState;
-    expect(updateActionFor(state("available"))).toEqual({ kind: "download" });
-    expect(updateActionFor(state("downloading", 41.6))).toEqual({
-      kind: "downloading",
-      percent: 42,
-    });
-    expect(updateActionFor(state("downloaded"))).toEqual({ kind: "install" });
-    for (const status of ["disabled", "idle", "checking", "up-to-date", "error"] as const) {
-      expect(updateActionFor(state(status))).toBeNull();
-    }
-    expect(updateActionFor(undefined)).toBeNull();
   });
 });

@@ -63,7 +63,6 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.subscribeTerminalMetadata
   | typeof WS_METHODS.subscribePreviewEvents
   | typeof WS_METHODS.subscribeDiscoveredLocalServers
-  | typeof WS_METHODS.subscribeDeviceState
   | typeof WS_METHODS.subscribeResourceTelemetry
   | typeof WS_METHODS.pullRequestsSubscribeRefreshes
   | typeof WS_METHODS.subscribeVcsStatus
@@ -72,10 +71,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.terminalAttach
   | typeof WS_METHODS.terminalObserve;
 
-export type EnvironmentStreamCommandRpcTag =
-  | typeof WS_METHODS.chatGptHandoffSubscribe
-  | typeof WS_METHODS.serverUpdateServerWithProgress
-  | typeof WS_METHODS.gitRunStackedAction;
+export type EnvironmentStreamCommandRpcTag = typeof WS_METHODS.gitRunStackedAction;
 
 export type EnvironmentStreamRpcTag =
   | EnvironmentSubscriptionRpcTag
@@ -99,7 +95,7 @@ export class EnvironmentRpcSubscriptionObserver extends Context.Reference<{
   }),
 }) {}
 
-export const isRpcClientError = Schema.is(RpcClientError.RpcClientError);
+const isRpcClientError = Schema.is(RpcClientError.RpcClientError);
 const isEnvironmentAuthorizationError = Schema.is(EnvironmentAuthorizationError);
 
 const MAX_EXPECTED_FAILURE_RETRY_DELAY_MS = 30_000;
@@ -432,10 +428,3 @@ export const request = <TTag extends Exclude<EnvironmentUnaryRpcTag, ClientGuard
   tag: TTag,
   input: EnvironmentRpcInput<TTag>,
 ) => requestGuarded(tag, input);
-
-export const runStream = <
-  TTag extends Exclude<EnvironmentStreamCommandRpcTag, ClientGuardedRpcTag>,
->(
-  tag: TTag,
-  input: EnvironmentRpcInput<TTag>,
-) => runStreamGuarded(tag, input);

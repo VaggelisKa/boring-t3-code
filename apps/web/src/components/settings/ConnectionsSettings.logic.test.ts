@@ -1,10 +1,6 @@
 import type { DesktopWslState } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
-import {
-  applyWslEnableSelection,
-  selectQrEndpointOption,
-  togglePairingScopeSelection,
-} from "./ConnectionsSettings.logic";
+import { applyWslEnableSelection, togglePairingScopeSelection } from "./ConnectionsSettings.logic";
 
 describe("togglePairingScopeSelection", () => {
   it.each([
@@ -84,42 +80,5 @@ describe("applyWslEnableSelection", () => {
 
     expect(calls).toEqual(["setWslOnly:false", "setWslDistro:Debian", "setWslBackendEnabled:true"]);
     expect(state).toMatchObject({ enabled: true, distro: "Debian", wslOnly: false });
-  });
-});
-
-describe("selectQrEndpointOption", () => {
-  const options = [
-    {
-      id: "desktop-loopback:4780",
-      preferenceKey: "desktop-core:loopback:http",
-      qrShareable: false,
-    },
-    {
-      id: "tailscale-ip:http://100.84.12.7:4780",
-      preferenceKey: "tailscale:ip:http",
-      qrShareable: true,
-    },
-    {
-      id: "tailscale-ip:http://100.84.12.8:4780",
-      preferenceKey: "tailscale:ip:http",
-      qrShareable: true,
-    },
-    {
-      id: "desktop-lan:http://192.168.1.42:4780",
-      preferenceKey: "desktop-core:lan:http",
-      qrShareable: true,
-    },
-  ];
-
-  it("resolves an explicit selection by unique endpoint id, not the shared preference key", () => {
-    expect(selectQrEndpointOption(options, "tailscale-ip:http://100.84.12.8:4780", null)?.id).toBe(
-      "tailscale-ip:http://100.84.12.8:4780",
-    );
-  });
-
-  it("skips non-QR-shareable options in the fallback so the panel never opens on loopback", () => {
-    expect(selectQrEndpointOption(options, "tailscale-ip:gone", "nope")?.id).toBe(
-      "tailscale-ip:http://100.84.12.7:4780",
-    );
   });
 });

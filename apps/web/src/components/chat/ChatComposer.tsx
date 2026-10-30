@@ -12,7 +12,6 @@ import { useRightPanelStore } from "~/rightPanelStore";
 import { importPastedComposerText, readPastedComposerContext } from "../composerInlineTokenPaste";
 import {
   questionAttachmentDraftId,
-  trackOpenQuestionAttachmentDraft,
   useQuestionAttachmentPreparation,
 } from "../../questionAttachments";
 import type {
@@ -180,7 +179,6 @@ import {
 import { rememberCopiedComposerAttachments } from "~/lib/copiedComposerAttachments";
 import { useThreadContextDrop, threadContextDropTargetProps } from "./threadContextDrag";
 import { readThreadShell } from "~/state/entities";
-import { useLinkedEnvironments } from "~/state/peerLinks";
 import { encodeComposerContextFragment } from "@t3tools/shared/composerContextClipboard";
 import type { ComposerContextRecord, ThreadPullRequestLink } from "@t3tools/contracts";
 import { threadContextAttachment } from "~/lib/threadContextAttachment";
@@ -267,7 +265,6 @@ import { ComposerCommandMenuLayer } from "./ComposerCommandMenuLayer";
 import { useRestingComposerControlsLayout } from "./useRestingComposerControlsLayout";
 import { useProviderWorkspaceSnapshotRefresh } from "./useProviderWorkspaceSnapshotRefresh";
 import { useComposerProviderModel } from "./useComposerProviderModel";
-import { useComposerImageGroups } from "./useComposerImageGroups";
 import { useComposerStash } from "./useComposerStash";
 import { useComposerContextImport } from "./useComposerContextImport";
 import { useComposerAttachmentIntake } from "./useComposerAttachmentIntake";
@@ -640,34 +637,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       : null;
   const attachmentDraftTarget = questionAttachmentTarget ?? composerDraftTarget;
   const attachmentDraft = useComposerThreadDraft(attachmentDraftTarget);
-  const questionTakesSnapShots =
-    supportsQuestionAttachments &&
-    activePendingProgress?.activeQuestion?.allowCustomAnswer !== false &&
-    !activePendingIsResponding;
-  const questionRequest = pendingUserInputs[0];
-  // Publish eligibility before async captures can observe a question the UI has already closed.
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- registers the open question's attachment draft in the module tracker before async captures read it
-  useLayoutEffect(() => {
-    if (!questionAttachmentTarget || !questionRequest || !questionTakesSnapShots) return;
-    return trackOpenQuestionAttachmentDraft(routeThreadRef, {
-      draftId: questionAttachmentTarget,
-      requestKeys: questionRequest.questions.map((question) =>
-        questionAttachmentDraftId(
-          environmentId,
-          activeThreadId!,
-          questionRequest.requestId,
-          question.id,
-        ),
-      ),
-    });
-  }, [
-    activeThreadId,
-    environmentId,
-    questionAttachmentTarget,
-    questionRequest,
-    questionTakesSnapShots,
-    routeThreadRef,
-  ]);
   const attachmentTargetKey = composerTargetKey(attachmentDraftTarget);
   // Reject async imports after a draft switch.
   const attachmentTargetKeyRef = useRef(attachmentTargetKey);
@@ -701,12 +670,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const composerReviewComments = composerDraft.reviewComments;
   const composerThreadContexts = attachmentDraft.threadContexts;
   const composerEnvironmentContexts = composerDraft.environmentContexts;
-  const {
-    pendingSnapShotAnimations,
-    pendingSnapShotIds,
-    uncommittedSnapShotIds,
-    standaloneComposerImages,
-  } = useComposerImageGroups(attachmentDraftTarget, composerImages, composerPreviewAnnotations);
+  const previewAnnotationIds = new Set(
+    composerPreviewAnnotations.map((annotation) => annotation.id),
+  );
+  const standaloneComposerImages = composerImages.filter(
+    (image) => !previewAnnotationIds.has(image.id),
+  );
   const preparingComposerImages = usePreparingComposerImages(attachmentTargetKey);
   const nonPersistedComposerImageIds = attachmentDraft.nonPersistedImageIds;
   const uploadsByImageId = useAttachmentUploadStore((state) => state.uploadsByImageId);
@@ -1105,7 +1074,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerTerminalContexts.length === 0 &&
     composerPreviewAnnotations.length === 0 &&
     composerReviewComments.length === 0;
-  const linkedEnvironments = useLinkedEnvironments(environmentId);
   const {
     items: composerMenuItems,
     isLoading: isComposerMenuLoading,
@@ -1113,7 +1081,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   } = useComposerMenuItems({
     composerTrigger,
     environmentId,
-    linkedEnvironments,
     gitCwd,
     activeThreadId,
     pullRequestProjectId,
@@ -1125,7 +1092,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     selectedProviderSkills,
     selectedProviderSlashCommands,
     showSkillsInSlashMenu: settings.showSkillsInSlashMenu,
-    questionAttachmentTarget,
   });
 
   const composerMenuOpen = Boolean(composerTrigger);
@@ -1343,7 +1309,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     importContextFragmentStable,
   } = useComposerContextImport({
     environmentId,
-    linkedEnvironments,
     activeThread,
     activeThreadId,
     composerDraftTarget,
@@ -2633,7 +2598,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     const records = refs.flatMap((ref) => {
       // The agent reads a linked machine's thread itself, like the `@` picker's; any other
       // machine's comes in as its transcript.
-      if (ref.environmentId !== environmentId && !linkedEnvironments.has(ref.environmentId)) {
+      if (ref.environmentId !== environmentId) {
         void importDroppedThread(
           ref,
           () => isActive() && attachmentTargetKeyRef.current === attachmentTargetKey,
@@ -3039,8 +3004,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // Built outside the form's JSX so typing, which rebuilds that JSX, leaves them cached.
   const composerAttachmentMediaRow =
     !isComposerCollapsedMobile &&
-    (uncommittedSnapShotIds.length > 0 ||
-      composerVideos.length > 0 ||
+    (composerVideos.length > 0 ||
       standaloneComposerImages.length > 0 ||
       preparingComposerImages.length > 0) ? (
       <ComposerAttachmentMediaRow
@@ -3048,11 +3012,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         expandedImages={standaloneComposerImages}
         preparingImages={preparingComposerImages}
         videos={composerVideos}
-        pendingSnapShotAnimations={pendingSnapShotAnimations}
-        pendingSnapShotIds={pendingSnapShotIds}
-        uncommittedSnapShotIds={uncommittedSnapShotIds}
         nonPersistedImageIds={nonPersistedComposerImageIds}
-        snapShotAnimations={settings.snapShotAnimations}
         supportsAttachmentUploads={supportsAttachmentUploads}
         maxFileAttachmentBytes={maxFileAttachmentBytes}
         environmentId={environmentId}

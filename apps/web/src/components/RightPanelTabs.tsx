@@ -26,7 +26,6 @@ import { restrictToFirstScrollableAncestor, restrictToHorizontalAxis } from "@dn
 import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Smartphone,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -57,7 +56,6 @@ import { readLocalApi } from "~/localApi";
 import { useStableCallback } from "~/hooks/useStableCallback";
 import { Button } from "~/components/ui/button";
 import { MorphIcon } from "~/components/MorphIcon";
-import { AndroidIcon, AppleIcon } from "~/components/Icons";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { Kbd } from "~/components/ui/kbd";
 import {
@@ -74,7 +72,6 @@ import { useBrowserDefaults } from "~/browser/browserDefaults";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { PanelTabCloseButton } from "~/components/ui/panel-tab-close-button";
 import { useTheme } from "~/hooks/useTheme";
-import { useDeviceState } from "~/state/device";
 import type { PreviewPanelInlineSize } from "~/hooks/usePreviewPanelInlineSize";
 import {
   newestPullRequestSummary,
@@ -113,7 +110,6 @@ export interface RightPanelTabsProps {
   previewRuntimeTabId?: ((tabId: string) => string) | undefined;
   terminalLabelsById: ReadonlyMap<string, string>;
   onActivate: (surface: RightPanelSurface) => void;
-  onRenameDevice?: (surfaceId: string, title: string) => void;
   onCloseSurface: (surface: RightPanelSurface) => void;
   onCloseOtherSurfaces: (surface: RightPanelSurface) => void;
   onCloseSurfacesToRight: (surface: RightPanelSurface) => void;
@@ -128,14 +124,12 @@ export interface RightPanelTabsProps {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
-  onAddDevice: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
-  deviceAvailable: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
   children: ReactNode;
 }
@@ -161,7 +155,6 @@ const SURFACE_DISABLED_REASONS = {
   diff: "Diff is only available for server threads in Git repositories.",
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
-  device: "Devices are only available from a thread.",
 } as const;
 
 // Closed keepMounted popups must stop blocking shortcuts once their exit transition ends.
@@ -185,11 +178,9 @@ const SURFACE_UNAVAILABLE_HINTS = {
   diff: "Available for Git repositories.",
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
-  device: "Available from a thread.",
 } as const;
 
 type TabContextMenuAction =
-  | "rename"
   | "copy-path"
   | "toggle-mute"
   | "close"
@@ -302,14 +293,12 @@ function RightPanelEmptyState(props: {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
-  onAddDevice: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
-  deviceAvailable: boolean;
 }) {
   const [highlight, setHighlight] = useState(-1);
 
@@ -361,15 +350,6 @@ function RightPanelEmptyState(props: {
       available: props.pullRequestsAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
       onClick: props.onAddPullRequests,
-    },
-    {
-      label: "Device",
-      description: "Watch an iOS Simulator or Android Emulator.",
-      icon: Smartphone,
-      shortcut: "M",
-      available: props.deviceAvailable,
-      disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
-      onClick: props.onAddDevice,
     },
   ] as const;
 
@@ -554,8 +534,6 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
-    case "device":
-      return surface.title ?? surface.target?.name ?? "Device";
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return "Browser";
@@ -643,14 +621,6 @@ function SurfaceIcon({
       );
     case "pull-requests":
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
-    case "device":
-      return surface.target?.platform === "ios" ? (
-        <AppleIcon className="size-3 shrink-0" />
-      ) : surface.target?.platform === "android" ? (
-        <AndroidIcon className="size-3 shrink-0" />
-      ) : (
-        <Smartphone className="size-3 shrink-0" />
-      );
   }
 }
 
@@ -779,8 +749,6 @@ interface RightPanelTabHandlers {
   onClose: (surface: RightPanelSurface) => void;
   onAuxClick: (event: ReactMouseEvent, surface: RightPanelSurface) => void;
   onContextMenu: (event: ReactMouseEvent, surface: RightPanelSurface) => void;
-  onStartRename: (surfaceId: string) => void;
-  onFinishRename: (surfaceId: string, title: string) => void;
 }
 
 // Chromium on Linux only suppresses primary-selection paste when mouseup is cancelled.
@@ -804,8 +772,6 @@ function RightPanelTab(
     theme: "light" | "dark";
     environmentId: EnvironmentId | null;
     pullRequestStatusSeed: PullRequestTabStatusSeed | undefined;
-    renaming: boolean;
-    canRename: boolean;
     ownsDesktopTitleBar: boolean;
   },
 ) {
@@ -818,8 +784,6 @@ function RightPanelTab(
     onClose,
     onAuxClick,
     onContextMenu,
-    onStartRename,
-    onFinishRename,
   } = props;
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: surface.id,
@@ -865,54 +829,20 @@ function RightPanelTab(
           <TooltipPopup>{audio === "muted" ? "Unmute tab" : "Mute tab"}</TooltipPopup>
         </Tooltip>
       )}
-      {props.renaming ? (
-        <input
-          aria-label="Device tab name"
-          className="w-24 min-w-0 rounded-sm bg-background px-1 outline-none ring-1 ring-inset ring-ring"
-          defaultValue={title}
-          ref={(element) => {
-            element?.focus();
-            element?.select();
-          }}
-          onBlur={(event) => onFinishRename(surface.id, event.currentTarget.value)}
-          onKeyDown={(event) => {
-            event.stopPropagation();
-            if (event.key === "Enter") event.currentTarget.blur();
-            if (event.key === "Escape") {
-              event.currentTarget.value = title;
-              event.currentTarget.blur();
-            }
-          }}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              className="cursor-pointer flex min-w-0 items-center"
+              onClick={() => onActivate(surface)}
+            >
+              <span className="truncate">{title}</span>
+            </button>
+          }
         />
-      ) : (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button
-                type="button"
-                onDoubleClick={() => {
-                  if (surface.kind === "device" && props.canRename) onStartRename(surface.id);
-                }}
-                className="cursor-pointer flex min-w-0 items-center"
-                onClick={() => onActivate(surface)}
-              >
-                <span className="truncate">{title}</span>
-              </button>
-            }
-          />
-          <TooltipPopup>
-            {surface.kind === "device" ? (
-              <DeviceTabTooltip
-                surface={surface}
-                environmentId={props.environmentId}
-                title={title}
-              />
-            ) : (
-              title
-            )}
-          </TooltipPopup>
-        </Tooltip>
-      )}
+        <TooltipPopup>{title}</TooltipPopup>
+      </Tooltip>
     </>
   );
   return (
@@ -946,7 +876,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
   const { resolvedTheme } = useTheme();
   const tabListRef = useRef<HTMLDivElement>(null);
   const addSurfaceTriggerRef = useRef<HTMLButtonElement>(null);
-  const [renamingDevice, setRenamingDevice] = useState<string | null>(null);
   const [addSurfaceMenuOpen, setAddSurfaceMenuOpen] = useState(false);
   const [tabScrollState, setTabScrollState] = useState({
     hasOverflow: false,
@@ -1056,14 +985,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       disabledReason: SURFACE_DISABLED_REASONS.pullRequests,
       onClick: props.onAddPullRequests,
     },
-    {
-      label: "Device",
-      icon: Smartphone,
-      shortcut: "M",
-      available: props.deviceAvailable,
-      disabledReason: SURFACE_DISABLED_REASONS.device,
-      onClick: props.onAddDevice,
-    },
   ] as const;
 
   const handleAddSurfaceMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -1086,8 +1007,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
     if (surfaceIndex < 0) return;
 
     const items: ContextMenuItem<TabContextMenuAction>[] = [];
-    if (surface.kind === "device" && props.onRenameDevice)
-      items.push({ id: "rename", label: "Rename" });
     if (surface.kind === "file" && surface.attachment === undefined) {
       items.push({ id: "copy-path", label: "Copy path" });
     }
@@ -1124,9 +1043,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
 
     const action = await api.contextMenu.show(items, { x: event.clientX, y: event.clientY });
     switch (action) {
-      case "rename":
-        setRenamingDevice(surface.id);
-        break;
       case "copy-path":
         if (surface.kind === "file" && surface.attachment === undefined) {
           props.onCopyFilePath(surface.relativePath);
@@ -1172,11 +1088,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       void handleTabContextMenu(event, surface);
     },
   );
-  const onStartRenameTab = useStableCallback((surfaceId: string) => setRenamingDevice(surfaceId));
-  const onFinishRenameTab = useStableCallback((surfaceId: string, title: string) => {
-    props.onRenameDevice?.(surfaceId, title);
-    setRenamingDevice(null);
-  });
 
   // A newly active tab, or tabs that start overflowing, can sit outside the scrolled strip.
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- scrolls the active tab DOM node into view after it changes or the tab strip starts overflowing
@@ -1267,7 +1178,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                   <RightPanelTab
                     key={surface.id}
                     surface={surface}
-                    dragDisabled={!props.onMoveSurface || renamingDevice === surface.id}
+                    dragDisabled={!props.onMoveSurface}
                     active={surface.id === props.activeSurfaceId}
                     pending={props.pendingSurfaceIds.has(surface.id)}
                     title={surfaceTitle(surface, props.previewSessions, props.terminalLabelsById)}
@@ -1282,15 +1193,11 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                     theme={resolvedTheme}
                     environmentId={props.environmentId}
                     pullRequestStatusSeed={props.pullRequestStatusSeeds?.[surface.id]}
-                    renaming={renamingDevice === surface.id}
-                    canRename={props.onRenameDevice !== undefined}
                     ownsDesktopTitleBar={ownsDesktopTitleBar}
                     onActivate={onActivateTab}
                     onClose={onCloseTab}
                     onAuxClick={onTabAuxClick}
                     onContextMenu={onTabContextMenu}
-                    onStartRename={onStartRenameTab}
-                    onFinishRename={onFinishRenameTab}
                   />
                 );
               })}
@@ -1437,43 +1344,17 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddFiles={props.onAddFiles}
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
-            onAddDevice={props.onAddDevice}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}
             filesAvailable={props.filesAvailable}
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
-            deviceAvailable={props.deviceAvailable}
           />
         ) : (
           props.children
         )}
       </div>
     </PreviewPanelShell>
-  );
-}
-
-function DeviceTabTooltip(props: {
-  surface: Extract<RightPanelSurface, { kind: "device" }>;
-  environmentId: EnvironmentId | null;
-  title: string;
-}) {
-  const target = props.surface.target;
-  const { state } = useDeviceState(target ? props.environmentId : null);
-  const device = target
-    ? state.devices.find((entry) => entry.hostId === target.hostId && entry.id === target.deviceId)
-    : undefined;
-  const host = target ? state.hosts.find((entry) => entry.id === target.hostId) : undefined;
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span>{props.title}</span>
-      {target ? (
-        <span className="text-muted-foreground">
-          {host?.label ?? "Device host"} ·{" "}
-          {device?.version ?? (target.platform === "ios" ? "iOS" : "Android")}
-        </span>
-      ) : null}
-    </div>
   );
 }

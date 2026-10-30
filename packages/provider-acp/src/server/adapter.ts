@@ -1152,7 +1152,7 @@ export function acpPostSettleWakeEvidence(
 }
 
 /** Still-running tool updates can outlast the quiet window; they must not offer completion wakes. */
-export function acpPostSettleContinuationOfferEvidence(
+function acpPostSettleContinuationOfferEvidence(
   notification: EffectAcpSchema.SessionNotification,
   flavor: Pick<AcpAdapterV2Flavor, "extractBackgroundToolMutation" | "normalizeToolCall"> = {},
 ): boolean {
@@ -1231,7 +1231,7 @@ function acpPostSettleMonitorPromptShouldSuppress(
   return mutation?.status === "running";
 }
 
-export function acpCompletedTurnShouldTerminalizeTool(
+function acpCompletedTurnShouldTerminalizeTool(
   tool: AcpToolCallState,
   flavor: Pick<AcpAdapterV2Flavor, "extractBackgroundTaskId" | "extractSubagentUpdate">,
 ): boolean {
@@ -7190,7 +7190,6 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
           const instructionState = {
             interactionMode: turnInput.runtimePolicy.interactionMode,
             hasT3Mcp: acpMcpContext(mcpSession, self).servers.length > 0,
-            hasDeviceTools: mcpSession?.capabilities?.has("device") === true,
           } satisfies T3AcpInstructionState;
           const previousInstructionState = (yield* Ref.get(promptInstructionStates)).get(sessionId);
           const compactionMarker = (yield* Ref.get(compactionMarkers)).get(sessionId);

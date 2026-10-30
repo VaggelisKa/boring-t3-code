@@ -30,7 +30,7 @@ import * as ProviderSessionManager from "./orchestration-v2/ProviderSessionManag
 import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
-import { CodexProviderCapabilitiesV2 } from "./orchestration-v2/Adapters/CodexAdapterV2.ts";
+import { FullProviderCapabilitiesV2 } from "./orchestration-v2/testkit/ProviderCapabilitiesFixtures.ts";
 import { ServerActivation } from "./serverActivation.ts";
 import { describe, expect, it } from "@effect/vitest";
 import {
@@ -361,7 +361,7 @@ const cleanupFixture = (
                     status: "ready",
                     cwd: openSessionCwd,
                     model: null,
-                    capabilities: CodexProviderCapabilitiesV2,
+                    capabilities: FullProviderCapabilitiesV2,
                     createdAt: "2026-06-01T12:00:00.000Z",
                     updatedAt: "2026-06-01T12:00:00.000Z",
                     lastError: null,
@@ -972,7 +972,7 @@ describe("deleted thread worktrees", () => {
           status: "stopped",
           cwd,
           model: null,
-          capabilities: CodexProviderCapabilitiesV2,
+          capabilities: FullProviderCapabilitiesV2,
           createdAt: at(-DAY_MS),
           updatedAt: at(0),
           lastError: null,
@@ -1226,7 +1226,7 @@ describe("deleted thread worktrees", () => {
             status: "stopped",
             cwd: fixture.worktree,
             model: null,
-            capabilities: CodexProviderCapabilitiesV2,
+            capabilities: FullProviderCapabilitiesV2,
             createdAt: at(-DAY_MS),
             updatedAt: at(0),
             lastError: null,

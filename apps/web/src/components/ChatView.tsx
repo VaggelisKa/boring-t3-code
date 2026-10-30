@@ -46,7 +46,6 @@ import {
   latestExecutedRun,
   latestRootProviderFailure,
 } from "@t3tools/shared/orchestrationV2ThreadError";
-import type { UsageLimitSourceSnapshots } from "@t3tools/contracts";
 import { feedbackBannerItem } from "./chat/ComposerFeedback";
 import { useUsageLimitsPanel } from "./chat/useUsageLimitsPanel";
 import { useWorktreeSetup } from "./chat/useWorktreeSetup";
@@ -144,7 +143,6 @@ import { DEFAULT_INTERACTION_MODE, type ChatMessage } from "../types";
 import { buildThreadRouteParams } from "../threadRoutes";
 import { useTheme } from "../hooks/useTheme";
 import { copyThreadReference } from "../lib/copyThreadReference";
-import { subscribeSnapShotComposerFocus } from "../lib/desktopSnapShot";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { FileMetadataThreadProvider } from "../hooks/FileMetadataThreadProvider";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
@@ -173,7 +171,6 @@ import {
 } from "../previewMiniPlayerStore";
 import { threadPullRequestPanelTarget } from "./pullRequest/pullRequestDetail.logic";
 import { LinkPullRequestDialogHost } from "./pullRequest/LinkPullRequestDialog";
-import { useDeviceState } from "~/state/device";
 import { BranchToolbar, type BranchToolbarHandle } from "./BranchToolbar";
 import { ComposerContextPermissions } from "./ComposerContextPermissions";
 import { resolveCompatibleRuntimeMode } from "./chat/runtimeModeConfig";
@@ -234,7 +231,6 @@ import { threadEnvironment, useThreadFamily } from "../state/threads";
 import { resolveProviderSkillsForCwd } from "@t3tools/client-runtime/providerSkills";
 import { vcsEnvironment } from "../state/vcs";
 import {
-  type EnvironmentPresentation,
   useEnvironment,
   useEnvironmentProviders,
   useEnvironments,
@@ -259,7 +255,6 @@ import { DraftHeroHeadline } from "./chat/DraftHeroHeadline";
 import { ExpandedImageDialogHost, openExpandedImagePreview } from "./chat/ExpandedImageDialog";
 import {
   BranchRestoreConfirmHost,
-  DeviceSetupDialogHost,
   openBranchRestoreConfirm,
   PullRequestThreadDialogHost,
   RevertConfirmHost,
@@ -372,13 +367,11 @@ import {
 
 const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PROVIDER_MODELS: ServerProvider["models"] = [];
-const EMPTY_USAGE_LIMIT_SOURCES: UsageLimitSourceSnapshots = [];
 import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplates";
 
 const EMPTY_FEEDBACK_SUBMISSIONS: ReadonlyArray<CodexFeedbackSubmission> = [];
 const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
 const EMPTY_TURN_ITEMS: ThreadStructure["turnItems"] = [];
-const EMPTY_AUTO_UPDATE_ENVIRONMENTS: ReadonlyArray<EnvironmentPresentation> = [];
 
 const EMPTY_PENDING_FILE_SURFACE_IDS: ReadonlySet<string> = new Set();
 
@@ -1242,21 +1235,10 @@ export default function ChatView(props: ChatViewProps) {
     (!draftThread?.branch || draftThread.environmentSelection === "auto") &&
     !draftThread?.worktreePath,
   );
-  const autoUpdateEnvironments = automaticEnvironment
-    ? logicalProjectEnvironments.flatMap(({ environmentId }) => {
-        const environment = environmentById.get(environmentId);
-        return environment ? [environment] : [];
-      })
-    : EMPTY_AUTO_UPDATE_ENVIRONMENTS;
   const systemComposerBannerItems = useSystemComposerBanners({
     activeEnvironment,
     activeEnvironmentUnavailable,
     activeEnvironmentUnavailableState,
-    activeThreadEnvironmentId: activeThread?.environmentId ?? null,
-    serverConfig,
-    hasMultipleRegisteredEnvironments: environments.length > 1,
-    automaticEnvironment,
-    autoUpdateEnvironments,
   });
   const providerInstanceEntries = providerInstanceEntriesFor(
     providerStatuses,
@@ -1375,7 +1357,6 @@ export default function ChatView(props: ChatViewProps) {
     providerInstanceId: activeProviderInstanceId,
     providerDriver: activeProviderStatus?.driver ?? null,
     providers: providerStatuses,
-    sources: serverConfig?.usageLimitSources ?? EMPTY_USAGE_LIMIT_SOURCES,
   });
   const {
     beginLocalDispatch,
@@ -1800,8 +1781,6 @@ export default function ChatView(props: ChatViewProps) {
     }
   };
   const onInterruptStable = useStableCallback(onInterrupt);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- window listener for the desktop snapshot event that focuses the composer
-  useEffect(() => subscribeSnapShotComposerFocus(focusComposerStable), [focusComposerStable]);
   const scheduleComposerFocus = () => {
     window.requestAnimationFrame(() => {
       focusComposer();
@@ -1895,10 +1874,7 @@ export default function ChatView(props: ChatViewProps) {
     AuthPreviewOperateScope,
   );
   const shownPreviewMiniPlayer =
-    activeThreadRef &&
-    activePreviewMiniPlayer &&
-    previewMiniPlayerVisible &&
-    (activePreviewMiniPlayer.source.kind === "device" || canOperatePreview)
+    activeThreadRef && activePreviewMiniPlayer && previewMiniPlayerVisible && canOperatePreview
       ? activePreviewMiniPlayer
       : null;
   const canvasPreview = useThreadPreviewCanvasSource(activeThreadRef, shownPreviewMiniPlayer);
@@ -1932,9 +1908,6 @@ export default function ChatView(props: ChatViewProps) {
   const visiblePullRequestCount = visiblePullRequests.length;
   const pullRequestsSurfaceAvailable =
     isServerThread && supportsThreadPullRequests && visiblePullRequestCount > 0;
-  const { state: deviceState, loaded: deviceStateLoaded } = useDeviceState(
-    activeThreadRef?.environmentId ?? null,
-  );
   // The thread's own change request, placed against the project it belongs to. Without a
   // project there is nothing to resolve it against, so the caller falls back to the browser.
   const activeProjectRepository = sourceControlClients.repositorySelector(
@@ -2300,7 +2273,6 @@ export default function ChatView(props: ChatViewProps) {
     : null;
   const {
     activateRightPanelSurfaceStable,
-    addDeviceSurfaceStable,
     addDiffSurfaceStable,
     addFilesSurfaceStable,
     addPullRequestSurfaceStable,
@@ -2323,8 +2295,6 @@ export default function ChatView(props: ChatViewProps) {
     activeProject,
     activeRightPanelSurface,
     activePreviewState,
-    deviceState,
-    deviceStateLoaded,
     pullRequestPanelTarget,
     threadPanelPresentation,
     isServerThread,
@@ -3153,11 +3123,6 @@ export default function ChatView(props: ChatViewProps) {
       ref={setWorkspaceLayoutElement}
       className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background"
     >
-      <DeviceSetupDialogHost
-        threadKey={activeThreadKey}
-        threadRef={activeThreadRef}
-        state={deviceState}
-      />
       {rightPanelControlsAtRoot ? panelLayoutControls : null}
       <div
         className={cn(
@@ -3745,7 +3710,6 @@ export default function ChatView(props: ChatViewProps) {
               usage={{
                 providerInstanceId: activeProviderInstanceId,
                 providers: providerStatuses,
-                sources: serverConfig?.usageLimitSources ?? EMPTY_USAGE_LIMIT_SOURCES,
                 contextWindow: activeContextWindow,
               }}
             />
@@ -3806,10 +3770,6 @@ export default function ChatView(props: ChatViewProps) {
           terminalLabelsById={activeTerminalLabelsById}
           onActivate={activateRightPanelSurfaceStable}
           onCloseSurface={closeRightPanelSurfaceStable}
-          onRenameDevice={(surfaceId, title) => {
-            if (activeThreadRef)
-              useRightPanelStore.getState().renameDevice(activeThreadRef, surfaceId, title);
-          }}
           onCloseOtherSurfaces={closeOtherRightPanelSurfacesStable}
           onCloseSurfacesToRight={closeRightPanelSurfacesToRightStable}
           onCloseAllSurfaces={closeAllRightPanelSurfacesStable}
@@ -3822,14 +3782,12 @@ export default function ChatView(props: ChatViewProps) {
           onAddFiles={addFilesSurfaceStable}
           onAddPullRequest={addPullRequestSurfaceStable}
           onAddPullRequests={addPullRequestsSurfaceStable}
-          onAddDevice={addDeviceSurfaceStable}
           browserAvailable={canOperatePreview && browserAvailable}
           terminalAvailable={activeProject !== null && canOperateTerminal}
           diffAvailable={isServerThread && isGitRepo}
           filesAvailable={activeProject !== null}
           pullRequestAvailable={pullRequestSurfaceAvailable}
           pullRequestsAvailable={pullRequestsSurfaceAvailable}
-          deviceAvailable={activeThreadRef !== null}
         >
           {rightPanelContent}
         </ChatRightPanel>

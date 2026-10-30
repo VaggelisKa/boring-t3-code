@@ -37,22 +37,6 @@ export class ModelCatalog extends Context.Service<
   }
 >()("@t3tools/provider-core/server/ModelCatalog") {}
 
-export const catalogServerModel = (
-  catalog: ProviderCatalog,
-  entry: ProviderCatalogModel,
-): ServerProviderModel => ({
-  slug: entry.slug,
-  name: entry.name,
-  ...(entry.shortName ? { shortName: entry.shortName } : {}),
-  ...(entry.subProvider ? { subProvider: entry.subProvider } : {}),
-  ...(entry.aliases ? { aliases: entry.aliases } : {}),
-  ...(entry.badge ? { badge: entry.badge } : {}),
-  isCustom: false,
-  ...(catalog.defaultChatModel === entry.slug ? { isDefault: true } : {}),
-  ...(entry.status === "legacy" ? { isLegacy: true } : {}),
-  capabilities: entry.capabilities,
-});
-
 export interface CatalogMatching {
   readonly family?: (slug: string) => string;
 }

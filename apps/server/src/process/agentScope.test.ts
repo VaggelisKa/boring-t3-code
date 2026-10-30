@@ -4,17 +4,15 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { assert, describe, expect, it } from "@effect/vitest";
-import { AgentScope } from "@t3tools/shared/AgentScope";
+import { describe, expect, it } from "@effect/vitest";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Logger from "effect/Logger";
-import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { ChildProcessSpawner } from "effect/process";
 
 import * as ServerConfig from "../config.ts";
-import { makeCodexAppServerSpawnCommand } from "../orchestration-v2/Adapters/CodexAdapterV2.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { classifyScope, make, ownedAgentSlice, type ScopeState } from "./agentScope.ts";
 
@@ -159,14 +157,7 @@ const exitedAgent = (
 const stopsOf = (calls: ReadonlyArray<ReadonlyArray<string>>) =>
   calls.filter(([, verb]) => verb === "stop");
 const launchCodex = (scope: Effect.Success<typeof make>, threadId: string) =>
-  makeCodexAppServerSpawnCommand({ command: "agent", args: ["app-server"], threadId }).pipe(
-    Effect.provideService(AgentScope, scope),
-    Effect.provideService(HostProcess.Platform, "linux"),
-    Effect.map((command) => {
-      assert(ChildProcess.isStandardCommand(command));
-      return command;
-    }),
-  );
+  scope.wrap({ command: "agent", args: ["app-server"], name: "codex", threadId, shared: true });
 
 describe("AgentScope service", () => {
   it.effect("labels a thread from its newest scope until its next session clears it", () =>

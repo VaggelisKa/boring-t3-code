@@ -207,23 +207,6 @@ describe("projectChangeRequestUrl", () => {
     );
   });
 
-  it("builds the project's own Azure repository from its full path, not its short selector", () => {
-    const azure: RepositoryIdentity = {
-      canonicalKey: "dev.azure.com/org/project/_git/web",
-      provider: SourceControlProviderKind.make("azure-devops"),
-      owner: "org",
-      name: "web",
-      locator: {
-        source: "git-remote",
-        remoteName: "origin",
-        remoteUrl: "https://dev.azure.com/org/project/_git/web",
-      },
-    };
-    expect(projectChangeRequestUrl(azure, "web", 42)).toBe(
-      "https://dev.azure.com/org/project/_git/web/pullrequest/42",
-    );
-  });
-
   it("builds nothing without a project host that knows its URL shape", () => {
     expect(projectChangeRequestUrl(null, "acme/repository", 1)).toBeNull();
     expect(projectChangeRequestUrl(identity("unknown"), "acme/repository", 1)).toBeNull();

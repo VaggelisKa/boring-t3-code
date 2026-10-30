@@ -4,7 +4,6 @@ import {
   isSharedAddressSpaceHost,
   isTailnetHost,
 } from "@t3tools/shared/hostClassification";
-import type { DesktopSshEnvironmentTarget } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 
 import {
@@ -14,14 +13,7 @@ import {
 } from "./catalog.ts";
 import { BearerConnectionTarget, type ConnectionTarget } from "./model.ts";
 
-export type ConnectionRouteKind =
-  | "relay"
-  | "loopback"
-  | "lan"
-  | "tailnet"
-  | "vpn"
-  | "public"
-  | "ssh";
+export type ConnectionRouteKind = "relay" | "loopback" | "lan" | "tailnet" | "vpn" | "public";
 
 export const RELAY_ROUTE_ID = "relay";
 
@@ -32,7 +24,6 @@ export function connectionRouteId(target: ConnectionTarget): string {
     case "RelayConnectionTarget":
       return RELAY_ROUTE_ID;
     case "BearerConnectionTarget":
-    case "SshConnectionTarget":
       return target.connectionId;
   }
 }
@@ -85,8 +76,6 @@ export function connectionRouteKind(route: ConnectionRoute): ConnectionRouteKind
   switch (route.target._tag) {
     case "RelayConnectionTarget":
       return "relay";
-    case "SshConnectionTarget":
-      return "ssh";
     case "PrimaryConnectionTarget":
     case "BearerConnectionTarget": {
       const hostname = routeHostname(route);
@@ -108,8 +97,7 @@ const ROUTE_KIND_RANK: Record<ConnectionRouteKind, number> = {
   tailnet: 2,
   vpn: 2,
   public: 3,
-  ssh: 4,
-  relay: 5,
+  relay: 4,
 };
 
 export function insertRoute(
@@ -145,14 +133,7 @@ export function findRouteToSameAddress(
 
 function routeAddressKey(route: ConnectionRoute): string | null {
   const profile = Option.getOrNull(route.profile);
-  switch (profile?._tag) {
-    case "BearerConnectionProfile":
-      return `bearer:${profile.httpBaseUrl.replace(/\/+$/, "")}`;
-    case "SshConnectionProfile":
-      return `ssh:${sshTargetKey(profile.target)}`;
-    default:
-      return null;
-  }
+  return profile === null ? null : `bearer:${profile.httpBaseUrl.replace(/\/+$/, "")}`;
 }
 
 export function connectionRouteLabel(route: ConnectionRoute): string {
@@ -167,23 +148,9 @@ export function connectionRouteLabel(route: ConnectionRoute): string {
       return "Tailscale";
     case "vpn":
       return "VPN";
-    case "ssh": {
-      const profile = Option.getOrNull(route.profile);
-      return profile?._tag === "SshConnectionProfile"
-        ? `SSH ${profile.target.username ? `${profile.target.username}@` : ""}${profile.target.hostname}`
-        : "SSH";
-    }
     case "public":
       return routeHostname(route) ?? "Remote link";
   }
-}
-
-export function connectionRouteAddress(route: ConnectionRoute): string | null {
-  if (route.target._tag === "SshConnectionTarget") {
-    const profile = Option.getOrNull(route.profile);
-    return profile?._tag === "SshConnectionProfile" ? profile.target.alias : null;
-  }
-  return routeHttpBaseUrl(route);
 }
 
 /** Learned routes alone must not make relay environments manually retryable. */
@@ -424,8 +391,4 @@ export function routesAfterRemoving(
 
 export function removedWithRelay(entry: ConnectionCatalogEntry): boolean {
   return routesAfterRemoving(connectionRoutes(entry), RELAY_ROUTE_ID).length === 0;
-}
-
-export function sshTargetKey(target: DesktopSshEnvironmentTarget): string {
-  return JSON.stringify([target.alias, target.hostname, target.username, target.port]);
 }

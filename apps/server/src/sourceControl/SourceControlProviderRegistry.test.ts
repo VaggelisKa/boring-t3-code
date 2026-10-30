@@ -227,12 +227,12 @@ it.effect("refines the caller-selected remote instead of choosing another config
 it.effect("falls back to a non-origin remote when origin is not configured", () =>
   Effect.gen(function* () {
     const registry = yield* makeRegistry({
-      remotes: [{ name: "upstream", url: "https://dev.azure.com/acme/project/_git/repo" }],
+      remotes: [{ name: "upstream", url: "https://github.com/acme/repo.git" }],
     });
 
     const provider = yield* registry.resolve({ cwd: "/repo" });
 
-    assert.strictEqual(provider.kind, "azure-devops");
+    assert.strictEqual(provider.kind, "github");
   }),
 );
 
@@ -243,10 +243,7 @@ it.effect(
       const registry = yield* makeRegistry({
         remotes: [{ name: "origin", url: "https://github.com/unrelated/checkout.git" }],
       });
-      for (const [url, host] of [
-        ["https://github.com/team/project/issues/1", "github"],
-        ["https://gitlab.com/team/sub/project/-/merge_requests/2", "gitlab"],
-      ] as const) {
+      for (const [url, host] of [["https://github.com/team/project/issues/1", "github"]] as const) {
         const lookup = registry.resolveLink({ cwd: "/unrelated", url: new URL(url) });
         assert.ok(lookup);
         assert.deepStrictEqual(yield* lookup, { title: `${host} subject`, body: null });
@@ -254,6 +251,7 @@ it.effect(
       for (const url of [
         "https://example.test/team/project/issues/1",
         "https://codeberg.org/team/project/issues/1",
+        "https://gitlab.com/team/sub/project/-/merge_requests/2",
         "https://bitbucket.org/team/project/pull-requests/1",
         "https://dev.azure.com/org/project/_git/repo/pullrequest/1",
         "http://github.com/team/project/issues/1",

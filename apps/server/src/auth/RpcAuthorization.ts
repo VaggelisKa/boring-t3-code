@@ -1,6 +1,5 @@
 import {
   CLIENT_GUARDED_RPC_SCOPES,
-  type DeviceListInput,
   clientRpcRequiredScopes,
   authScopeRequiredResponse,
   AssetCreateUrlInput,
@@ -64,9 +63,6 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.providerAuthStart]: AuthProvidersManageScope,
   [WS_METHODS.providerConsumeResetCredit]: AuthProvidersManageScope,
   [WS_METHODS.providerAuthComplete]: AuthProvidersManageScope,
-  [WS_METHODS.chatGptReconnectProfile]: AuthProvidersManageScope,
-  [WS_METHODS.chatGptImportProfile]: AuthProvidersManageScope,
-  [WS_METHODS.chatGptHandoffSubscribe]: AuthProvidersManageScope,
   [WS_METHODS.providerAuthRespond]: AuthProvidersManageScope,
   [WS_METHODS.providerAuthCancel]: AuthProvidersManageScope,
   [WS_METHODS.providerAuthLogout]: AuthProvidersManageScope,
@@ -75,14 +71,10 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.providerInstallCancel]: AuthProvidersManageScope,
   [WS_METHODS.providerInstallSubscribe]: AuthOrchestrationReadScope,
   [WS_METHODS.providerInstallRemove]: AuthProvidersManageScope,
-  [WS_METHODS.serverUpdateServer]: AuthEnvironmentMaintainScope,
-  [WS_METHODS.serverUpdateServerWithProgress]: AuthEnvironmentMaintainScope,
-  [WS_METHODS.serverCommitDesktopUpdate]: AuthEnvironmentMaintainScope,
   [WS_METHODS.serverUpsertKeybinding]: AuthSettingsWriteScope,
   [WS_METHODS.serverRemoveKeybinding]: AuthSettingsWriteScope,
   [WS_METHODS.serverGetStorageCleanupReport]: AuthOrchestrationReadScope,
   [WS_METHODS.serverGetDatabaseStorage]: AuthOrchestrationReadScope,
-  [WS_METHODS.peerLinksList]: AuthAccessReadScope,
   [WS_METHODS.serverUpdateSettings]: AuthSettingsWriteScope,
   [WS_METHODS.serverSearchAcpRegistry]: AuthOrchestrationReadScope,
   [WS_METHODS.serverPrepareAcpRegistryAgent]: AuthProvidersManageScope,
@@ -145,8 +137,6 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.shellOpenInEditor]: AuthOrchestrationOperateScope,
   [WS_METHODS.filesystemBrowse]: AuthFilesystemReadScope,
   [WS_METHODS.filesystemGetMetadata]: AuthFilesystemReadScope,
-  [WS_METHODS.agentSessionsScan]: AuthOrchestrationReadScope,
-  [WS_METHODS.agentSessionsImport]: AuthOrchestrationOperateScope,
   [WS_METHODS.assetsCreateUrl]: AuthOrchestrationReadScope,
   [WS_METHODS.assetsPersistChatAttachments]: AuthOrchestrationOperateScope,
   [WS_METHODS.attachmentsCreateUploadUrl]: AuthOrchestrationOperateScope,
@@ -184,17 +174,6 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.previewStopLocalServer]: AuthTerminalOperateScope,
   [WS_METHODS.subscribePreviewEvents]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeDiscoveredLocalServers]: AuthOrchestrationReadScope,
-  [WS_METHODS.deviceConfigure]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceTestHost]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceEasAccount]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceSimlockIdentity]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceList]: AuthOrchestrationReadScope,
-  [WS_METHODS.deviceOpen]: AuthOrchestrationOperateScope,
-  [WS_METHODS.deviceClose]: AuthOrchestrationOperateScope,
-  [WS_METHODS.deviceShutdown]: AuthOrchestrationOperateScope,
-  [WS_METHODS.deviceDetail]: AuthOrchestrationReadScope,
-  [WS_METHODS.deviceAction]: AuthOrchestrationOperateScope,
-  [WS_METHODS.subscribeDeviceState]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeServerConfig]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeServerLifecycle]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeAuthAccess]: AuthAccessReadScope,
@@ -211,7 +190,7 @@ export function requiredScopeForRpcMethod(method: string): AuthEnvironmentScope 
   return requiredScope;
 }
 
-export const rpcAuthorizationError = (requiredScope: AuthEnvironmentScope) =>
+const rpcAuthorizationError = (requiredScope: AuthEnvironmentScope) =>
   new EnvironmentAuthorizationError({
     message: `The authenticated token is missing required scope: ${requiredScope}.`,
     ...authScopeRequiredResponse(requiredScope),
@@ -278,9 +257,3 @@ export const layer = (
       ? effect
       : Effect.tap(effect, () => onAuthorized(rpc._tag, payload));
   });
-
-/** Retrying can install or restart tools even though ordinary listing is readable. */
-export const requiredScopeForDeviceList = (input: DeviceListInput): AuthEnvironmentScope =>
-  input.retryHostId || input.updateTool
-    ? AuthOrchestrationOperateScope
-    : AuthOrchestrationReadScope;

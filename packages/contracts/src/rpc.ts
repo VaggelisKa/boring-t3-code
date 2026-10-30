@@ -16,23 +16,6 @@ import {
   McpAppToolInfoInput,
   McpAppUpdateModelContextInput,
 } from "./mcpApps.ts";
-import {
-  PeerLink,
-  PeerLinkCreateInput,
-  PeerLinkError,
-  PeerLinkRemoveInput,
-  PeerLinkRemoveResult,
-  PeerLinkRequestAnswerInput,
-  PeerLinkRequestError,
-  PeerLinkSummary,
-} from "./peerLink.ts";
-import {
-  ChatGptReconnectProfileInput,
-  ChatGptReconnectProfile,
-  ChatGptImportProfileInput,
-  ChatGptHandoffInput,
-  ChatGptHandoffState,
-} from "./providerSetup.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -89,15 +72,6 @@ import {
   FilesystemBrowseResult,
   FilesystemBrowseError,
 } from "./filesystem.ts";
-import {
-  AgentSessionImportInput,
-  AgentSessionImportProjectChangedError,
-  AgentSessionImportProjectNotFoundError,
-  AgentSessionImportResult,
-  AgentSessionScanInput,
-  AgentSessionScanResult,
-  AgentSessionScanError,
-} from "./agentSessions.ts";
 import {
   AssetAccessError,
   AssetCreateUrlInput,
@@ -275,29 +249,7 @@ import {
   PreviewSessionSnapshot,
 } from "./preview.ts";
 import {
-  DeviceActionInput,
-  DeviceCloseInput,
-  DeviceConfigureInput,
-  DeviceDetail,
-  DeviceDetailInput,
-  DeviceError,
-  DeviceListInput,
-  SshDeviceHostConfig,
-  DeviceEasAccount,
-  DeviceEasAccountError,
-  DeviceEasAccountInput,
-  DeviceSimlockIdentity,
-  DeviceSimlockIdentityError,
-  DeviceSimlockIdentityInput,
-  DeviceHostSummary,
-  DeviceOpenInput,
-  DeviceServiceState,
-  DeviceSession,
-  DeviceShutdownInput,
-} from "./device.ts";
-import {
   ServerConfigStreamEvent,
-  DesktopUpdateCommitInput,
   OtlpEndpointCheckInput,
   ServerPrepareTriageError,
   ServerPrepareTriageInput,
@@ -310,10 +262,6 @@ import {
   ServerRemoveKeybindingInput,
   ServerRemoveKeybindingResult,
   ServerProviderUpdatedPayload,
-  ServerSelfUpdateError,
-  ServerSelfUpdateInput,
-  ServerSelfUpdateProgressEvent,
-  ServerSelfUpdateResult,
   ServerTraceDiagnosticsResult,
   ServerProcessDiagnosticsResult,
   ServerProcessResourceHistoryInput,
@@ -331,7 +279,6 @@ import {
   ResourceTelemetrySnapshot,
 } from "./resourceTelemetry.ts";
 import {
-  UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
   ProviderConsumeResetCreditResult,
 } from "./providerUsageLimits.ts";
@@ -387,8 +334,6 @@ export const WS_METHODS = {
 
   filesystemBrowse: "filesystem.browse",
   filesystemGetMetadata: "filesystem.getMetadata",
-  agentSessionsScan: "agentSessions.scan",
-  agentSessionsImport: "agentSessions.import",
   assetsCreateUrl: "assets.createUrl",
   assetsPersistChatAttachments: "assets.persistChatAttachments",
   attachmentsCreateUploadUrl: "attachments.createUploadUrl",
@@ -403,9 +348,6 @@ export const WS_METHODS = {
   providerAuthStart: "provider.auth.start",
   providerConsumeResetCredit: "provider.consumeResetCredit",
   providerAuthComplete: "provider.auth.complete",
-  chatGptReconnectProfile: "provider.chatgpt.reconnect-profile",
-  chatGptImportProfile: "provider.chatgpt.import-profile",
-  chatGptHandoffSubscribe: "provider.chatgpt.handoff.subscribe",
   providerAuthRespond: "provider.auth.respond",
   providerAuthCancel: "provider.auth.cancel",
   providerAuthLogout: "provider.auth.logout",
@@ -449,33 +391,15 @@ export const WS_METHODS = {
   previewReportStatus: "preview.reportStatus",
   previewStopLocalServer: "preview.stopLocalServer",
 
-  deviceConfigure: "device.configure",
-  deviceList: "device.list",
-  deviceTestHost: "device.testHost",
-  deviceEasAccount: "device.easAccount",
-  deviceSimlockIdentity: "device.simlockIdentity",
-  deviceOpen: "device.open",
-  deviceClose: "device.close",
-  deviceShutdown: "device.shutdown",
-  deviceDetail: "device.detail",
-  deviceAction: "device.action",
-
   serverProbe: "server.probe",
   serverGetConfig: "server.getConfig",
   serverRefreshProviders: "server.refreshProviders",
   serverUpdateProvider: "server.updateProvider",
-  serverUpdateServer: "server.updateServer",
-  serverUpdateServerWithProgress: "server.updateServerWithProgress",
-  serverCommitDesktopUpdate: "server.commitDesktopUpdate",
   serverUpsertKeybinding: "server.upsertKeybinding",
   serverRemoveKeybinding: "server.removeKeybinding",
   serverRunStorageCleanup: "server.runStorageCleanup",
   serverGetStorageCleanupReport: "server.getStorageCleanupReport",
   serverGetDatabaseStorage: "server.getDatabaseStorage",
-  peerLinksList: "peerLinks.list",
-  peerLinksLink: "peerLinks.link",
-  peerLinksUnlink: "peerLinks.unlink",
-  peerLinksAnswerRequest: "peerLinks.answerRequest",
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
   serverSearchAcpRegistry: "server.searchAcpRegistry",
@@ -557,7 +481,6 @@ export const WS_METHODS = {
   subscribeTerminalMetadata: "subscribeTerminalMetadata",
   subscribePreviewEvents: "subscribePreviewEvents",
   subscribeDiscoveredLocalServers: "subscribeDiscoveredLocalServers",
-  subscribeDeviceState: "subscribeDeviceState",
   subscribeServerConfig: "subscribeServerConfig",
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
@@ -619,7 +542,7 @@ const ProviderSetupRpcError = Schema.Union([ProviderSetupError, EnvironmentAutho
 const WsProviderConsumeResetCreditRpc = Rpc.make(WS_METHODS.providerConsumeResetCredit, {
   payload: ProviderConsumeResetCreditInput,
   success: ProviderConsumeResetCreditResult,
-  error: Schema.Union([ProviderSetupError, UsageLimitSourceError, EnvironmentAuthorizationError]),
+  error: Schema.Union([ProviderSetupError, EnvironmentAuthorizationError]),
 });
 
 const WsProviderAuthStartRpc = Rpc.make(WS_METHODS.providerAuthStart, {
@@ -638,23 +561,6 @@ const WsProviderAuthCompleteRpc = Rpc.make(WS_METHODS.providerAuthComplete, {
   payload: ProviderAuthCompleteInput,
   success: ProviderAuthState,
   error: ProviderSetupRpcError,
-});
-
-const WsChatGptReconnectProfileRpc = Rpc.make(WS_METHODS.chatGptReconnectProfile, {
-  payload: ChatGptReconnectProfileInput,
-  success: Schema.NullOr(ChatGptReconnectProfile),
-  error: ProviderSetupRpcError,
-});
-const WsChatGptImportProfileRpc = Rpc.make(WS_METHODS.chatGptImportProfile, {
-  payload: ChatGptImportProfileInput,
-  success: ProviderAuthState,
-  error: ProviderSetupRpcError,
-});
-const WsChatGptHandoffSubscribeRpc = Rpc.make(WS_METHODS.chatGptHandoffSubscribe, {
-  payload: ChatGptHandoffInput,
-  success: ChatGptHandoffState,
-  error: ProviderSetupRpcError,
-  stream: true,
 });
 
 const WsProviderAuthCancelRpc = Rpc.make(WS_METHODS.providerAuthCancel, {
@@ -701,25 +607,6 @@ const WsProviderInstallRemoveRpc = Rpc.make(WS_METHODS.providerInstallRemove, {
   error: ProviderSetupRpcError,
 });
 
-const WsServerUpdateServerRpc = Rpc.make(WS_METHODS.serverUpdateServer, {
-  payload: ServerSelfUpdateInput,
-  success: ServerSelfUpdateResult,
-  error: Schema.Union([ServerSelfUpdateError, EnvironmentAuthorizationError]),
-});
-
-const WsServerUpdateServerWithProgressRpc = Rpc.make(WS_METHODS.serverUpdateServerWithProgress, {
-  payload: ServerSelfUpdateInput,
-  success: ServerSelfUpdateProgressEvent,
-  error: Schema.Union([ServerSelfUpdateError, EnvironmentAuthorizationError]),
-  stream: true,
-});
-
-const WsServerCommitDesktopUpdateRpc = Rpc.make(WS_METHODS.serverCommitDesktopUpdate, {
-  payload: DesktopUpdateCommitInput,
-  success: ServerSelfUpdateResult,
-  error: Schema.Union([ServerSelfUpdateError, EnvironmentAuthorizationError]),
-});
-
 const WsServerRunStorageCleanupRpc = Rpc.make(WS_METHODS.serverRunStorageCleanup, {
   payload: Schema.Struct({}),
   success: StorageCleanupReport,
@@ -737,29 +624,6 @@ const WsServerGetDatabaseStorageRpc = Rpc.make(WS_METHODS.serverGetDatabaseStora
   success: Schema.NullOr(DatabaseStorageStatus),
   stream: true,
   error: EnvironmentAuthorizationError,
-});
-
-const WsPeerLinksListRpc = Rpc.make(WS_METHODS.peerLinksList, {
-  payload: Schema.Struct({}),
-  success: Schema.Struct({ links: Schema.Array(PeerLinkSummary) }),
-  error: Schema.Union([PeerLinkError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksLinkRpc = Rpc.make(WS_METHODS.peerLinksLink, {
-  payload: PeerLinkCreateInput,
-  success: PeerLink,
-  error: Schema.Union([PeerLinkError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksUnlinkRpc = Rpc.make(WS_METHODS.peerLinksUnlink, {
-  payload: PeerLinkRemoveInput,
-  success: PeerLinkRemoveResult,
-  error: Schema.Union([PeerLinkError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksAnswerRequestRpc = Rpc.make(WS_METHODS.peerLinksAnswerRequest, {
-  payload: PeerLinkRequestAnswerInput,
-  error: Schema.Union([PeerLinkRequestError, EnvironmentAuthorizationError]),
 });
 
 const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSettings, {
@@ -1288,23 +1152,6 @@ const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
   error: Schema.Union([FilesystemBrowseError, EnvironmentAuthorizationError]),
 });
 
-const WsAgentSessionsScanRpc = Rpc.make(WS_METHODS.agentSessionsScan, {
-  payload: AgentSessionScanInput,
-  success: AgentSessionScanResult,
-  error: Schema.Union([AgentSessionScanError, EnvironmentAuthorizationError]),
-});
-
-const WsAgentSessionsImportRpc = Rpc.make(WS_METHODS.agentSessionsImport, {
-  payload: AgentSessionImportInput,
-  success: AgentSessionImportResult,
-  error: Schema.Union([
-    AgentSessionImportProjectChangedError,
-    AgentSessionImportProjectNotFoundError,
-    AgentSessionScanError,
-    EnvironmentAuthorizationError,
-  ]),
-});
-
 const WsAssetsCreateUrlRpc = Rpc.make(WS_METHODS.assetsCreateUrl, {
   payload: AssetCreateUrlInput,
   success: AssetCreateUrlResult,
@@ -1563,71 +1410,6 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
   stream: true,
 });
 
-const WsDeviceTestHostRpc = Rpc.make(WS_METHODS.deviceTestHost, {
-  payload: SshDeviceHostConfig,
-  success: DeviceHostSummary,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceEasAccountRpc = Rpc.make(WS_METHODS.deviceEasAccount, {
-  payload: DeviceEasAccountInput,
-  success: DeviceEasAccount,
-  error: Schema.Union([DeviceEasAccountError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceSimlockIdentityRpc = Rpc.make(WS_METHODS.deviceSimlockIdentity, {
-  payload: DeviceSimlockIdentityInput,
-  success: DeviceSimlockIdentity,
-  error: Schema.Union([DeviceSimlockIdentityError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceListRpc = Rpc.make(WS_METHODS.deviceList, {
-  payload: DeviceListInput,
-  success: DeviceServiceState,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceConfigureRpc = Rpc.make(WS_METHODS.deviceConfigure, {
-  payload: DeviceConfigureInput,
-  success: DeviceServiceState,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceOpenRpc = Rpc.make(WS_METHODS.deviceOpen, {
-  payload: DeviceOpenInput,
-  success: DeviceSession,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceCloseRpc = Rpc.make(WS_METHODS.deviceClose, {
-  payload: DeviceCloseInput,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceShutdownRpc = Rpc.make(WS_METHODS.deviceShutdown, {
-  payload: DeviceShutdownInput,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceDetailRpc = Rpc.make(WS_METHODS.deviceDetail, {
-  payload: DeviceDetailInput,
-  success: DeviceDetail,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceActionRpc = Rpc.make(WS_METHODS.deviceAction, {
-  payload: DeviceActionInput,
-  success: DeviceDetail,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsSubscribeDeviceStateRpc = Rpc.make(WS_METHODS.subscribeDeviceState, {
-  payload: Schema.Struct({}),
-  success: DeviceServiceState,
-  error: EnvironmentAuthorizationError,
-  stream: true,
-});
-
 const WsOrchestrationV2DispatchCommandRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.dispatchCommand, {
   payload: OrchestrationV2RpcSchemas.dispatchCommand.input,
   success: OrchestrationV2RpcSchemas.dispatchCommand.output,
@@ -1781,7 +1563,6 @@ export const WsSubscribeServerConfigRpc = Rpc.make(WS_METHODS.subscribeServerCon
   payload: Schema.Struct({
     /** Opt-in protects older clients that reject unknown theme event types. */
     environmentThemes: Schema.optional(Schema.Boolean),
-    usageLimitSources: Schema.optional(Schema.Boolean),
     /** Advertise client handling before the server offers /usage-limits, or older clients send it as a prompt. */
     usageLimitsCommand: Schema.optional(Schema.Boolean),
     /** Omit per-cwd provider snapshots; the client fetches its cwd through `server.refreshProviders`. */
@@ -1831,9 +1612,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderConsumeResetCreditRpc,
   WsProviderAuthStartRpc,
   WsProviderAuthCompleteRpc,
-  WsChatGptReconnectProfileRpc,
-  WsChatGptImportProfileRpc,
-  WsChatGptHandoffSubscribeRpc,
   WsProviderAuthRespondRpc,
   WsProviderAuthCancelRpc,
   WsProviderAuthLogoutRpc,
@@ -1842,19 +1620,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderInstallCancelRpc,
   WsProviderInstallSubscribeRpc,
   WsProviderInstallRemoveRpc,
-  WsServerUpdateServerRpc,
-  WsServerUpdateServerWithProgressRpc,
-  WsServerCommitDesktopUpdateRpc,
   WsServerUpsertKeybindingRpc,
   WsServerRemoveKeybindingRpc,
   WsServerRunStorageCleanupRpc,
   WsServerGetStorageCleanupReportRpc,
   WsServerGetDatabaseStorageRpc,
   WsServerUpdateSettingsRpc,
-  WsPeerLinksListRpc,
-  WsPeerLinksLinkRpc,
-  WsPeerLinksUnlinkRpc,
-  WsPeerLinksAnswerRequestRpc,
   WsServerDiscoverSourceControlRpc,
   WsServerSearchAcpRegistryRpc,
   WsServerPrepareAcpRegistryAgentRpc,
@@ -1938,8 +1709,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsShellOpenInEditorRpc,
   WsFilesystemBrowseRpc,
   WsFilesystemGetMetadataRpc,
-  WsAgentSessionsScanRpc,
-  WsAgentSessionsImportRpc,
   WsAssetsCreateUrlRpc,
   WsAssetsPersistChatAttachmentsRpc,
   WsAttachmentsCreateUploadUrlRpc,
@@ -1984,17 +1753,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribePreviewEventsRpc,
   WsPreviewStopLocalServerRpc,
   WsSubscribeDiscoveredLocalServersRpc,
-  WsDeviceConfigureRpc,
-  WsDeviceListRpc,
-  WsDeviceTestHostRpc,
-  WsDeviceEasAccountRpc,
-  WsDeviceSimlockIdentityRpc,
-  WsDeviceOpenRpc,
-  WsDeviceCloseRpc,
-  WsDeviceShutdownRpc,
-  WsDeviceDetailRpc,
-  WsDeviceActionRpc,
-  WsSubscribeDeviceStateRpc,
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,

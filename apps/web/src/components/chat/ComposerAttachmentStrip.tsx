@@ -3,11 +3,10 @@ import type {
   ChatFileAttachment,
   EnvironmentId,
   ScopedThreadRef,
-  SnapShotSource,
 } from "@t3tools/contracts";
 import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import { CircleAlertIcon, PaperclipIcon, PlayIcon, XIcon } from "lucide-react";
-import { type ComponentProps, useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 
 import {
   type ComposerFileAttachment,
@@ -18,12 +17,6 @@ import {
 import { retryAttachmentUpload, useAttachmentUploadStore } from "../../lib/attachmentUploadQueue";
 import { formatAttachmentUploadProgress } from "../../lib/attachmentUploadState";
 import { isHeicImageFile } from "../../lib/imageCompression";
-import {
-  type PendingSnapShotAnimation,
-  scheduleSnapShotAnimationDestination,
-  setSnapShotAnimationDestination,
-  shouldAnimateSnapShotArrival,
-} from "../../lib/snapShotAnimation";
 import { cn } from "~/lib/utils";
 import { getRestingComposerImagePreviewCounts } from "../composerFooterLayout";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
@@ -66,58 +59,13 @@ function ComposerVideoThumbnail({ file }: { file: File }) {
   );
 }
 
-function SnapShotAttachmentFrame({
-  animationId,
-  animationSource,
-  arrival,
-  animateArrival,
-  className,
-  ...props
-}: ComponentProps<"div"> & {
-  readonly animationId?: string | undefined;
-  readonly animationSource?: SnapShotSource | undefined;
-  readonly arrival?: boolean | undefined;
-  readonly animateArrival?: boolean | undefined;
-}) {
-  const frameRef = useRef<HTMLDivElement>(null);
-
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- scrolls the mounted tile into view and registers it as the SnapShot animation destination
-  useLayoutEffect(() => {
-    const frame = frameRef.current;
-    if (!frame || (!animationId && !arrival)) return;
-    frame.scrollIntoView({ block: "nearest", inline: "nearest" });
-    if (!animationId) return;
-
-    return scheduleSnapShotAnimationDestination(animationId, () =>
-      setSnapShotAnimationDestination(animationId, frame, animationSource),
-    );
-  }, [animationId, animationSource, arrival]);
-
-  return (
-    <div
-      ref={frameRef}
-      className={cn(
-        animateArrival &&
-          !animationId &&
-          "origin-center transition-[opacity,scale] duration-300 ease-drawer starting:scale-95 starting:opacity-0 motion-reduce:transition-none motion-reduce:starting:scale-100 motion-reduce:starting:opacity-100",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
 /** Image, SnapShot and video tiles above the composer editor. */
 export function ComposerAttachmentMediaRow({
   images,
   expandedImages,
   preparingImages,
   videos,
-  pendingSnapShotAnimations,
-  pendingSnapShotIds,
-  uncommittedSnapShotIds,
   nonPersistedImageIds,
-  snapShotAnimations,
   supportsAttachmentUploads,
   maxFileAttachmentBytes,
   environmentId,
@@ -132,11 +80,7 @@ export function ComposerAttachmentMediaRow({
   readonly expandedImages: ReadonlyArray<ComposerImageAttachment>;
   readonly preparingImages: ReadonlyArray<PreparingComposerImage>;
   readonly videos: ReadonlyArray<ComposerFileAttachment>;
-  readonly pendingSnapShotAnimations: ReadonlyArray<PendingSnapShotAnimation>;
-  readonly pendingSnapShotIds: ReadonlyArray<string>;
-  readonly uncommittedSnapShotIds: ReadonlyArray<string>;
   readonly nonPersistedImageIds: ReadonlyArray<string>;
-  readonly snapShotAnimations: boolean;
   readonly supportsAttachmentUploads: boolean;
   readonly maxFileAttachmentBytes: number | null;
   readonly environmentId: EnvironmentId;
@@ -148,14 +92,12 @@ export function ComposerAttachmentMediaRow({
   readonly onRemoveFile: (fileId: string) => void;
 }) {
   const uploadsByImageId = useAttachmentUploadStore((state) => state.uploadsByImageId);
-  const pendingSnapShotIdSet = new Set(pendingSnapShotIds);
   const nonPersistedImageIdSet = new Set(nonPersistedImageIds);
   return (
     <div
       className={cn(
         "mb-3 flex max-w-full gap-2",
-        pendingSnapShotIds.length > 0 ||
-          expandedImages.some((image) => image.source?.kind === "snap-shot")
+        expandedImages.some((image) => image.source?.kind === "snap-shot")
           ? "snap-x snap-proximity overflow-x-auto overscroll-x-contain pb-1 scrollbar-thumb-foreground/18 scrollbar-track-transparent [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-3 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-foreground/18 [&::-webkit-scrollbar-thumb]:bg-clip-content [&::-webkit-scrollbar-thumb:hover]:bg-foreground/28 [&::-webkit-scrollbar-track]:mx-1 [&::-webkit-scrollbar-track]:bg-transparent"
           : "flex-wrap",
       )}
@@ -165,165 +107,136 @@ export function ComposerAttachmentMediaRow({
       {[
         ...expandedImages.map((image) => ({ image, ready: image })),
         ...preparingImages.map((image) => ({ image, ready: null })),
-      ]
-        .map(({ image, ready }) => {
-          const upload =
-            ready && supportsAttachmentUploads ? uploadsByImageId[image.id] : undefined;
-          const source = ready?.source;
-          const snapShotAnimationPending =
-            source?.kind === "snap-shot" && pendingSnapShotIdSet.has(image.id);
-          const snapShotArrival =
-            source?.kind === "snap-shot" && shouldAnimateSnapShotArrival(source.capturedAt);
-          return (
-            <SnapShotAttachmentFrame
-              key={image.id}
-              data-chat-composer-expanded-image="true"
-              aria-hidden={snapShotAnimationPending || undefined}
-              inert={snapShotAnimationPending || undefined}
-              arrival={snapShotArrival}
-              animateArrival={snapShotAnimations && !snapShotAnimationPending && snapShotArrival}
-              animationId={snapShotAnimationPending ? image.id : undefined}
-              animationSource={snapShotAnimationPending ? source : undefined}
+      ].map(({ image, ready }) => {
+        const upload = ready && supportsAttachmentUploads ? uploadsByImageId[image.id] : undefined;
+        const source = ready?.source;
+        return (
+          <div
+            key={image.id}
+            data-chat-composer-expanded-image="true"
+            className={cn(
+              "group/attachment shrink-0 snap-start bg-background",
+              source?.kind === "snap-shot"
+                ? SNAP_SHOT_ATTACHMENT_FRAME_CLASS
+                : "relative h-16 w-16 overflow-hidden rounded-lg border border-border/80",
+            )}
+          >
+            {!ready || ready.previewUrl ? (
+              <button
+                type="button"
+                className={cn("h-full w-full", ready && "cursor-zoom-in")}
+                aria-label={`Preview ${image.name}`}
+                disabled={!ready}
+                onClick={() => {
+                  const preview = buildExpandedImagePreview(images, image.id);
+                  if (!preview) return;
+                  onExpandImage(preview);
+                }}
+              >
+                <ComposerImageThumbnail
+                  file={image.file}
+                  alt={image.name}
+                  className="h-full w-full object-cover"
+                  fallback={
+                    ready && isHeicImageFile({ name: ready.name, type: ready.mimeType }) ? (
+                      <AttachmentImage
+                        name={ready.name}
+                        mimeType={ready.mimeType}
+                        src={ready.previewUrl}
+                        alt={image.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-full items-center justify-center px-1 text-3xs text-secondary-label">
+                        {image.name}
+                      </span>
+                    )
+                  }
+                />
+              </button>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-1 text-center text-3xs text-secondary-label">
+                {image.name}
+              </div>
+            )}
+            {source?.kind === "snap-shot" ? (
+              <SnapShotAttachmentDetails
+                source={source}
+                className={cn(
+                  upload?.status === "uploading" && "bottom-4",
+                  upload?.status === "failed" && "bottom-8",
+                )}
+              />
+            ) : null}
+            {nonPersistedImageIdSet.has(image.id) && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span
+                      role="img"
+                      aria-label="Draft attachment may not persist"
+                      className="absolute left-1 top-1 inline-flex items-center justify-center rounded bg-background/85 p-0.5 text-warning-foreground"
+                    >
+                      <CircleAlertIcon className="size-3" />
+                    </span>
+                  }
+                />
+                <TooltipPopup side="top">
+                  Draft attachment could not be saved locally and may be lost on navigation.
+                </TooltipPopup>
+              </Tooltip>
+            )}
+            {(ready ? upload?.status === "uploading" : supportsAttachmentUploads) && (
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-background/85 px-1 text-center text-3xs text-foreground">
+                {formatAttachmentUploadProgress(
+                  upload?.status === "uploading" ? upload.progress : 0,
+                )}
+              </span>
+            )}
+            {ready && upload?.status === "failed" && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="overlay"
+                      size="icon-xs"
+                      className="absolute bottom-1 left-1"
+                      onClick={() =>
+                        retryAttachmentUpload({
+                          environmentId,
+                          image: ready,
+                          draftTarget: attachmentDraftTarget,
+                        })
+                      }
+                      disabled={!canOperateThread}
+                      aria-label={`Retry upload for ${image.name}`}
+                    />
+                  }
+                >
+                  <RefreshIcon />
+                </TooltipTrigger>
+                <TooltipPopup side="top">{upload.reason}</TooltipPopup>
+              </Tooltip>
+            )}
+            <span
               className={cn(
-                "group/attachment shrink-0 snap-start bg-background",
-                source?.kind === "snap-shot"
-                  ? SNAP_SHOT_ATTACHMENT_FRAME_CLASS
-                  : "relative h-16 w-16 overflow-hidden rounded-lg border border-border/80",
-                snapShotAnimationPending && "invisible",
+                "absolute right-1 top-1 flex",
+                source?.kind === "snap-shot" &&
+                  "opacity-0 transition-opacity pointer-coarse:opacity-100 group-hover/attachment:opacity-100 group-focus-within/attachment:opacity-100",
               )}
             >
-              {!ready || ready.previewUrl ? (
-                <button
-                  type="button"
-                  className={cn("h-full w-full", ready && "cursor-zoom-in")}
-                  aria-label={`Preview ${image.name}`}
-                  disabled={!ready}
-                  onClick={() => {
-                    const preview = buildExpandedImagePreview(images, image.id);
-                    if (!preview) return;
-                    onExpandImage(preview);
-                  }}
-                >
-                  <ComposerImageThumbnail
-                    file={image.file}
-                    alt={image.name}
-                    className="h-full w-full object-cover"
-                    fallback={
-                      ready && isHeicImageFile({ name: ready.name, type: ready.mimeType }) ? (
-                        <AttachmentImage
-                          name={ready.name}
-                          mimeType={ready.mimeType}
-                          src={ready.previewUrl}
-                          alt={image.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="flex h-full items-center justify-center px-1 text-3xs text-secondary-label">
-                          {image.name}
-                        </span>
-                      )
-                    }
-                  />
-                </button>
-              ) : (
-                <div className="flex h-full w-full items-center justify-center px-1 text-center text-3xs text-secondary-label">
-                  {image.name}
-                </div>
-              )}
-              {source?.kind === "snap-shot" ? (
-                <SnapShotAttachmentDetails
-                  source={source}
-                  className={cn(
-                    upload?.status === "uploading" && "bottom-4",
-                    upload?.status === "failed" && "bottom-8",
-                  )}
-                />
-              ) : null}
-              {nonPersistedImageIdSet.has(image.id) && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <span
-                        role="img"
-                        aria-label="Draft attachment may not persist"
-                        className="absolute left-1 top-1 inline-flex items-center justify-center rounded bg-background/85 p-0.5 text-warning-foreground"
-                      >
-                        <CircleAlertIcon className="size-3" />
-                      </span>
-                    }
-                  />
-                  <TooltipPopup side="top">
-                    Draft attachment could not be saved locally and may be lost on navigation.
-                  </TooltipPopup>
-                </Tooltip>
-              )}
-              {(ready ? upload?.status === "uploading" : supportsAttachmentUploads) && (
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-background/85 px-1 text-center text-3xs text-foreground">
-                  {formatAttachmentUploadProgress(
-                    upload?.status === "uploading" ? upload.progress : 0,
-                  )}
-                </span>
-              )}
-              {ready && upload?.status === "failed" && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="overlay"
-                        size="icon-xs"
-                        className="absolute bottom-1 left-1"
-                        onClick={() =>
-                          retryAttachmentUpload({
-                            environmentId,
-                            image: ready,
-                            draftTarget: attachmentDraftTarget,
-                          })
-                        }
-                        disabled={!canOperateThread}
-                        aria-label={`Retry upload for ${image.name}`}
-                      />
-                    }
-                  >
-                    <RefreshIcon />
-                  </TooltipTrigger>
-                  <TooltipPopup side="top">{upload.reason}</TooltipPopup>
-                </Tooltip>
-              )}
-              <span
-                className={cn(
-                  "absolute right-1 top-1 flex",
-                  source?.kind === "snap-shot" &&
-                    "opacity-0 transition-opacity pointer-coarse:opacity-100 group-hover/attachment:opacity-100 group-focus-within/attachment:opacity-100",
-                )}
+              <Button
+                variant="media-close"
+                size="icon-xs"
+                onClick={() => onRemoveImage(image.id)}
+                aria-label={`Remove ${image.name}`}
               >
-                <Button
-                  variant="media-close"
-                  size="icon-xs"
-                  onClick={() => onRemoveImage(image.id)}
-                  aria-label={`Remove ${image.name}`}
-                >
-                  <XIcon />
-                </Button>
-              </span>
-            </SnapShotAttachmentFrame>
-          );
-        })
-        .concat(
-          uncommittedSnapShotIds.map((captureId) => (
-            <SnapShotAttachmentFrame
-              key={captureId}
-              aria-hidden="true"
-              animationId={captureId}
-              animationSource={
-                pendingSnapShotAnimations.find((capture) => capture.id === captureId)?.source
-              }
-              className={cn(
-                SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
-                "invisible shrink-0 snap-start bg-background",
-              )}
-            />
-          )),
-        )}
+                <XIcon />
+              </Button>
+            </span>
+          </div>
+        );
+      })}
       {videos.map((file) => {
         const fileCanUpload =
           supportsAttachmentUploads &&

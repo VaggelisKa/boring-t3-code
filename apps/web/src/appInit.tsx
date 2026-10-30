@@ -9,14 +9,12 @@ import { startBrowserProfileReporting } from "./browser/BrowserProfileReporter";
 import { startPreviewTitleRecording } from "./browserHistoryStore";
 import { retainThreadOverlaysForThread } from "./components/chat/threadOverlayRetention";
 import { startBackgroundThreadAnnouncements } from "./components/BackgroundThreadAnnouncer";
-import { startSshPasswordPromptQueue } from "./components/desktop/SshPasswordPromptDialog";
 import { startHostFreezeToasts } from "./components/HostFreezeToastCoordinator";
 import { startKeybindingsUpdateToasts } from "./components/KeybindingsUpdateToast";
 import { startLegacyThreadMigrationToast } from "./components/LegacyThreadMigrationToast";
 import { startPermissionUpdateNotices } from "./components/PermissionUpdateNotice";
 import { startAgentOpenedPreviews } from "./components/preview/agentOpenedPreviews";
 import { startMainAppLocationTracking } from "./components/sidebar/mainAppLocation";
-import { startDesktopUpdateLaunchNotice } from "./components/sidebar/updateEverythingRun";
 import { startSlowRpcRequestToasts } from "./components/SlowRpcRequestToastCoordinator";
 import { startThreadNotifications } from "./components/ThreadNotificationCoordinator";
 import { startGuideRunNotifications } from "./components/pullRequest/guide/PullRequestGuideRunCoordinator";
@@ -42,7 +40,6 @@ import {
   syncDocumentElectronPlatformClasses,
   syncDocumentWindowControlsOverlayClass,
 } from "./lib/windowControlsOverlay";
-import { startProviderAuthDelivery } from "./providerAuthDelivery";
 import { getRouter, type AppRouter } from "./router";
 import { appAtomRegistry } from "./rpc/atomRegistry";
 import { primaryServerConfigAtom } from "./state/server";
@@ -153,7 +150,6 @@ function startThreadOverlayRetention(router: AppRouter): void {
  */
 export function startAppServices(): AppRouter {
   // Ahead of the history: the provider auth code must leave the address before anything reads it.
-  startProviderAuthDelivery();
 
   // Electron loads the app from a file-backed shell, so hash history avoids path resolution issues.
   const router = getRouter(isElectron ? createHashHistory() : createBrowserHistory());
@@ -195,7 +191,6 @@ export function startAppServices(): AppRouter {
   startWorkspaceFocus(router);
   startBackgroundThreadAnnouncements(appAtomRegistry, router);
   startThreadVisitedMigration(appAtomRegistry);
-  startSshPasswordPromptQueue();
 
   startKeybindingsUpdateToasts();
   startSlowRpcRequestToasts();
@@ -204,7 +199,6 @@ export function startAppServices(): AppRouter {
   startPermissionUpdateNotices(router);
   startThreadNotifications(appAtomRegistry, router);
   startGuideRunNotifications(appAtomRegistry, router);
-  if (isElectron) startDesktopUpdateLaunchNotice();
 
   return router;
 }

@@ -21,7 +21,7 @@ import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 
-import { ClaudeProviderCapabilitiesV2 } from "../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
+import { SingleThreadProviderCapabilitiesV2 } from "../orchestration-v2/testkit/ProviderCapabilitiesFixtures.ts";
 import * as CommandReceiptStore from "../orchestration-v2/CommandReceiptStore.ts";
 import * as EffectWorker from "../orchestration-v2/EffectWorker.ts";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
@@ -39,7 +39,6 @@ import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import type { McpInvocationScope } from "./McpInvocationContext.ts";
 import * as OrchestratorMcpService from "./OrchestratorMcpService.ts";
-import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
 
 const layerOrchestratorService = OrchestratorMcpService.layer.pipe(
   Layer.provide(Layer.mock(ThreadLaunchService.ThreadLaunchService)({})),
@@ -61,7 +60,7 @@ it.effect("task_cancel ends a delegated child's background native subagent", () 
       const adapter: ProviderAdapter.ProviderAdapterV2["Service"] = {
         instanceId,
         driver,
-        getCapabilities: () => Effect.succeed(ClaudeProviderCapabilitiesV2),
+        getCapabilities: () => Effect.succeed(SingleThreadProviderCapabilitiesV2),
         planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" }),
         openSession: (input) =>
           Effect.gen(function* () {
@@ -78,7 +77,7 @@ it.effect("task_cancel ends a delegated child's background native subagent", () 
                 status: "ready",
                 cwd,
                 model: modelSelection.model,
-                capabilities: ClaudeProviderCapabilitiesV2,
+                capabilities: SingleThreadProviderCapabilitiesV2,
                 createdAt: now,
                 updatedAt: now,
                 lastError: null,
@@ -155,7 +154,6 @@ it.effect("task_cancel ends a delegated child's background native subagent", () 
             Layer.mock(ProviderRegistry.ProviderRegistry)({ getProviders: Effect.succeed([]) }),
             Layer.mock(ProjectService.ProjectService)({}),
             Layer.mock(SecretRequests.SecretRequests)({}),
-            Layer.mock(RemoteDelegation.RemoteDelegation)({}),
             ServerSettings.layerTest(),
             NodeServices.layer,
           ),

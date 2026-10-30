@@ -1,22 +1,10 @@
 import type { ToolActivityIcon, ToolActivitySource } from "@t3tools/contracts";
 import { resolveT3McpToolDefinition } from "@t3tools/shared/t3McpToolPresentation";
 
-export function normalizeMcpText(value: unknown, maxLength = 160): string | undefined {
+function normalizeMcpText(value: unknown, maxLength = 160): string | undefined {
   if (typeof value !== "string") return undefined;
   const text = value.trim().replace(/\s+/gu, " ");
   return text.length > 0 && text.length <= maxLength ? text : undefined;
-}
-
-export function normalizeMcpHttpUrl(value: unknown): string | undefined {
-  if (typeof value !== "string" || value.length > 4096) return undefined;
-  try {
-    const url = new URL(value);
-    return (url.protocol === "https:" || url.protocol === "http:") && url.href.length <= 4096
-      ? url.href
-      : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 // Logos are never fetched from the network: a remote logo URL (often a favicon

@@ -98,11 +98,8 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
 import { ExpandableText } from "./ExpandableText";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
-import { UsageProviderSettings } from "./UsageProviderSettings";
 import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetupSection";
 import { ProviderAuthenticationSection } from "./ProviderAuthenticationSection";
-import { CodexSetupSection, CodexManagedRuntimeFields } from "./CodexSetupSection";
-import { readCodexSetupMode } from "./CodexSetupSection.logic";
 import { providerClients } from "./providerDriverMeta";
 import { searchableSetting } from "./settingsSearch";
 import { CompactIdleThreadsRow } from "./SettingsPanels";
@@ -194,7 +191,6 @@ function ProviderLastChecked({ environmentId }: { environmentId: EnvironmentId }
 function providerEnvironmentDetail(environment: EnvironmentPresentation): string {
   if (environment.entry.target._tag === "PrimaryConnectionTarget") return "Primary device";
   if (environment.relayManaged) return "T3 Connect";
-  if (environment.entry.target._tag === "SshConnectionTarget") return "SSH";
   if (isDesktopLocalConnectionTarget(environment.entry.target)) return "Local device";
   return environment.displayUrl ?? "Remote device";
 }
@@ -335,28 +331,11 @@ function ProviderSettingsPanelContent(target: ProviderSettingsTarget) {
       hasServerConfig: environment.serverConfig !== null,
     }),
   )?.environmentId;
-  const searchableCursorEnvironmentId = options.find(
-    (environment) =>
-      environment.serverConfig?.environment.platform.os === "darwin" &&
-      isProviderSettingsEnvironmentAvailable({
-        connectionPhase: environment.connection.phase,
-        hasServerConfig: true,
-      }),
-  )?.environmentId;
   let searchRedirectEnvironmentId: EnvironmentId | undefined;
   {
     if (
       !target.scoped &&
-      searchTargetId === searchableSetting("cursor-keychain-usage").id &&
-      (!selectedEnvironmentCanRenderSettings ||
-        selectedEnvironment?.serverConfig?.environment.platform.os !== "darwin") &&
-      searchableCursorEnvironmentId !== undefined
-    ) {
-      searchRedirectEnvironmentId = searchableCursorEnvironmentId;
-    } else if (
-      !target.scoped &&
-      (searchTargetId === searchableSetting("provider-health-check-interval").id ||
-        searchTargetId === searchableSetting("usage-providers").id) &&
+      searchTargetId === searchableSetting("provider-health-check-interval").id &&
       !selectedEnvironmentCanRenderSettings &&
       searchableEnvironmentId !== undefined
     ) {
@@ -1069,15 +1048,6 @@ export function EnvironmentProviderSettings({
         </SettingsGroup>
       </SettingsSection>
 
-      <UsageProviderSettings
-        key={environmentId}
-        environmentId={environmentId}
-        environmentLabel={environmentLabel}
-        sources={settings.usageLimitSources}
-        cursorKeychainUsageEnabled={settings.cursorKeychainUsageEnabled}
-        readOnly={readOnly}
-      />
-
       <SettingsSection title="Advanced">
         <SettingsRow
           id={searchableSetting("provider-health-check-interval").id}
@@ -1273,7 +1243,6 @@ function ProviderInstanceRow({
         onReset: () => actions.writeProjectOverride(instanceId, undefined),
       }
     : undefined;
-  const codexSetupMode = driver === "codex" ? readCodexSetupMode(instance.config) : null;
   const recommendedVersion = liveProvider?.compatibilityAdvisory?.recommendedVersion;
   const canInstallRecommended =
     !readOnly &&
@@ -1298,15 +1267,6 @@ function ProviderInstanceRow({
       selected={selected}
       onSelect={mode === "list" ? () => actions.selectInstance(instanceId) : undefined}
       readOnly={readOnly}
-      runtime={
-        mode === "editor" && codexSetupMode === "managed" ? (
-          <CodexManagedRuntimeFields
-            environmentId={environmentId}
-            instanceId={instanceId}
-            provider={liveProvider}
-          />
-        ) : undefined
-      }
       canWriteSettings={canWriteSettings}
       setup={
         mode === "editor" && driver === "antigravity" ? (
@@ -1320,28 +1280,6 @@ function ProviderInstanceRow({
             enabled={resolveProviderInstanceEnabled(instance)}
             readOnly={readOnly}
             onEnable={() => actions.enableInstance(instanceId, { ...instance, enabled: true })}
-          />
-        ) : mode === "editor" && codexSetupMode === "managed" ? (
-          <CodexSetupSection
-            environmentId={environmentId}
-            instanceId={instanceId}
-            provider={liveProvider}
-            mode={codexSetupMode}
-            enabled={resolveProviderInstanceEnabled(instance)}
-            readOnly={readOnly}
-            onModeChange={(setupMode) =>
-              actions.enableInstance(instanceId, {
-                ...instance,
-                enabled: true,
-                config: {
-                  ...(instance.config !== null && typeof instance.config === "object"
-                    ? instance.config
-                    : {}),
-                  enabled: true,
-                  setupMode,
-                },
-              })
-            }
           />
         ) : mode === "editor" &&
           !readOnly &&

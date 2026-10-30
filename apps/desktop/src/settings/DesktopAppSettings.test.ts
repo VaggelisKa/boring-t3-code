@@ -25,11 +25,6 @@ const DesktopSettingsPatch = Schema.Struct({
     ),
   ),
   mainWindowMaximized: Schema.optionalKey(Schema.Boolean),
-  serverExposureMode: Schema.optionalKey(Schema.Literals(["local-only", "network-accessible"])),
-  tailscaleServeEnabled: Schema.optionalKey(Schema.Boolean),
-  tailscaleServePort: Schema.optionalKey(Schema.Number),
-  updateChannel: Schema.optionalKey(Schema.Literals(["latest", "nightly"])),
-  updateChannelConfiguredByUser: Schema.optionalKey(Schema.Boolean),
   wslBackendEnabled: Schema.optionalKey(Schema.Boolean),
   wslMode: Schema.optionalKey(Schema.Literals(["local", "wsl"])),
   wslDistro: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -39,13 +34,13 @@ const DesktopSettingsPatch = Schema.Struct({
 const decodeDesktopSettingsPatch = Schema.decodeEffect(Schema.fromJsonString(DesktopSettingsPatch));
 const encodeDesktopSettingsPatch = Schema.encodeEffect(Schema.fromJsonString(DesktopSettingsPatch));
 
-function layerEnvironment(baseDir: string, appVersion = "0.0.17") {
+function layerEnvironment(baseDir: string) {
   return DesktopEnvironment.layer({
     dirname: "/repo/apps/desktop/src",
     homeDirectory: baseDir,
     platform: "darwin",
     processArch: "x64",
-    appVersion,
+    appVersion: "0.0.17",
     appPath: "/repo",
     isPackaged: true,
     resourcesPath: "/missing/resources",
@@ -63,7 +58,6 @@ const withSettings = <A, E, R>(
     E,
     R | DesktopAppSettings.DesktopAppSettings | DesktopEnvironment.DesktopEnvironment
   >,
-  options?: { readonly appVersion?: string },
 ) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
@@ -73,7 +67,7 @@ const withSettings = <A, E, R>(
     return yield* effect.pipe(
       Effect.provide(
         DesktopAppSettings.layer.pipe(
-          Layer.provideMerge(layerEnvironment(baseDir, options?.appVersion)),
+          Layer.provideMerge(layerEnvironment(baseDir)),
           Layer.provideMerge(NodeServices.layer),
         ),
       ),
@@ -130,7 +124,6 @@ describe("DesktopSettings", () => {
           const settings = yield* DesktopAppSettings.DesktopAppSettings;
           yield* settings.setWslBackendEnabled(true);
           yield* settings.setWslDistro("Ubuntu");
-          yield* settings.setServerExposureMode("network-accessible");
           const before = yield* settings.get;
           assert.isTrue((yield* settings.setLocalEnvironmentEnabled(false)).changed);
           assert.deepEqual(yield* settings.load, { ...before, localEnvironmentEnabled: false });
@@ -178,11 +171,6 @@ describe("DesktopSettings", () => {
           localEnvironmentEnabled: true,
           mainWindowBounds: { x: 120, y: 80, width: 1280, height: 900 },
           mainWindowMaximized: false,
-          serverExposureMode: "network-accessible",
-          tailscaleServeEnabled: true,
-          tailscaleServePort: 8443,
-          updateChannel: "latest",
-          updateChannelConfiguredByUser: false,
           wslBackendEnabled: false,
           wslOnly: false,
           wslDistro: null,
@@ -198,13 +186,11 @@ describe("DesktopSettings", () => {
         yield* writeSettingsPatch({
           mainWindowBounds: { x: 10.5, y: 20, width: 839, height: 620 },
           mainWindowMaximized: true,
-          serverExposureMode: "network-accessible",
         });
 
         const loaded = yield* settings.load;
         assert.isNull(loaded.mainWindowBounds);
         assert.isFalse(loaded.mainWindowMaximized);
-        assert.equal(loaded.serverExposureMode, "network-accessible");
       }),
     ),
   );
@@ -217,7 +203,7 @@ describe("DesktopSettings", () => {
         const settings = yield* DesktopAppSettings.DesktopAppSettings;
 
         yield* settings.setMainWindowBounds({ x: -1200, y: 40, width: 1440, height: 960 }, true);
-        yield* settings.setServerExposureMode("network-accessible");
+        yield* settings.setWslBackendEnabled(true);
 
         const persisted = yield* decodeDesktopSettingsPatch(
           yield* fileSystem.readFileString(environment.desktopSettingsPath),
@@ -225,7 +211,7 @@ describe("DesktopSettings", () => {
         assert.deepEqual(persisted, {
           mainWindowBounds: { x: -1200, y: 40, width: 1440, height: 960 },
           mainWindowMaximized: true,
-          serverExposureMode: "network-accessible",
+          wslBackendEnabled: true,
         } satisfies typeof DesktopSettingsPatch.Type);
       }),
     ),
@@ -245,7 +231,7 @@ describe("DesktopSettings", () => {
         yield* fileSystem.makeDirectory(environment.stateDir, { recursive: true });
         yield* fileSystem.symlink(linkedSettingsPath, environment.desktopSettingsPath);
 
-        yield* settings.setServerExposureMode("network-accessible");
+        yield* settings.setWslBackendEnabled(true);
 
         assert.equal(
           yield* fileSystem.readLink(environment.desktopSettingsPath),
@@ -254,65 +240,8 @@ describe("DesktopSettings", () => {
         const persisted = yield* decodeDesktopSettingsPatch(
           yield* fileSystem.readFileString(linkedSettingsPath),
         );
-        assert.equal(persisted.serverExposureMode, "network-accessible");
+        assert.equal(persisted.wslBackendEnabled, true);
       }),
-    ),
-  );
-
-  it.effect("migrates legacy implicit update channels to the runtime default", () =>
-    withSettings(
-      Effect.gen(function* () {
-        const settings = yield* DesktopAppSettings.DesktopAppSettings;
-        yield* writeSettingsPatch({
-          serverExposureMode: "local-only",
-          updateChannel: "latest",
-        });
-
-        assert.deepEqual(yield* settings.load, {
-          linuxPasswordStore: "auto",
-          localEnvironmentEnabled: true,
-          mainWindowBounds: null,
-          mainWindowMaximized: false,
-          serverExposureMode: "local-only",
-          tailscaleServeEnabled: false,
-          tailscaleServePort: 443,
-          updateChannel: "nightly",
-          updateChannelConfiguredByUser: false,
-          wslBackendEnabled: false,
-          wslOnly: false,
-          wslDistro: null,
-        } satisfies DesktopAppSettings.DesktopSettings);
-      }),
-      { appVersion: "0.0.17-nightly.20260415.1" },
-    ),
-  );
-
-  it.effect("preserves explicit stable update channel on nightly builds", () =>
-    withSettings(
-      Effect.gen(function* () {
-        const settings = yield* DesktopAppSettings.DesktopAppSettings;
-        yield* writeSettingsPatch({
-          serverExposureMode: "local-only",
-          updateChannel: "latest",
-          updateChannelConfiguredByUser: true,
-        });
-
-        assert.deepEqual(yield* settings.load, {
-          linuxPasswordStore: "auto",
-          localEnvironmentEnabled: true,
-          mainWindowBounds: null,
-          mainWindowMaximized: false,
-          serverExposureMode: "local-only",
-          tailscaleServeEnabled: false,
-          tailscaleServePort: 443,
-          updateChannel: "latest",
-          updateChannelConfiguredByUser: true,
-          wslBackendEnabled: false,
-          wslOnly: false,
-          wslDistro: null,
-        } satisfies DesktopAppSettings.DesktopSettings);
-      }),
-      { appVersion: "0.0.17-nightly.20260415.1" },
     ),
   );
 

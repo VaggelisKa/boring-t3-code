@@ -181,11 +181,11 @@ describe("persistClientSettingsPatch", () => {
       });
     });
 
-    const firstSettings = { ...DEFAULT_CLIENT_SETTINGS, snapShotFlash: false };
-    const secondSettings = { ...firstSettings, snapShotPlaySound: false };
-    const first = persistClientSettingsPatch({ snapShotFlash: false });
+    const firstSettings = { ...DEFAULT_CLIENT_SETTINGS, confirmThreadDelete: false };
+    const secondSettings = { ...firstSettings, diffFilesCollapsed: false };
+    const first = persistClientSettingsPatch({ confirmThreadDelete: false });
     await firstStarted;
-    const second = persistClientSettingsPatch({ snapShotPlaySound: false });
+    const second = persistClientSettingsPatch({ diffFilesCollapsed: false });
 
     expect(persistenceMocks.setClientSettings).toHaveBeenCalledTimes(1);
     expect(getClientSettings()).toEqual(secondSettings);

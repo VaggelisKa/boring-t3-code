@@ -31,11 +31,7 @@ import {
   PrimaryConnectionTarget,
 } from "./model.ts";
 import * as Onboarding from "./onboarding.ts";
-import {
-  prepareBearerConnectionUpdate,
-  preparePairingRegistration,
-  prepareSshRegistration,
-} from "./onboarding.ts";
+import { prepareBearerConnectionUpdate, preparePairingRegistration } from "./onboarding.ts";
 import * as EnvironmentRegistry from "./registry.ts";
 import * as ConnectionProfileStore from "./profileStore.ts";
 import { connectionRoutes, routeHttpBaseUrl } from "./routes.ts";
@@ -58,7 +54,6 @@ function layerPairingHttp(
     readonly failDescriptor?: boolean;
     readonly failExchange?: boolean;
     readonly protocolVersion?: number;
-    readonly selfUpdate?: boolean;
     readonly grantScopes?: ReadonlyArray<AuthEnvironmentScope>;
     readonly exchangeGate?: { readonly reached: () => void; readonly release: Promise<void> };
   },
@@ -87,7 +82,6 @@ function layerPairingHttp(
           orchestrationProtocolVersion: options?.protocolVersion ?? ORCHESTRATION_PROTOCOL_VERSION,
           capabilities: {
             repositoryIdentity: true,
-            ...(options?.selfUpdate === true ? { serverSelfUpdate: "boot-service" } : {}),
           },
         }),
       );
@@ -180,7 +174,6 @@ function layerPairingOnboarding(
       get: () => Effect.succeedNone,
       put: () => Effect.void,
     }),
-    Layer.mock(ClientCapabilities.SshEnvironmentGateway)({}),
     Layer.succeed(
       Connectivity.Connectivity,
       Connectivity.Connectivity.of({ status: Effect.succeed("online"), changes: Stream.never }),
@@ -371,44 +364,33 @@ describe("connection onboarding", () => {
     }).pipe(Effect.provide(layerPairingOnboarding())),
   );
 
-  it.effect(
-    "re-pairs an outdated self-updatable environment so its connection can be rechecked",
-    () =>
-      Effect.gen(function* () {
-        const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
-        const onboarding = yield* Onboarding.ConnectionOnboarding;
-        yield* registerSwitchedOffEnvironment;
-        yield* registry.setCompatibility(
-          PAIRED_ENVIRONMENT_ID,
-          new ConnectionBlockedError({
-            reason: "unsupported",
-            detail: "The saved server needs an update.",
-            serverUpdateRequired: true,
-          }),
-        );
-        expect(
-          (yield* SubscriptionRef.get(registry.entries)).get(PAIRED_ENVIRONMENT_ID),
-        ).toMatchObject({
-          enabled: false,
-          serverUpdateRequired: true,
-        });
+  it.effect("re-pairs an unsupported environment so its connection can be rechecked", () =>
+    Effect.gen(function* () {
+      const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+      const onboarding = yield* Onboarding.ConnectionOnboarding;
+      yield* registerSwitchedOffEnvironment;
+      yield* registry.setCompatibility(
+        PAIRED_ENVIRONMENT_ID,
+        new ConnectionBlockedError({
+          reason: "unsupported",
+          detail: "The saved server needs an update.",
+        }),
+      );
+      expect(
+        (yield* SubscriptionRef.get(registry.entries)).get(PAIRED_ENVIRONMENT_ID),
+      ).toMatchObject({
+        enabled: false,
+        unsupportedReason: "The saved server needs an update.",
+      });
 
-        const environmentId = yield* onboarding.registerPairing(PAIRING_INPUT);
+      const environmentId = yield* onboarding.registerPairing(PAIRING_INPUT);
 
-        expect(environmentId).toBe(PAIRED_ENVIRONMENT_ID);
-        const entry = (yield* SubscriptionRef.get(registry.entries)).get(environmentId);
-        expect(entry?.enabled).toBe(true);
-        expect(entry?.unsupportedReason).toBeUndefined();
-        expect(entry?.serverUpdateRequired).toBeUndefined();
-        expect(entry?.profile).toEqual(Option.some(PAIRED_PROFILE));
-      }).pipe(
-        Effect.provide(
-          layerPairingOnboarding({
-            protocolVersion: ORCHESTRATION_PROTOCOL_VERSION - 1,
-            selfUpdate: true,
-          }),
-        ),
-      ),
+      expect(environmentId).toBe(PAIRED_ENVIRONMENT_ID);
+      const entry = (yield* SubscriptionRef.get(registry.entries)).get(environmentId);
+      expect(entry?.enabled).toBe(true);
+      expect(entry?.unsupportedReason).toBeUndefined();
+      expect(entry?.profile).toEqual(Option.some(PAIRED_PROFILE));
+    }).pipe(Effect.provide(layerPairingOnboarding())),
   );
 
   it.effect.each([
@@ -612,57 +594,6 @@ describe("connection onboarding", () => {
           httpBaseUrl: "http://100.65.180.100:3773/",
           wsBaseUrl: "ws://100.65.180.100:3773/",
         },
-        credential: { token: "bearer-token" },
-      });
-    }),
-  );
-
-  it.effect("prepares an SSH registration from the provisioned platform environment", () =>
-    Effect.gen(function* () {
-      const target = {
-        alias: "devbox",
-        hostname: "devbox.example.test",
-        username: "developer",
-        port: 22,
-      };
-      const registration = yield* prepareSshRegistration({
-        target,
-      }).pipe(
-        Effect.provideService(
-          ClientCapabilities.SshEnvironmentGateway,
-          ClientCapabilities.SshEnvironmentGateway.of({
-            provision: () =>
-              Effect.succeed({
-                environmentId: EnvironmentId.make("environment-ssh"),
-                label: "Remote development box",
-                bootstrap: {
-                  target,
-                  httpBaseUrl: "http://127.0.0.1:3201",
-                  wsBaseUrl: "ws://127.0.0.1:3201",
-                  pairingToken: "pairing-token",
-                },
-                bearerToken: "bearer-token",
-              }),
-            prepare: () => Effect.die("unused"),
-            disconnect: () => Effect.die("unused"),
-          }),
-        ),
-      );
-
-      expect(registration).toMatchObject({
-        _tag: "SshConnectionRegistration",
-        target: {
-          environmentId: "environment-ssh",
-          label: "Remote development box",
-          connectionId: 'ssh:environment-ssh:["devbox","devbox.example.test","developer",22]',
-        },
-        profile: {
-          environmentId: "environment-ssh",
-          label: "Remote development box",
-          connectionId: 'ssh:environment-ssh:["devbox","devbox.example.test","developer",22]',
-          target,
-        },
-        // Saved so the first connect reuses this pairing instead of adding another.
         credential: { token: "bearer-token" },
       });
     }),

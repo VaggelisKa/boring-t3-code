@@ -28,18 +28,12 @@ const layerBackendConfiguration = (prepared = true) =>
   DesktopBackendConfiguration.layer.pipe(Layer.provide(layerShellEnvironment(prepared)));
 
 const layerServerExposure = Layer.succeed(DesktopServerExposure.DesktopServerExposure, {
-  getState: Effect.die("unexpected getState"),
   backendConfig: Effect.succeed({
     port: 4888,
     bindHost: "0.0.0.0",
     httpBaseUrl: new URL("http://127.0.0.1:4888"),
-    tailscaleServeEnabled: true,
-    tailscaleServePort: 8443,
   }),
-  configureFromSettings: () => Effect.die("unexpected configureFromSettings"),
-  setMode: () => Effect.die("unexpected setMode"),
-  setTailscaleServeEnabled: () => Effect.die("unexpected setTailscaleServeEnabled"),
-  getAdvertisedEndpoints: Effect.succeed([]),
+  configure: () => Effect.die("unexpected configure"),
 } satisfies DesktopServerExposure.DesktopServerExposure["Service"]);
 
 function layerEnvironment(
@@ -246,8 +240,6 @@ describe("DesktopBackendConfiguration", () => {
         assert.equal(first.bootstrap.port, 4888);
         assert.equal(first.bootstrap.host, "0.0.0.0");
         assert.equal(first.bootstrap.t3Home, environment.baseDir);
-        assert.equal(first.bootstrap.tailscaleServeEnabled, true);
-        assert.equal(first.bootstrap.tailscaleServePort, 8443);
         assert.match(first.bootstrap.desktopBootstrapSecret ?? "", /^[0-9a-f]{64}$/i);
         assert.equal(
           second.bootstrap.desktopBootstrapSecret,
@@ -759,7 +751,6 @@ describe("DesktopBackendConfiguration", () => {
           assert.equal(config.executablePath, "wsl.exe");
           assert.equal(config.bootstrap.port, 5050);
           assert.equal(config.bootstrap.host, "0.0.0.0");
-          assert.equal(config.bootstrap.tailscaleServeEnabled, false);
           assert.notProperty(config.bootstrap, "desktopTelemetryFd");
           assert.notProperty(config.bootstrap, "resourceMonitorPath");
           assert.equal(config.httpBaseUrl.href, "http://172.27.0.99:5050/");

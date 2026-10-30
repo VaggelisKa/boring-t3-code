@@ -29,7 +29,6 @@ import * as ServerConfig from "../../../config.ts";
 import * as ServerSettings from "../../../serverSettings.ts";
 import * as Project from "../../../project/ProjectService.ts";
 import * as ManagedProjectFolders from "../../../project/ManagedProjectFolders.ts";
-import * as PeerForwarding from "../../../peer/PeerForwarding.ts";
 import * as GitVcsDriver from "../../../vcs/GitVcsDriver.ts";
 import * as VcsProcess from "../../../vcs/VcsProcess.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -51,8 +50,8 @@ const clientLaunchHarness = (input: {
 }) => {
   const projectId = ProjectId.make("project:client-target");
   const modelSelection = {
-    instanceId: ProviderInstanceId.make("claudeAgent"),
-    model: "claude-opus",
+    instanceId: ProviderInstanceId.make("antigravity"),
+    model: "antigravity-default",
   };
   // The project's own default model, which a test can clear between launches.
   const projectDefaults: { model: ModelSelection | null } = {
@@ -63,6 +62,9 @@ const clientLaunchHarness = (input: {
       getProviders: Effect.succeed(input.providers ?? []),
     }),
     ServerSettings.layerTest({
+      providerInstances: {
+        [ProviderInstanceId.make("codex")]: { driver: ProviderDriverKind.make("codex") },
+      },
       fallbackModelSelection: input.fallbackModel ?? null,
       ...(input.defaultRuntimeMode === undefined
         ? {}
@@ -137,7 +139,6 @@ const clientLaunchHarness = (input: {
             : Option.none(),
         ),
     }),
-    Layer.mock(PeerForwarding.PeerForwarding)({}),
     Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({ namedProjectsRoot: "/projects" }),
     DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer)),
   ).pipe(
@@ -487,7 +488,7 @@ it.effect("a client launches with the fallback for an exhausted default", () =>
   Effect.gen(function* () {
     const launched: ThreadLaunch.ThreadLaunchInput[] = [];
     const fallbackModel = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6.1-sol" };
-    const providers: ServerProvider[] = ["claudeAgent", "codex"].map((driver) => ({
+    const providers: ServerProvider[] = ["antigravity", "codex"].map((driver) => ({
       instanceId: ProviderInstanceId.make(driver),
       driver: ProviderDriverKind.make(driver),
       enabled: true,
@@ -499,7 +500,7 @@ it.effect("a client launches with the fallback for an exhausted default", () =>
       models: [],
       slashCommands: [],
       skills: [],
-      ...(driver === "claudeAgent"
+      ...(driver === "antigravity"
         ? {
             usageLimits: {
               checkedAt: "2026-01-01T00:00:00Z",

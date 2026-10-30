@@ -1,5 +1,5 @@
 import {
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   ProviderDriverKind,
@@ -13,7 +13,7 @@ import { createModelCapabilities, resolveSelectableModel } from "@t3tools/shared
 const EMPTY_CAPABILITIES: ModelCapabilities = createModelCapabilities({
   optionDescriptors: [],
 });
-const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("codex");
+const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("antigravity");
 
 export function formatProviderDriverKindLabel(provider: ProviderDriverKind): string {
   return provider
@@ -94,6 +94,6 @@ export function getDefaultServerModel(
     models.find((model) => !model.isCustom)?.slug ??
     models[0]?.slug ??
     DEFAULT_MODEL_BY_PROVIDER[provider] ??
-    DEFAULT_MODEL
+    ANTIGRAVITY_DEFAULT_MODEL
   );
 }

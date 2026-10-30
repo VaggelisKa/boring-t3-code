@@ -47,8 +47,6 @@ const minimalDesktopFlags = (baseDir: string) => ({
   bootstrapFd: Option.none<number>(),
   autoBootstrapProjectFromCwd: Option.none<boolean>(),
   logWebSocketEvents: Option.none<boolean>(),
-  tailscaleServeEnabled: Option.none<boolean>(),
-  tailscaleServePort: Option.none<number>(),
 });
 
 const encodeDesktopBootstrap = Schema.encodeEffect(Schema.fromJsonString(DesktopBackendBootstrap));
@@ -63,8 +61,6 @@ const makeDesktopBootstrap = (
   t3Home: "/tmp/t3-bootstrap-home",
   host: "127.0.0.1",
   desktopBootstrapToken: "desktop-bootstrap-token",
-  tailscaleServeEnabled: false,
-  tailscaleServePort: 443,
   ...overrides,
 });
 
@@ -229,8 +225,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         bootstrapFd: Option.none<number>(),
         autoBootstrapProjectFromCwd: Option.none<boolean>(),
         logWebSocketEvents: Option.none<boolean>(),
-        tailscaleServeEnabled: Option.none<boolean>(),
-        tailscaleServePort: Option.none<number>(),
       };
       const layerConfig = ConfigProvider.layer(
         ConfigProvider.fromEnv({
@@ -273,8 +267,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         bootstrapFd: Option.none<number>(),
         autoBootstrapProjectFromCwd: Option.none<boolean>(),
         logWebSocketEvents: Option.none<boolean>(),
-        tailscaleServeEnabled: Option.none<boolean>(),
-        tailscaleServePort: Option.none<number>(),
       };
       const layerConfig = ConfigProvider.layer(
         ConfigProvider.fromEnv({ env: { T3CODE_DEV_AUTH_TOKEN: secret } }),
@@ -307,8 +299,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       const fd = yield* openBootstrapFd(
         makeDesktopBootstrap({
           noBrowser: true,
-          tailscaleServeEnabled: false,
-          tailscaleServePort: 443,
         }),
       );
       const derivedPaths = yield* deriveExplicitServerPaths(
@@ -328,8 +318,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.some(false),
           logWebSocketEvents: Option.some(false),
-          tailscaleServeEnabled: Option.none(),
-          tailscaleServePort: Option.none(),
         },
         Option.none(),
       ).pipe(
@@ -366,8 +354,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: "desktop-bootstrap-token",
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: false,
-        tailscaleServeEnabled: false,
-        tailscaleServePort: 443,
       });
     }),
   );
@@ -383,8 +369,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           t3Home: "/tmp/t3-bootstrap-home",
           noBrowser: false,
           desktopBootstrapToken: "desktop-token",
-          tailscaleServeEnabled: false,
-          tailscaleServePort: 443,
         }),
       );
       const derivedPaths = yield* deriveExplicitServerPaths(
@@ -404,8 +388,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.none(),
           logWebSocketEvents: Option.none(),
-          tailscaleServeEnabled: Option.none(),
-          tailscaleServePort: Option.none(),
         },
         Option.some("Debug"),
       ).pipe(
@@ -444,8 +426,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: "desktop-token",
         autoBootstrapProjectFromCwd: true,
         logWebSocketEvents: true,
-        tailscaleServeEnabled: false,
-        tailscaleServePort: 443,
       });
     }),
   );
@@ -551,8 +531,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.none(),
           logWebSocketEvents: Option.none(),
-          tailscaleServeEnabled: Option.none(),
-          tailscaleServePort: Option.none(),
         },
         Option.none(),
       ).pipe(
@@ -599,8 +577,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.none(),
           logWebSocketEvents: Option.none(),
-          tailscaleServeEnabled: Option.none(),
-          tailscaleServePort: Option.none(),
         },
         Option.none(),
       ).pipe(
@@ -639,8 +615,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.none(),
           logWebSocketEvents: Option.none(),
-          tailscaleServeEnabled: Option.none(),
-          tailscaleServePort: Option.none(),
         },
         Option.none(),
         {
@@ -678,8 +652,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: false,
-        tailscaleServeEnabled: false,
-        tailscaleServePort: 443,
       });
     }),
   );
@@ -701,8 +673,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.none(),
           logWebSocketEvents: Option.none(),
-          tailscaleServeEnabled: Option.none(),
-          tailscaleServePort: Option.none(),
         },
         Option.none(),
       ).pipe(
@@ -740,8 +710,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     bootstrapFd: Option.none<number>(),
     autoBootstrapProjectFromCwd: Option.none<boolean>(),
     logWebSocketEvents: Option.none<boolean>(),
-    tailscaleServeEnabled: Option.none<boolean>(),
-    tailscaleServePort: Option.none<number>(),
   });
 
   it.effect(
@@ -872,7 +840,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         readonly env?: Record<string, string>;
       }) =>
         resolveServerConfig(minimalWebFlags(baseDir), Option.none()).pipe(
-          Effect.map(({ host, privateNetworkOnly }) => ({ host, privateNetworkOnly })),
+          Effect.map(({ host }) => host),
           Effect.provide(
             Layer.mergeAll(
               ConfigProvider.layer(ConfigProvider.fromEnv({ env: input.env ?? {} })),
@@ -893,21 +861,14 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           }),
         );
 
-      expect(yield* resolveHost({ connected: true })).toEqual({
-        host: "127.0.0.1",
-        privateNetworkOnly: undefined,
-      });
+      expect(yield* resolveHost({ connected: true })).toBe("127.0.0.1");
       // `service.env` reaches the server as its environment.
-      expect(yield* resolveHost({ connected: true, env: { T3CODE_HOST: "127.0.0.1" } })).toEqual({
-        host: "127.0.0.1",
-        privateNetworkOnly: undefined,
-      });
+      expect(yield* resolveHost({ connected: true, env: { T3CODE_HOST: "127.0.0.1" } })).toBe(
+        "127.0.0.1",
+      );
       // Without the launcher's IPC channel the context was inherited, e.g. by
       // `t3 serve` started from an agent inside the service.
-      expect(yield* resolveHost({ connected: false })).toEqual({
-        host: "127.0.0.1",
-        privateNetworkOnly: undefined,
-      });
+      expect(yield* resolveHost({ connected: false })).toBe("127.0.0.1");
     }),
   );
 });

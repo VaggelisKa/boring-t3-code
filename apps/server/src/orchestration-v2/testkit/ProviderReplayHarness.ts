@@ -69,7 +69,7 @@ import {
   type ProviderReplayGate,
 } from "@t3tools/provider-testing/replayGate";
 
-export function makeReplayServerConfig(
+function makeReplayServerConfig(
   scenario: string,
 ): Effect.Effect<
   ServerConfig.ServerConfig["Service"],
@@ -129,8 +129,6 @@ export function makeReplayServerConfig(
       devAllowedOrigins: [],
       noBrowser: false,
       startupPresentation: "browser",
-      tailscaleServeEnabled: false,
-      tailscaleServePort: 443,
       desktopBootstrapToken: undefined,
       autoBootstrapProjectFromCwd: false,
       logWebSocketEvents: false,

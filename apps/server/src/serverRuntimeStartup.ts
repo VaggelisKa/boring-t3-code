@@ -1,6 +1,6 @@
 import {
   CommandId,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_PROVIDER_INTERACTION_MODE,
   DEFAULT_SERVER_SETTINGS,
   type ModelSelection,
@@ -144,8 +144,8 @@ export const makeCommandGate = Effect.gen(function* () {
 });
 
 const getAutoBootstrapThreadModelSelection = (): ModelSelection => ({
-  instanceId: ProviderInstanceId.make("codex"),
-  model: DEFAULT_MODEL,
+  instanceId: ProviderInstanceId.make("antigravity"),
+  model: ANTIGRAVITY_DEFAULT_MODEL,
 });
 
 interface AutoBootstrapWelcomeTargets {
@@ -564,7 +564,8 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
     yield* runStartupPhase("http.wait", Deferred.await(httpListening));
     yield* runStartupPhase("auxiliary-roots.parked", options?.awaitAuxiliaryParked ?? Effect.void);
 
-    const updateOutcome = yield* launcher.prepareTrial;
+    // Commits a trial run a launcher started before self-updates were removed.
+    yield* launcher.prepareTrial;
 
     yield* Effect.logDebug("startup phase: publishing welcome event", {
       environmentId: environment.environmentId,
@@ -598,7 +599,6 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
         payload: {
           at: DateTime.formatIso(yield* DateTime.now),
           environment,
-          ...(updateOutcome === undefined ? {} : { updateOutcome }),
         },
       }),
     );

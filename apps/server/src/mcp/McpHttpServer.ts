@@ -14,7 +14,6 @@ import type * as Types from "effect/Types";
 import { AiError, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import {
-  DeviceToolError,
   OrchestratorMcpFailure,
   PreviewAutomationError,
   ProviderInteractionMode,
@@ -25,8 +24,6 @@ import {
 
 import packageJson from "../../package.json" with { type: "json" };
 import * as ServerConfig from "../config.ts";
-import * as ServerSettings from "../serverSettings.ts";
-import * as DeviceService from "../device/DeviceService.ts";
 import * as HtmlRender from "../htmlRender/HtmlRender.ts";
 import * as ThreadCommandExecutor from "../orchestration-v2/ThreadCommandExecutor.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
@@ -69,12 +66,6 @@ import { WorktreeToolkit } from "./toolkits/worktree/tools.ts";
 import * as WorktreeMcpService from "./WorktreeMcpService.ts";
 import * as PullRequestsHandlers from "./toolkits/pullRequests/handlers.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
-import * as DeviceHandlers from "./toolkits/device/handlers.ts";
-import {
-  DeviceScreenshotTool,
-  DeviceScreenshotToolkit,
-  DeviceStandardToolkit,
-} from "./toolkits/device/tools.ts";
 import * as HtmlHandlers from "./toolkits/html/handlers.ts";
 import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
 
@@ -183,11 +174,11 @@ const withModeLimit = (
     : { ...invocation, client: { ...invocation.client, narrowedTo: limit.value } };
 };
 
-// The Linked environments beta is off here: links wait until it is on again.
-const linkedEnvironmentsOff = HttpServerResponse.jsonUnsafe(
+// Links from other environments are not supported.
+const linkedEnvironmentsUnsupported = HttpServerResponse.jsonUnsafe(
   {
-    error: "linked_environments_off",
-    message: "Linked environments is off on this machine. Turn it on in its Settings → Labs.",
+    error: "linked_environments_unsupported",
+    message: "This machine does not accept links from other environments.",
   },
   { status: 403, headers: { "cache-control": "no-store" } },
 );
@@ -195,11 +186,6 @@ const linkedEnvironmentsOff = HttpServerResponse.jsonUnsafe(
 const makeMcpAuthMiddleware = Effect.gen(function* () {
   const registry = yield* McpSessionRegistry.McpSessionRegistry;
   const clients = yield* Effect.serviceOption(McpClientAuthenticator);
-  const serverSettings = yield* ServerSettings.ServerSettingsService;
-  const linksEnabled = serverSettings.getSettings.pipe(
-    Effect.map((settings) => settings.linkedEnvironmentsEnabled),
-    Effect.orElseSucceed(() => false),
-  );
   return Effect.fn("McpHttpServer.authenticateRequest")(function* (httpEffect) {
     const request = yield* HttpServerRequest.HttpServerRequest;
     const authorization = request.headers.authorization;
@@ -224,13 +210,9 @@ const makeMcpAuthMiddleware = Effect.gen(function* () {
     }
     const limited = withModeLimit(invocation, request);
     if (limited === undefined) return invalidModeLimit;
-    const linkedEnvironments = yield* linksEnabled;
-    if (limited.client?.linked === true && !linkedEnvironments) return linkedEnvironmentsOff;
+    if (limited.client?.linked === true) return linkedEnvironmentsUnsupported;
     return yield* httpEffect.pipe(
-      Effect.provideService(McpInvocationContext.McpInvocationContext, {
-        ...limited,
-        linkedEnvironments,
-      }),
+      Effect.provideService(McpInvocationContext.McpInvocationContext, limited),
       Effect.map(normalizeMcpHttpResponse),
     );
   }) satisfies McpAuthMiddleware;
@@ -750,31 +732,7 @@ const registerImageTool = Effect.fn("McpHttpServer.registerImageTool")(function*
   });
 });
 
-const registerDeviceScreenshot = Effect.fn("McpHttpServer.registerDeviceScreenshot")(function* () {
-  const devices = yield* DeviceService.DeviceService;
-  const threads = yield* ThreadManagementService.ThreadManagementService;
-  const built = yield* decodeAsAdvertised(DeviceScreenshotToolkit);
-  yield* registerImageTool(
-    DeviceScreenshotTool,
-    (payload) =>
-      built
-        .handle("device_screenshot", payload)
-        .pipe(Stream.unwrap, Stream.run(Sink.last()), Effect.flatMap(Effect.fromOption)),
-    (effect) =>
-      effect.pipe(
-        Effect.provideService(DeviceService.DeviceService, devices),
-        Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
-      ),
-    "screenshot",
-    (error) =>
-      isDeviceToolError(error) || isOrchestratorMcpFailure(error)
-        ? error.message
-        : "Device screenshot failed.",
-  );
-});
-
 const isOrchestratorMcpFailure = Schema.is(OrchestratorMcpFailure);
-const isDeviceToolError = Schema.is(DeviceToolError);
 
 const registerHtmlPreview = Effect.fn("McpHttpServer.registerHtmlPreview")(function* () {
   const htmlRender = yield* HtmlRender.HtmlRender;
@@ -1119,21 +1077,6 @@ export const layerPullRequestsToolkit = toolkitRegistration(
   PullRequestsHandlers.layer,
 );
 
-const layerDeviceStandardToolkitRegistration = toolkitRegistration(
-  DeviceStandardToolkit,
-  DeviceHandlers.layerStandard,
-);
-
-const layerDeviceScreenshotRegistration = imageToolRegistration(
-  registerDeviceScreenshot(),
-  DeviceHandlers.layerScreenshot,
-);
-
-export const layerDeviceToolkit = Layer.mergeAll(
-  layerDeviceStandardToolkitRegistration,
-  layerDeviceScreenshotRegistration,
-);
-
 export const layerMcpTransport = McpServer.layerHttp({
   name: "T3 Code",
   version: packageJson.version,
@@ -1153,7 +1096,6 @@ export const layerTools = Layer.mergeAll(
   layerPreviewControlsRegistration,
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
-  layerDeviceToolkit,
   layerHtmlToolkit,
 );
 

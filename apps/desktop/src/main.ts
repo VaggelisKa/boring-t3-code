@@ -1,4 +1,3 @@
-import * as MacPermissions from "./permissions/MacPermissions.ts";
 for (const stream of [process.stdout, process.stderr]) {
   stream.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code !== "EPIPE") throw err;
@@ -13,14 +12,11 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as Option from "effect/Option";
 
 import * as Electron from "electron";
 
 import * as NetService from "@t3tools/shared/Net";
 import * as HostProcess from "@t3tools/shared/HostProcess";
-import type { RemoteT3RunnerOptions } from "@t3tools/ssh/tunnel";
-import serverPackageJson from "../../server/package.json" with { type: "json" };
 
 import * as DesktopIpc from "./ipc/DesktopIpc.ts";
 import * as ElectronApp from "./electron/ElectronApp.ts";
@@ -31,7 +27,6 @@ import * as ElectronProtocol from "./electron/ElectronProtocol.ts";
 import * as ElectronSafeStorage from "./electron/ElectronSafeStorage.ts";
 import * as ElectronShell from "./electron/ElectronShell.ts";
 import * as ElectronTheme from "./electron/ElectronTheme.ts";
-import * as ElectronUpdater from "./electron/ElectronUpdater.ts";
 import * as ElectronWindow from "./electron/ElectronWindow.ts";
 import * as DesktopApp from "./app/DesktopApp.ts";
 import * as DesktopAppActivation from "./app/DesktopAppActivation.ts";
@@ -45,7 +40,6 @@ import * as DesktopAssets from "./app/DesktopAssets.ts";
 import * as DesktopBackendConfiguration from "./backend/DesktopBackendConfiguration.ts";
 import * as DesktopBackendPool from "./backend/DesktopBackendPool.ts";
 import * as DesktopLocalEnvironmentAuth from "./backend/DesktopLocalEnvironmentAuth.ts";
-import * as DesktopNetworkInterfaces from "./backend/DesktopNetworkInterfaces.ts";
 import * as DesktopEnvironment from "./app/DesktopEnvironment.ts";
 import * as DesktopLifecycle from "./app/DesktopLifecycle.ts";
 import * as DesktopLinuxUrlHandler from "./app/DesktopLinuxUrlHandler.ts";
@@ -54,20 +48,14 @@ import * as DesktopObservability from "./app/DesktopObservability.ts";
 import * as DesktopServerExposure from "./backend/DesktopServerExposure.ts";
 import * as DesktopClientSettings from "./settings/DesktopClientSettings.ts";
 import * as DesktopSavedEnvironments from "./settings/DesktopSavedEnvironments.ts";
-import * as DesktopSnapShot from "./snapShot/DesktopSnapShot.ts";
 import * as DesktopAppSettings from "./settings/DesktopAppSettings.ts";
 import * as DesktopPreReadyFileSystem from "./app/DesktopPreReadyFileSystem.ts";
 import * as DesktopPreReadyPlatform from "./app/DesktopPreReadyPlatform.ts";
 import * as DesktopShellEnvironment from "./shell/DesktopShellEnvironment.ts";
-import * as DesktopSshEnvironment from "./ssh/DesktopSshEnvironment.ts";
-import * as DesktopSshPasswordPrompts from "./ssh/DesktopSshPasswordPrompts.ts";
 import * as DesktopState from "./app/DesktopState.ts";
 import * as DesktopLegacyLocalStorage from "./app/DesktopLegacyLocalStorage.ts";
 import * as DesktopTelemetryPublisher from "./telemetry/DesktopTelemetryPublisher.ts";
 import * as DesktopRendererHistory from "./telemetry/DesktopRendererHistory.ts";
-import * as DesktopUpdates from "./updates/DesktopUpdates.ts";
-import * as BrowserImport from "./preview/BrowserImport/BrowserImport.ts";
-import * as LinuxBrowserSecret from "./preview/BrowserImport/LinuxBrowserSecret.ts";
 import * as BrowserSession from "./preview/BrowserSession.ts";
 import * as DesktopBrowserHost from "./preview/DesktopBrowserHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
@@ -103,28 +91,6 @@ const layerDesktopEnvironment = Layer.unwrap(
   }),
 );
 
-const resolveDesktopSshCliRunner = (
-  environment: DesktopEnvironment.DesktopEnvironment["Service"],
-): RemoteT3RunnerOptions => {
-  const devRemoteEntryPath = Option.getOrUndefined(environment.devRemoteT3ServerEntryPath);
-  if (environment.isDevelopment && devRemoteEntryPath !== undefined) {
-    return {
-      nodeScriptPath: devRemoteEntryPath,
-      nodeEngineRange: serverPackageJson.engines.node,
-    };
-  }
-  return { archiveVersion: environment.appVersion };
-};
-
-const layerDesktopSshEnvironment = Layer.unwrap(
-  Effect.gen(function* () {
-    const environment = yield* DesktopEnvironment.DesktopEnvironment;
-    return DesktopSshEnvironment.layer({
-      resolveCliRunner: Effect.succeed(resolveDesktopSshCliRunner(environment)),
-    });
-  }),
-);
-
 const layerElectron = Layer.mergeAll(
   ElectronApp.layer,
   ElectronDialog.layer,
@@ -134,13 +100,11 @@ const layerElectron = Layer.mergeAll(
   ElectronSafeStorage.layer,
   ElectronShell.layer,
   ElectronTheme.layer,
-  ElectronUpdater.layer,
   ElectronWindow.layer,
   DesktopIpc.layer(Electron.ipcMain),
 );
 
 const layerDesktopFoundation = Layer.mergeAll(
-  MacPermissions.layer,
   DesktopState.layer,
   DesktopShutdown.layer,
   DesktopLegacyLocalStorage.layer,
@@ -152,19 +116,12 @@ const layerDesktopFoundation = Layer.mergeAll(
   DesktopRendererHistory.layer,
 ).pipe(Layer.provideMerge(layerDesktopEnvironment));
 
-const layerDesktopSsh = layerDesktopSshEnvironment.pipe(
-  Layer.provideMerge(DesktopSshPasswordPrompts.layer()),
-);
-
 const layerDesktopServerExposure = DesktopServerExposure.layer.pipe(
-  Layer.provideMerge(DesktopNetworkInterfaces.layer),
   Layer.provideMerge(layerDesktopFoundation),
 );
 
 const layerDesktopPreview = PreviewManager.layer.pipe(
   Layer.provideMerge(DesktopBrowserHost.layer),
-  // IPC needs both services on the same BrowserSession.
-  Layer.provideMerge(BrowserImport.layer.pipe(Layer.provide(LinuxBrowserSecret.layer))),
   Layer.provideMerge(BrowserSession.layer),
   Layer.provideMerge(PreviewPasskeys.layer),
   Layer.provideMerge(layerDesktopFoundation),
@@ -175,10 +132,6 @@ const layerDesktopWindow = DesktopWindow.layer.pipe(
   Layer.provideMerge(layerDesktopPreview),
 );
 
-const layerDesktopSnapShot = DesktopSnapShot.layer.pipe(
-  Layer.provideMerge(layerDesktopWindow),
-  Layer.provideMerge(layerDesktopFoundation),
-);
 const layerDesktopAppActivation = DesktopAppActivation.layer.pipe(
   Layer.provide(layerDesktopWindow),
 );
@@ -208,10 +161,7 @@ const layerDesktopApplication = Layer.mergeAll(
   DesktopApplicationMenu.layer,
   DesktopLinuxUrlHandler.layer,
   DesktopCliCommand.layer,
-  layerDesktopSsh,
 ).pipe(
-  Layer.provideMerge(layerDesktopSnapShot),
-  Layer.provideMerge(DesktopUpdates.layer),
   Layer.provideMerge(layerDesktopWslBackend),
   Layer.provideMerge(layerDesktopLocalEnvironmentAuth),
 );

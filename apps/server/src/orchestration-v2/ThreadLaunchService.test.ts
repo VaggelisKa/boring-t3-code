@@ -45,7 +45,7 @@ import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ProviderRegistryMock from "../provider/testUtils/providerRegistryMock.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
-import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
+import { FullProviderCapabilitiesV2 } from "./testkit/ProviderCapabilitiesFixtures.ts";
 import * as CommandReceiptStore from "./CommandReceiptStore.ts";
 import * as EffectOutbox from "./EffectOutbox.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
@@ -60,8 +60,8 @@ import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAda
 const projectId = ProjectId.make("project:launch-test");
 const otherProjectId = ProjectId.make("project:launch-other");
 const modelSelection = {
-  instanceId: ProviderInstanceId.make("codex"),
-  model: "gpt-5.1-codex",
+  instanceId: ProviderInstanceId.make("antigravity"),
+  model: "antigravity-default",
 } as const;
 const project = {
   id: projectId,
@@ -86,8 +86,8 @@ const otherProject = {
 
 const adapter = {
   instanceId: modelSelection.instanceId,
-  driver: ProviderDriverKind.make("codex"),
-  getCapabilities: () => Effect.succeed(CodexProviderCapabilitiesV2),
+  driver: ProviderDriverKind.make("antigravity"),
+  getCapabilities: () => Effect.succeed(FullProviderCapabilitiesV2),
   planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" as const }),
   openSession: () => Effect.die("provider execution is disabled in launch tests"),
 } as ProviderAdapter.ProviderAdapterV2["Service"];
@@ -1535,7 +1535,7 @@ it.effect("creates a strong provider-thread mapping for an imported native sessi
       }),
       importedNativeThread: {
         ref: {
-          driver: ProviderDriverKind.make("codex"),
+          driver: ProviderDriverKind.make("antigravity"),
           nativeId: "native-session-42",
           strength: "strong" as const,
         },

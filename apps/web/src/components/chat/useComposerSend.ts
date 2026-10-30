@@ -17,7 +17,7 @@ import {
 import { isUsageLimitsCommand } from "@t3tools/shared/usageLimits";
 import {
   AuthOrchestrationOperateScope,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   type EnvironmentId,
   type ModelSelection,
   type PreviewAnnotationPayload,
@@ -105,7 +105,6 @@ import {
 } from "../../lib/attachmentUploadQueue";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { fileAttachmentCapabilityBlockReason } from "./composerAttachmentFiles";
-import { useLinkedEnvironments } from "../../state/peerLinks";
 import { readEnvironmentScope } from "../../state/session";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import {
@@ -324,7 +323,6 @@ export function useComposerSend(input: ComposerSendInput) {
     handleNewThreadInActiveProject,
     persistThreadSettingsForNextTurn,
   } = input;
-  const linkedEnvironments = useLinkedEnvironments(environmentId);
   const handleNewThread = useNewThreadHandler();
   const navigate = useNavigate();
   const clientSettingsHydrated = useClientSettingsHydrated();
@@ -550,7 +548,6 @@ export function useComposerSend(input: ComposerSendInput) {
       text: promptForSend,
       records: composerThreadContexts,
       environmentId,
-      linkedEnvironments,
     })[0];
     if (strandedThread) {
       const owner =
@@ -1185,7 +1182,7 @@ export function useComposerSend(input: ComposerSendInput) {
     });
     const threadCreateModelSelection = createModelSelection(
       ctxSelectedModelSelection.instanceId,
-      ctxSelectedModel || activeProjectDefaultModelSelection?.model || DEFAULT_MODEL,
+      ctxSelectedModel || activeProjectDefaultModelSelection?.model || ANTIGRAVITY_DEFAULT_MODEL,
       ctxSelectedModelSelection.options,
     );
 

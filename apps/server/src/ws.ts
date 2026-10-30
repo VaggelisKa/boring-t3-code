@@ -2,8 +2,6 @@ import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
-import * as PeerLinkRequests from "./peer/PeerLinkRequests.ts";
-import * as PeerLinks from "./peer/PeerLinks.ts";
 
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -19,14 +17,12 @@ import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
 import * as Stream from "effect/Stream";
 import { rpcInitialItems } from "./rpcInitialItems.ts";
-import { subscribeChatGptHandoff } from "./provider/CodexChatGptHandoff.ts";
 import {
   AcpRegistryOperationError,
   CommandId,
   authScopeResponse,
   AuthAccessStreamError,
   type AuthAccessStreamEvent,
-  type AuthEnvironmentScope,
   AuthSessionId,
   ClientConnectionMethod,
   ClientDeviceType,
@@ -85,7 +81,6 @@ import {
   ChatAttachmentId,
   PersistChatAttachmentsError,
   RpcClientId,
-  EnvironmentAuthorizationError,
   type ProjectId,
   type ProviderDriverKind,
   type ProviderInstanceId,
@@ -171,7 +166,6 @@ import { latestProviderVersionCacheKeys } from "@t3tools/provider-core/server/ma
 import * as ProviderMaintenanceRunner from "./provider/providerMaintenanceRunner.ts";
 import * as ProviderAuthService from "./provider/ProviderAuthService.ts";
 import { makeProviderInstallation } from "./provider/providerInstallation.ts";
-import * as ServerSelfUpdate from "./service/selfUpdate.ts";
 import * as ServerLifecycleEvents from "./serverLifecycleEvents.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
 import * as ServerSettings from "./serverSettings.ts";
@@ -180,8 +174,6 @@ import * as StorageCleanup from "./storageCleanup.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import { terminalOutputStream, withTerminalOutputWindow } from "./terminal/OutputProtocol.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
-import * as DeviceService from "./device/DeviceService.ts";
-import { remoteSshDeviceHosts } from "./device/localSshDeviceHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import { issueAssetUrl } from "./assets/AssetAccess.ts";
 import {
@@ -205,7 +197,6 @@ import { linkCreatedPullRequest } from "./git/linkCreatedPullRequest.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectEnrichmentService from "./project/ProjectEnrichmentService.ts";
 import * as ProjectService from "./project/ProjectService.ts";
-import { threadWorkspaceRoot } from "./project/threadWorkspaceRoot.ts";
 import * as ManagedProjectFolders from "./project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "./project/ScratchThreadPromotion.ts";
 import { projectMutationOperation } from "./project/ProjectMutation.ts";
@@ -213,13 +204,10 @@ import * as ProjectCloneTracker from "./project/ProjectCloneTracker.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
 import * as WorktreeSetupTracker from "./project/WorktreeSetupTracker.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
-import * as DirectEndpoints from "./environment/DirectEndpoints.ts";
-import * as RemoteOpenTargets from "./environment/RemoteOpenTargets.ts";
 import * as DefectReporter from "./observability/DefectReporter.ts";
 import * as EventLoopMonitor from "./observability/EventLoopMonitor.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
-import { requiredScopeForDeviceList, rpcAuthorizationError } from "./auth/RpcAuthorization.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
@@ -250,13 +238,7 @@ import * as PairingGrantStore from "./auth/PairingGrantStore.ts";
 import * as SessionStore from "./auth/SessionStore.ts";
 import { failEnvironmentAuthInvalid, failEnvironmentInternal } from "./auth/http.ts";
 import { isNetworkPath } from "@t3tools/shared/path";
-import {
-  sameUsageLimitCommandCoverage,
-  withUsageLimitsCommands,
-} from "@t3tools/shared/usageLimits";
-import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
-import * as AgentSessionImporter from "./project/AgentSessionImporter.ts";
-import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
+import { withUsageLimitsCommands } from "@t3tools/shared/usageLimits";
 
 const CONFIG_DISCOVERY_TIMEOUT = Duration.seconds(5);
 const isProviderUploadFeedbackError = Schema.is(ProviderUploadFeedbackError);
@@ -1241,9 +1223,6 @@ export const layerWsRpc = (
       const pullRequests = yield* PullRequestService.PullRequestService;
       const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
-      const deviceService = yield* DeviceService.DeviceService;
-      const deviceHostContext =
-        yield* Effect.context<Effect.Services<ReturnType<typeof remoteSshDeviceHosts>>>();
       const orchestrationEngine = yield* Orchestrator.OrchestratorV2;
       const crypto = yield* Crypto.Crypto;
       // RPC client ids are only unique within one socket; terminals share viewers across sockets.
@@ -1265,20 +1244,15 @@ export const layerWsRpc = (
               Effect.orElseSucceed(() => null),
             );
       const usage = yield* UsageService.UsageService;
-      const usageLimitSources = yield* UsageLimitSources.UsageLimitSources;
       const worktreeSetupTracker = yield* WorktreeSetupTracker.WorktreeSetupTracker;
       const projectCloneTracker = yield* ProjectCloneTracker.ProjectCloneTracker;
       const repositoryIdentityResolver =
         yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const projectEnrichment = yield* ProjectEnrichmentService.ProjectEnrichmentService;
-      const agentSessionScanner = yield* AgentSessionScanner.AgentSessionScanner;
-      const agentSessionImporter = yield* AgentSessionImporter.AgentSessionImporter;
       const checkpointDiffQuery = yield* CheckpointDiffQuery.CheckpointDiffQuery;
       const keybindings = yield* Keybindings.Keybindings;
       const environmentTheme = yield* EnvironmentTheme.EnvironmentThemeService;
       const externalLauncher = yield* ExternalLauncher.ExternalLauncher;
-      const remoteOpenTargets = yield* RemoteOpenTargets.RemoteOpenTargets;
-      const directEndpoints = yield* DirectEndpoints.DirectEndpoints;
       const gitWorkflow = yield* GitWorkflowService.GitWorkflowService;
       const review = yield* ReviewService.ReviewService;
       const vcsProvisioning = yield* VcsProvisioningService.VcsProvisioningService;
@@ -1296,14 +1270,11 @@ export const layerWsRpc = (
       const providerMaintenanceRunner = yield* ProviderMaintenanceRunner.ProviderMaintenanceRunner;
       const providerAuth = yield* ProviderAuthService.ProviderAuthService;
       const providerInstallation = yield* makeProviderInstallation();
-      const serverSelfUpdate = yield* ServerSelfUpdate.ServerSelfUpdate;
       const config = yield* ServerConfig.ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents.ServerLifecycleEvents;
       const storageCleanup = yield* StorageCleanup.StorageCleanup;
       const databaseStorage = yield* DatabaseStorage.DatabaseStorage;
       const serverSettings = yield* ServerSettings.ServerSettingsService;
-      const peerLinks = yield* PeerLinks.PeerLinks;
-      const peerLinkRequests = yield* PeerLinkRequests.PeerLinkRequests;
       const startup = yield* ServerRuntimeStartup.ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
@@ -1338,14 +1309,6 @@ export const layerWsRpc = (
       const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
       const resourceTelemetry = yield* ResourceTelemetry.ResourceTelemetry;
-      const authorizeEffect = <A, E, R>(
-        requiredScope: AuthEnvironmentScope,
-        effect: Effect.Effect<A, E, R>,
-      ): Effect.Effect<A, E | EnvironmentAuthorizationError, R> =>
-        currentSession.scopes.includes(requiredScope)
-          ? effect
-          : Effect.fail(rpcAuthorizationError(requiredScope));
-
       const acpRegistryProject = Effect.fn("ws.acpRegistry.project")(function* (
         projectId: ProjectId,
       ) {
@@ -1685,7 +1648,7 @@ export const layerWsRpc = (
         const keybindingsConfig = yield* keybindings.loadConfigState;
         const currentProviders = yield* providerRegistry.getProviders;
         const commandProviders = options.usageLimitsCommand
-          ? withUsageLimitsCommands(currentProviders, yield* usageLimitSources.current)
+          ? withUsageLimitsCommands(currentProviders)
           : currentProviders;
         const providers = options.workspaceSnapshotsOnDemand
           ? withoutWorkspaceSnapshots(commandProviders)
@@ -1711,10 +1674,6 @@ export const layerWsRpc = (
           issues: keybindingsConfig.issues,
           providers,
           ...editorConfig,
-          remoteOpenTargets: yield* resolveAvailableEditorsForConfig(
-            remoteOpenTargets.resolveTargets(),
-          ),
-          directEndpoints: yield* resolveAvailableEditorsForConfig(directEndpoints.resolve()),
           observability: {
             logsDirectoryPath: config.logsDir,
             localTracingEnabled: true,
@@ -2232,10 +2191,6 @@ export const layerWsRpc = (
                 { concurrency: "unbounded", discard: true },
               );
             }
-            // Await refresh; RPC scope closure would interrupt a fork before the hub answered.
-            if (input.instanceId === undefined) {
-              yield* usageLimitSources.refresh;
-            }
             let providers = yield* input.cwd !== undefined && input.instanceId !== undefined
               ? providerRegistry.refreshWorkspaceSnapshot({
                   instanceId: input.instanceId,
@@ -2274,9 +2229,7 @@ export const layerWsRpc = (
             }
             if (input.workspaceSnapshotsOnDemand !== true) return { providers };
             const commandProviders =
-              input.usageLimitsCommand === true
-                ? withUsageLimitsCommands(providers, yield* usageLimitSources.current)
-                : providers;
+              input.usageLimitsCommand === true ? withUsageLimitsCommands(providers) : providers;
             const { instanceId, cwd } = input;
             if (instanceId === undefined || cwd === undefined) {
               return { providers: withoutWorkspaceSnapshots(commandProviders) };
@@ -2353,7 +2306,6 @@ export const layerWsRpc = (
         [WS_METHODS.providerConsumeResetCredit]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(function* (input) {
-            if ("sourceId" in input) return yield* usageLimitSources.consumeResetCredit(input);
             const instance = yield* providerInstances.getInstance(input.instanceId);
             if (instance === undefined || !instance.enabled) {
               return yield* new ProviderSetupError({
@@ -2389,10 +2341,6 @@ export const layerWsRpc = (
           ),
         [WS_METHODS.providerAuthComplete]: (input) =>
           providerAuth.complete(input, currentSessionId),
-        [WS_METHODS.chatGptReconnectProfile]: (input) => providerAuth.reconnectProfile(input),
-        [WS_METHODS.chatGptImportProfile]: (input) => providerAuth.importProfile(input),
-        [WS_METHODS.chatGptHandoffSubscribe]: (input) =>
-          subscribeChatGptHandoff(input, currentSessionId),
         [WS_METHODS.providerAuthCancel]: (input) => providerAuth.cancel(input, currentSessionId),
         [WS_METHODS.providerAuthLogout]: (input) => providerAuth.logout(input),
         [WS_METHODS.providerAuthSubscribe]: (input) =>
@@ -2401,11 +2349,6 @@ export const layerWsRpc = (
         [WS_METHODS.providerInstallCancel]: (input) => providerInstallation.cancel(input),
         [WS_METHODS.providerInstallSubscribe]: (input) => providerInstallation.subscribe(input),
         [WS_METHODS.providerInstallRemove]: (input) => providerInstallation.remove(input),
-        [WS_METHODS.serverUpdateServer]: (input) => serverSelfUpdate.update(input),
-        [WS_METHODS.serverUpdateServerWithProgress]: (input) =>
-          ServerSelfUpdate.updateProgressStream(serverSelfUpdate, input),
-        [WS_METHODS.serverCommitDesktopUpdate]: (input) =>
-          serverSelfUpdate.commitDesktopUpdate(input.requestId),
         [WS_METHODS.serverUpsertKeybinding]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(function* (rule) {
@@ -2421,27 +2364,12 @@ export const layerWsRpc = (
         [WS_METHODS.serverRunStorageCleanup]: () => storageCleanup.runNow,
         [WS_METHODS.serverGetStorageCleanupReport]: () => storageCleanup.reports,
         [WS_METHODS.serverGetDatabaseStorage]: () => databaseStorage.status,
-        [WS_METHODS.peerLinksList]: (_input) =>
-          peerLinks.list.pipe(Effect.map((links) => ({ links }))),
-        [WS_METHODS.peerLinksLink]: (input) => peerLinks.link(input),
-        [WS_METHODS.peerLinksUnlink]: ({ environmentId }) =>
-          peerLinks.unlink(environmentId).pipe(Effect.map((removed) => ({ removed }))),
-        [WS_METHODS.peerLinksAnswerRequest]: (input) =>
-          Effect.annotateCurrentSpan({ "orchestration_v2.thread_id": input.threadId }).pipe(
-            Effect.andThen(peerLinkRequests.answer(input)),
-          ),
         [WS_METHODS.serverUpdateSettings]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(function* ({ patch, providerInstanceMutation }) {
-            const deviceHosts = patch.deviceHosts
-              ? yield* remoteSshDeviceHosts(patch.deviceHosts).pipe(
-                  Effect.provide(deviceHostContext),
-                )
-              : undefined;
-            const nextPatch = { ...patch, ...(deviceHosts ? { deviceHosts } : {}) };
             const settings = yield* providerInstanceMutation === undefined
-              ? serverSettings.updateSettings(nextPatch)
-              : serverSettings.updateProviderInstance(providerInstanceMutation, nextPatch);
+              ? serverSettings.updateSettings(patch)
+              : serverSettings.updateProviderInstance(providerInstanceMutation, patch);
             return ServerSettings.redactServerSettingsForClient(settings);
           }),
         [WS_METHODS.serverDiscoverSourceControl]: (_input) => sourceControlDiscovery.discover,
@@ -2742,9 +2670,6 @@ export const layerWsRpc = (
           ),
         [WS_METHODS.attachmentsCreateUploadUrl]: (input) => issueAttachmentUploadUrl(input),
         [WS_METHODS.attachmentsDelete]: (input) => deletePendingAttachment(input.attachmentId),
-        [WS_METHODS.agentSessionsScan]: () => agentSessionScanner.scan,
-        [WS_METHODS.agentSessionsImport]: (input) =>
-          agentSessionImporter.importRecentAgentThreads(input),
         [WS_METHODS.assetsCreateUrl]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(function* (input) {
@@ -2933,30 +2858,6 @@ export const layerWsRpc = (
         [WS_METHODS.previewReportProfiles]: (input) => serverBrowser.reportProfiles(input),
         [WS_METHODS.previewReportStatus]: (input) => previewManager.reportStatus(input),
         [WS_METHODS.subscribePreviewEvents]: (_input) => previewManager.events,
-        [WS_METHODS.deviceConfigure]: (input) => deviceService.configure(input),
-        [WS_METHODS.deviceTestHost]: (input) => deviceService.testHost(input),
-        [WS_METHODS.deviceEasAccount]: (input) => deviceService.easAccount(input),
-        [WS_METHODS.deviceSimlockIdentity]: (input) => deviceService.simlockIdentity(input),
-        [WS_METHODS.deviceList]: (input) =>
-          input.inspectOnly && !input.updateTool
-            ? deviceService.inspect
-            : authorizeEffect(
-                requiredScopeForDeviceList(input),
-                input.updateTool
-                  ? deviceService.updateTool(input.updateTool)
-                  : input.retryHostId
-                    ? deviceService.retryHost(input.retryHostId)
-                    : deviceService.list,
-              ),
-        [WS_METHODS.deviceOpen]: (input) =>
-          threadWorkspaceRoot(input.threadId).pipe(
-            Effect.flatMap((workspaceRoot) => deviceService.open(input, { workspaceRoot })),
-          ),
-        [WS_METHODS.deviceClose]: (input) => deviceService.close(input),
-        [WS_METHODS.deviceShutdown]: (input) => deviceService.shutdown(input),
-        [WS_METHODS.deviceDetail]: (input) => deviceService.detail(input),
-        [WS_METHODS.deviceAction]: (input) => deviceService.action(input),
-        [WS_METHODS.subscribeDeviceState]: (_input) => DeviceService.stateStream(deviceService),
         [WS_METHODS.previewStopLocalServer]: (input) => portDiscovery.stopServer(input),
         [WS_METHODS.subscribeDiscoveredLocalServers]: (input) =>
           Stream.callback<DiscoveredLocalServerList>((queue) =>
@@ -3006,27 +2907,19 @@ export const layerWsRpc = (
                   },
                 })),
               );
-              const providerStatuses = Stream.zipLatestWith(
-                // Seed the changes-only stream so early source refreshes pair with current providers.
-                Stream.concat(
-                  Stream.fromEffect(providerRegistry.getProviders),
-                  providerRegistry.streamChanges,
-                ),
-                usageLimitSources.streamChanges.pipe(
-                  Stream.changesWith(
-                    usageLimitsCommand ? sameUsageLimitCommandCoverage : () => true,
-                  ),
-                ),
-                (providers, sources) => {
+              const providerStatuses = Stream.concat(
+                Stream.fromEffect(providerRegistry.getProviders),
+                providerRegistry.streamChanges,
+              ).pipe(
+                Stream.map((providers) => {
                   const commandProviders = usageLimitsCommand
-                    ? withUsageLimitsCommands(providers, sources)
+                    ? withUsageLimitsCommands(providers)
                     : providers;
                   // Stripped before the de-dupe below, so snapshot-only changes send nothing.
                   return workspaceSnapshotsOnDemand
                     ? withoutWorkspaceSnapshots(commandProviders)
                     : commandProviders;
-                },
-              ).pipe(
+                }),
                 // Compare initial paired values with the snapshot; blindly dropping them loses changes between snapshot and subscription.
                 (updates) => Stream.concat(rpcInitialItems([config.providers]), updates),
                 Stream.changesWith(
@@ -3051,16 +2944,6 @@ export const layerWsRpc = (
                       })),
                     )
                   : Stream.empty;
-              const usageLimitSourceUpdates =
-                input.usageLimitSources === true
-                  ? usageLimitSources.streamChanges.pipe(
-                      Stream.map((sources) => ({
-                        version: 1 as const,
-                        type: "usageLimitSourcesUpdated" as const,
-                        payload: { sources },
-                      })),
-                    )
-                  : Stream.empty;
               const settingsUpdates = settingsChanges.pipe(
                 Stream.map((settings) => ServerSettings.redactServerSettingsForClient(settings)),
                 Stream.map((settings) => ({
@@ -3074,10 +2957,7 @@ export const layerWsRpc = (
                 keybindingsUpdates,
                 Stream.merge(
                   providerStatuses,
-                  Stream.merge(
-                    settingsUpdates,
-                    Stream.merge(environmentThemeUpdates, usageLimitSourceUpdates),
-                  ),
+                  Stream.merge(settingsUpdates, environmentThemeUpdates),
                 ),
               );
 
@@ -3165,11 +3045,8 @@ export const WS_RPC_SERVER_OPTIONS = {
 export const layer = Layer.unwrap(
   Effect.gen(function* () {
     const serverBrowser = yield* ServerBrowser.ServerBrowser;
-    const serverSelfUpdate = yield* ServerSelfUpdate.ServerSelfUpdate;
     const pullRequests = yield* PullRequestService.PullRequestService;
     const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
-    const peerLinks = yield* PeerLinks.PeerLinks;
-    const peerLinkRequests = yield* PeerLinkRequests.PeerLinkRequests;
     const sql = yield* SqlClient.SqlClient;
     return HttpRouter.add(
       "GET",
@@ -3236,9 +3113,7 @@ export const layer = Layer.unwrap(
               // Handler-context reporters see only request defects, not server-wide defects.
               Layer.provide(DefectReporter.layer),
               Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),
-              Layer.provide(AgentSessionScanner.layer),
               Layer.provide(ProviderMaintenanceRunner.layer),
-              Layer.provide(Layer.succeed(ServerSelfUpdate.ServerSelfUpdate, serverSelfUpdate)),
               // Share server-lifetime PR caches so WS mutations invalidate every client's HTTP diffs.
               Layer.provide(Layer.succeed(PullRequestService.PullRequestService, pullRequests)),
               Layer.provide(OtlpEndpointCheck.layer),
@@ -3248,8 +3123,6 @@ export const layer = Layer.unwrap(
                   reviewGuides,
                 ),
               ),
-              Layer.provide(Layer.succeed(PeerLinks.PeerLinks, peerLinks)),
-              Layer.provide(Layer.succeed(PeerLinkRequests.PeerLinkRequests, peerLinkRequests)),
               Layer.provide(
                 SourceControlDiscovery.layer.pipe(
                   Layer.provide(

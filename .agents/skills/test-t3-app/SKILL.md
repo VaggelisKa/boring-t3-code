@@ -48,6 +48,4 @@ the server, state, and panel available while the user inspects or iterates.
 An assistant turn ending is not teardown. Stop only processes you started,
 using retained terminal sessions or captured PIDs.
 
-When sharing is requested, start with `vp run dev --share` and give the user
-a fresh complete pairing URL that you have not consumed. Keep other credentials
-out of screenshots, commits, and replies.
+Keep credentials out of screenshots, commits, and replies.

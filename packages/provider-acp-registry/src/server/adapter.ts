@@ -1,15 +1,4 @@
 import {
-  extractClaudeSubagentUpdate,
-  extractClaudeSubagentSessionEvent,
-  isClaudeProvisionalSubagentTool,
-} from "./claudeAcp.ts";
-import {
-  normalizeDevinSessionUpdate,
-  normalizeDevinToolCall,
-  extractDevinSubagentUpdate,
-} from "./devinAcp.ts";
-import { extractDroidElicitationForm } from "./droidAcp.ts";
-import {
   copilotClientCapabilitiesMeta,
   extractCopilotSubagentUpdate,
   makeCopilotSubagentRouting,
@@ -54,7 +43,6 @@ import {
 import {
   AcpProviderCapabilitiesV2,
   makeAcpAdapterV2,
-  type AcpAdapterV2ExtensionContext,
   type AcpAdapterV2Flavor,
   type AcpAdapterV2RuntimeInput,
 } from "@t3tools/provider-acp/server/adapter";
@@ -82,48 +70,14 @@ export interface AcpRegistryAdapterV2Options {
   readonly assertComplete?: Effect.Effect<void, EffectAcpErrors.AcpError>;
 }
 
-// Mistral Vibe's application rate-limit code, outside ACP.
-const MISTRAL_VIBE_RATE_LIMITED = -31001;
-
-const MistralVibeSessionRetrying = Schema.Struct({
-  sessionId: Schema.String,
-  category: Schema.Literals(["rate_limited", "server_error", "timed_out", "connection", "unknown"]),
-  detail: Schema.String,
-});
-
-/** Mistral Vibe (v2.25.5) reports SDK backoff through this ACP extension. */
-export function registerMistralVibeAcpExtensions(context: AcpAdapterV2ExtensionContext) {
-  return context.runtime.handleExtNotification(
-    "_session/retrying",
-    MistralVibeSessionRetrying,
-    (notice) =>
-      context.reportProviderRetry({
-        sessionId: notice.sessionId,
-        failure: makeProviderFailure({
-          message: notice.detail,
-          class:
-            notice.category === "rate_limited"
-              ? "usage_limit"
-              : notice.category === "unknown"
-                ? "provider_error"
-                : "transport_error",
-          retryable: true,
-        }),
-      }),
-  );
-}
-
-export function acpRegistryPromptFailure(agentId: string, cause: unknown) {
+export function acpRegistryPromptFailure(cause: unknown) {
   return makeProviderFailure({
     cause,
     ...(isAcpRequestError(cause)
       ? {
           message: cause.errorMessage,
           code: String(cause.code),
-          class:
-            agentId === "mistral-vibe" && cause.code === MISTRAL_VIBE_RATE_LIMITED
-              ? ("usage_limit" as const)
-              : ("provider_error" as const),
+          class: "provider_error" as const,
         }
       : { class: "provider_error" as const }),
   });
@@ -185,28 +139,11 @@ export const makeAcpRegistryAdapterV2 = Effect.fn("makeAcpRegistryAdapterV2")(fu
   const registryAgentId = options.settings.source === "local" ? "" : options.settings.agentId;
   const startupKey =
     options.settings.source === "local" ? `local:${options.instanceId}` : registryAgentId;
-  const isDevin = registryAgentId === "devin";
   // Local installs launch the `copilot` binary directly with no registry id.
   const isCopilot =
     registryAgentId === "github-copilot-cli" ||
     (options.settings.source === "local" &&
       /^copilot(\.exe|\.cmd)?$/i.test(options.settings.commandPath.split(/[\\/]/).pop() ?? ""));
-  const isClaude =
-    registryAgentId === "claude-acp" ||
-    (options.settings.source === "local" &&
-      /^claude-agent-acp(\.exe|\.cmd)?$/i.test(
-        options.settings.commandPath.split(/[\\/]/).pop() ?? "",
-      ));
-  const runtimeOptions = isClaude
-    ? {
-        ...options,
-        environment: {
-          ...options.environment,
-          CLAUDE_AGENT_ACP_EXPERIMENTAL_V2:
-            options.environment.CLAUDE_AGENT_ACP_EXPERIMENTAL_V2 ?? "1",
-        },
-      }
-    : options;
   const copilotRouting = isCopilot ? makeCopilotSubagentRouting() : undefined;
   const flavor: AcpAdapterV2Flavor = {
     driver: ACP_REGISTRY_PROVIDER,
@@ -218,32 +155,7 @@ export const makeAcpRegistryAdapterV2 = Effect.fn("makeAcpRegistryAdapterV2")(fu
         }
       : AcpProviderCapabilitiesV2,
     customModels: readCustomModelEntries(options.settings.customModels).map((entry) => entry.slug),
-    promptFailure: (cause) => acpRegistryPromptFailure(registryAgentId, cause),
-    ...(registryAgentId === "factory-droid"
-      ? { extractElicitationForm: extractDroidElicitationForm }
-      : {}),
-    ...(registryAgentId === "mistral-vibe"
-      ? { registerExtensions: registerMistralVibeAcpExtensions }
-      : {}),
-    ...(isClaude
-      ? {
-          followAgentWorkState: true,
-          extractSubagentUpdate: extractClaudeSubagentUpdate,
-          isProvisionalSubagentTool: isClaudeProvisionalSubagentTool,
-          extractSubagentSessionEvent: extractClaudeSubagentSessionEvent,
-        }
-      : {}),
-    ...(isDevin
-      ? {
-          clientCapabilitiesMeta: {
-            "cognition.ai/subagentSupport": true,
-            "cognition.ai/messageGrouping": true,
-          },
-          normalizeSessionUpdate: normalizeDevinSessionUpdate,
-          normalizeToolCall: normalizeDevinToolCall,
-          extractSubagentUpdate: extractDevinSubagentUpdate,
-        }
-      : {}),
+    promptFailure: acpRegistryPromptFailure,
     ...(copilotRouting === undefined
       ? {}
       : {
@@ -252,7 +164,7 @@ export const makeAcpRegistryAdapterV2 = Effect.fn("makeAcpRegistryAdapterV2")(fu
           normalizeSessionUpdate: copilotRouting.normalizeSessionUpdate,
           extractSubagentUpdate: extractCopilotSubagentUpdate,
         }),
-    makeRuntime: options.makeRuntime ?? makeAcpRegistryRuntime(runtimeOptions, catalog),
+    makeRuntime: options.makeRuntime ?? makeAcpRegistryRuntime(options, catalog),
     ...(runtimeCoordinator === undefined
       ? {}
       : {
@@ -289,15 +201,6 @@ export const makeAcpRegistryAdapterV2 = Effect.fn("makeAcpRegistryAdapterV2")(fu
     ...(options.continuationRequests === undefined
       ? {}
       : { continuationRequests: options.continuationRequests }),
-    // Devin runs commands through client terminals and has no ask mode over ACP to fall back on.
-    ...(isDevin
-      ? {
-          clientTerminals: {
-            environment: options.environment,
-            shellCommands: true,
-          },
-        }
-      : {}),
     ...(options.nativeLogging === undefined ? {} : { nativeLogging: options.nativeLogging }),
   });
 });

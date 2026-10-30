@@ -27,10 +27,6 @@
       "types": "./src/handoff.ts",
       "default": "./src/handoff.ts"
     },
-    "./device/stream": {
-      "types": "./src/device/stream.ts",
-      "default": "./src/device/stream.ts"
-    },
     "./device/hub-access": {
       "types": "./src/device/hubAccess.ts",
       "default": "./src/device/hubAccess.ts"
@@ -62,10 +58,6 @@
     "./secret-request": {
       "types": "./src/secretRequest.ts",
       "default": "./src/secretRequest.ts"
-    },
-    "./link-request": {
-      "types": "./src/linkRequest.ts",
-      "default": "./src/linkRequest.ts"
     },
     "./connection": {
       "types": "./src/connection/index.ts",
@@ -207,21 +199,9 @@
       "types": "./src/state/presentation.ts",
       "default": "./src/state/presentation.ts"
     },
-    "./state/device": {
-      "types": "./src/state/device.ts",
-      "default": "./src/state/device.ts"
-    },
     "./state/deviceHubAccess": {
       "types": "./src/state/deviceHubAccess.ts",
       "default": "./src/state/deviceHubAccess.ts"
-    },
-    "./state/peerLinks": {
-      "types": "./src/state/peerLinks.ts",
-      "default": "./src/state/peerLinks.ts"
-    },
-    "./state/peerPairingCode": {
-      "types": "./src/state/peerPairingCode.ts",
-      "default": "./src/state/peerPairingCode.ts"
     },
     "./state/preview": {
       "types": "./src/state/preview.ts",
@@ -266,10 +246,6 @@
     "./state/server": {
       "types": "./src/state/server.ts",
       "default": "./src/state/server.ts"
-    },
-    "./state/outdatedServerUpdate": {
-      "types": "./src/state/outdatedServerUpdate.ts",
-      "default": "./src/state/outdatedServerUpdate.ts"
     },
     "./state/session": {
       "types": "./src/state/session.ts",
@@ -423,38 +399,6 @@
       "types": "./src/filePreview.ts",
       "default": "./src/filePreview.ts"
     },
-    "./device/frame": {
-      "types": "./src/device/frame.ts",
-      "default": "./src/device/frame.ts"
-    },
-    "./device/phone-viewer": {
-      "types": "./src/device/phoneViewer.ts",
-      "default": "./src/device/phoneViewer.ts"
-    },
-    "./device/phone-interaction": {
-      "types": "./src/device/phoneInteraction.ts",
-      "default": "./src/device/phoneInteraction.ts"
-    },
-    "./device/shape-profile": {
-      "types": "./src/device/shapeProfile.ts",
-      "default": "./src/device/shapeProfile.ts"
-    },
-    "./device/screenshot": {
-      "types": "./src/device/screenshot.ts",
-      "default": "./src/device/screenshot.ts"
-    },
-    "./device/model": {
-      "types": "./src/device/model.ts",
-      "default": "./src/device/model.ts"
-    },
-    "./device/duo-viewer": {
-      "types": "./src/device/duoViewer.ts",
-      "default": "./src/device/duoViewer.ts"
-    },
-    "./device/duo-control": {
-      "types": "./src/device/duoControl.ts",
-      "default": "./src/device/duoControl.ts"
-    },
     "./diff-count": {
       "types": "./src/diffCount.ts",
       "default": "./src/diffCount.ts"
@@ -517,22 +461,14 @@
     "@t3tools/contracts": "workspace:*",
     "@t3tools/provider-acp-registry": "workspace:*",
     "@t3tools/provider-core": "workspace:*",
-    "@t3tools/provider-cursor": "workspace:*",
-    "@t3tools/provider-fx": "workspace:*",
-    "@t3tools/provider-grok": "workspace:*",
-    "@t3tools/provider-muse": "workspace:*",
-    "@t3tools/provider-opencode": "workspace:*",
-    "@t3tools/provider-pi": "workspace:*",
     "@t3tools/shared": "workspace:*",
     "@t3tools/source-control-core": "workspace:*",
     "@t3tools/source-control-definitions": "workspace:*",
     "effect": "catalog:",
-    "jszip": "3.10.1",
-    "three": "0.180.0"
+    "jszip": "3.10.1"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
-    "@types/three": "0.180.0",
     "vite-plus": "catalog:"
   }
 }

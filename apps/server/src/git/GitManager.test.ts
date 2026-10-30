@@ -1774,28 +1774,6 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       "https://github.example.com/team/repository/pull/42?tab=files",
       "github.example.com/team/repository",
     ],
-    [
-      "https://gitlab.example.com/group/subgroup/repository/-/merge_requests/42",
-      "gitlab.example.com/group/subgroup/repository",
-    ],
-    ["https://bitbucket.org/team/repository/pull-requests/42", "bitbucket.org/team/repository"],
-    ["https://codeberg.org/team/repository/pulls/42", "codeberg.org/team/repository"],
-    [
-      "http://code.example:3000/forgejo/team/repository/pulls/42/files",
-      "code.example/forgejo/team/repository",
-    ],
-    [
-      "https://dev.azure.com/org/project/_git/repository/pullrequest/42",
-      "dev.azure.com/org/project/_git/repository",
-    ],
-    [
-      "https://org.visualstudio.com/project/_git/repository/pullrequest/42",
-      "org.visualstudio.com/project/_git/repository",
-    ],
-    [
-      "https://gitlab.example/group/pull/123/repository/-/merge_requests/42",
-      "gitlab.example/group/pull/123/repository",
-    ],
     ["https://github.example.com/team/repository/issues/42", null],
   ] as const)("reads the repository from the returned PR URL %s", (url, expected) => {
     expect(GitManager.pullRequestRepositoryKey(url)).toBe(expected);
@@ -1862,81 +1840,6 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         repositoryKey: "github.example.com/team/repository",
       });
     }),
-  );
-
-  it.effect.each([
-    { remoteUrl: "git@gitlab.com:Group/Subgroup/Fork.git", setUpstream: true },
-    { remoteUrl: "git@gitlab.com:Group/Subgroup/Fork.git", setUpstream: false },
-    { remoteUrl: "https://gitlab.com/Group/Subgroup/Fork.git", setUpstream: true },
-    { remoteUrl: "https://gitlab.com/Group/Subgroup/Fork.git", setUpstream: false },
-  ] as const)(
-    "matches nested-group forks for $remoteUrl/$setUpstream",
-    ({ remoteUrl, setUpstream }) =>
-      Effect.gen(function* () {
-        const repoDir = yield* makeTempDir("t3code-git-manager-");
-        yield* initRepo(repoDir);
-        const originDir = yield* createBareRemote();
-        const forkDir = yield* createBareRemote();
-        const branch = "feature/NestedGroups";
-        yield* runGit(repoDir, ["remote", "add", "origin", originDir]);
-        yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-        yield* runGit(repoDir, ["remote", "add", "fork", forkDir]);
-        yield* runGit(repoDir, ["checkout", "-b", branch]);
-        yield* runGit(repoDir, ["push", ...(setUpstream ? ["-u"] : []), "fork", branch]);
-        const upstream = yield* runGit(repoDir, [
-          "for-each-ref",
-          "--format=%(upstream:short)",
-          `refs/heads/${branch}`,
-        ]);
-        expect(upstream.stdout.trim()).toBe(setUpstream ? `fork/${branch}` : "");
-        yield* configureVisibleRemoteUrlWithLocalRewrite(
-          repoDir,
-          "origin",
-          "git@gitlab.com:Group/Upstream/Repository.git",
-          originDir,
-        );
-        yield* configureVisibleRemoteUrlWithLocalRewrite(repoDir, "fork", remoteUrl, forkDir);
-        const { manager, providerCalls } = yield* makeManager({
-          providerScenario: {
-            kind: "gitlab",
-            headBranchProbe: null,
-            prListOtherwise: [
-              {
-                number: 2,
-                title: "Another subgroup's fork",
-                url: "https://gitlab.com/Group/Upstream/Repository/-/merge_requests/2",
-                baseRefName: "main",
-                headRefName: branch,
-                updatedAt: "2026-04-08T15:00:00Z",
-                isCrossRepository: true,
-                headRepositoryNameWithOwner: "Group/Other/Fork",
-                headRepositoryOwnerLogin: "Group",
-              },
-              {
-                number: 1,
-                title: "This subgroup's fork",
-                url: "https://gitlab.com/Group/Upstream/Repository/-/merge_requests/1",
-                baseRefName: "main",
-                headRefName: branch,
-                updatedAt: "2026-04-07T15:00:00Z",
-                isCrossRepository: true,
-                headRepositoryNameWithOwner: "Group/Subgroup/Fork",
-                headRepositoryOwnerLogin: "Group",
-              },
-            ],
-          },
-        });
-
-        expect(yield* manager.branchPullRequest({ cwd: repoDir, branch })).toMatchObject({
-          number: 1,
-          repositoryKey: "gitlab.com/group/upstream/repository",
-        });
-        expect(listed(providerCalls).length).toBeGreaterThan(0);
-        for (const call of listed(providerCalls)) {
-          expect(call.headSelector.endsWith(branch)).toBe(true);
-          expect(call.state).toBe("all");
-        }
-      }),
   );
 
   it.effect(
@@ -2523,42 +2426,6 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
     }),
   );
 
-  it.effect("includes CLAUDE.md for Claude writers only when it differs from AGENTS.md", () =>
-    Effect.gen(function* () {
-      const repoDir = yield* makeTempDir("t3code-git-manager-");
-      yield* initRepo(repoDir);
-      NodeFS.writeFileSync(NodePath.join(repoDir, "AGENTS.md"), "Use imperative subjects.\n");
-      NodeFS.copyFileSync(NodePath.join(repoDir, "AGENTS.md"), NodePath.join(repoDir, "CLAUDE.md"));
-      NodeFS.writeFileSync(NodePath.join(repoDir, "README.md"), "hello\n");
-      const commitInstructions: Array<string | undefined> = [];
-
-      const { manager } = yield* makeManager({
-        serverSettings: {
-          textGenerationModelSelection: {
-            instanceId: ProviderInstanceId.make("claudeAgent"),
-            model: "claude-sonnet-4-5",
-          },
-        },
-        textGeneration: {
-          generateCommitMessage: (input) => {
-            commitInstructions.push(input.policy?.commitInstructions);
-            return Effect.succeed({ subject: "Update readme", body: "" });
-          },
-        },
-      });
-
-      yield* runStackedAction(manager, { cwd: repoDir, action: "commit" });
-
-      NodeFS.writeFileSync(NodePath.join(repoDir, "CLAUDE.md"), "Mention the Claude provider.\n");
-      NodeFS.writeFileSync(NodePath.join(repoDir, "README.md"), "hello again\n");
-      yield* runStackedAction(manager, { cwd: repoDir, action: "commit" });
-
-      expect(commitInstructions[0]).toContain("Local AGENTS.md:\nUse imperative subjects.");
-      expect(commitInstructions[0]).not.toContain("Local CLAUDE.md:");
-      expect(commitInstructions[1]).toContain("Local CLAUDE.md:\nMention the Claude provider.");
-    }),
-  );
-
   it.effect("falls back when the dedicated source control writer is unavailable", () =>
     Effect.gen(function* () {
       const repoDir = yield* makeTempDir("t3code-git-manager-");
@@ -2599,44 +2466,6 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
     }),
   );
 
-  it.effect("uses an explicit project's provider settings for generated commit text", () =>
-    Effect.gen(function* () {
-      const repoDir = yield* makeTempDir("t3code-git-manager-");
-      yield* initRepo(repoDir);
-      NodeFS.writeFileSync(NodePath.join(repoDir, "README.md"), "hello\nproject\n");
-      const projectId = ProjectId.make("project:git-action-settings");
-      const disabledInstanceId = DEFAULT_SERVER_SETTINGS.textGenerationModelSelection.instanceId;
-      let generatedModelSelection:
-        | TextGeneration.CommitMessageGenerationInput["modelSelection"]
-        | undefined;
-
-      const { manager } = yield* makeManager({
-        serverSettings: {
-          projectSettingsOverrides: {
-            [projectId]: {
-              providerInstances: { [disabledInstanceId]: { enabled: false } },
-            },
-          },
-        },
-        textGeneration: {
-          generateCommitMessage: (input) => {
-            generatedModelSelection = input.modelSelection;
-            return Effect.succeed({ subject: "Use the project writer", body: "" });
-          },
-        },
-      });
-
-      yield* manager.runStackedAction({
-        actionId: "test-project-action-settings",
-        cwd: repoDir,
-        action: "commit",
-        projectId,
-      });
-
-      expect(generatedModelSelection?.instanceId).toBe(ProviderInstanceId.make("claudeAgent"));
-    }),
-  );
-
   it.effect("prefers a V2-native thread's project settings over an explicit project", () =>
     Effect.gen(function* () {
       const repoDir = yield* makeTempDir("t3code-git-manager-");
@@ -2656,6 +2485,9 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
 
       const { manager } = yield* makeManager({
         serverSettings: {
+          providerInstances: {
+            [providerInstanceId]: { driver: ProviderDriverKind.make("codex"), config: {} },
+          },
           projectSettingsOverrides: { [projectId]: { textGenerationModelSelection: projectModel } },
         },
         textGeneration: {
@@ -4328,103 +4160,6 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
   );
 
-  it.effect("prepares a worktree from the head branch when the host has no pull ref", () =>
-    Effect.gen(function* () {
-      const repoDir = yield* makeTempDir("t3code-git-manager-");
-      yield* initRepo(repoDir);
-      const remoteDir = yield* createBareRemote();
-      yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
-      yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(repoDir, ["checkout", "-b", "feature/no-pull-ref"]);
-      NodeFS.writeFileSync(NodePath.join(repoDir, "head.txt"), "head\n");
-      yield* runGit(repoDir, ["add", "head.txt"]);
-      yield* runGit(repoDir, ["commit", "-m", "Head without a pull ref"]);
-      yield* runGit(repoDir, ["push", "origin", "feature/no-pull-ref"]);
-      const headSha = (yield* runGit(repoDir, ["rev-parse", "HEAD"])).stdout.trim();
-      yield* runGit(repoDir, ["checkout", "main"]);
-      yield* runGit(repoDir, ["branch", "-D", "feature/no-pull-ref"]);
-      const remoteUrl = "https://dev.azure.com/org/project/_git/repo";
-      yield* runGit(repoDir, ["remote", "set-url", "origin", remoteUrl]);
-      yield* runGit(repoDir, ["config", `url.${remoteDir}.insteadOf`, remoteUrl]);
-
-      const { manager: otherRepositoryManager } = yield* makeManager({
-        providerScenario: {
-          pullRequest: {
-            number: 79,
-            title: "Another repository's PR",
-            url: "https://dev.azure.com/org/project/_git/other/pullrequest/79",
-            baseRefName: "main",
-            headRefName: "feature/no-pull-ref",
-            state: "open",
-            isCrossRepository: false,
-          },
-        },
-      });
-      yield* Effect.flip(
-        preparePullRequestThread(otherRepositoryManager, {
-          cwd: repoDir,
-          reference: "79",
-          mode: "worktree",
-        }),
-      );
-      const { manager: mergedManager } = yield* makeManager({
-        providerScenario: {
-          pullRequest: {
-            number: 77,
-            title: "Merged PR",
-            url: "https://dev.azure.com/org/project/_git/repo/pullrequest/77",
-            baseRefName: "main",
-            headRefName: "feature/no-pull-ref",
-            state: "merged",
-            isCrossRepository: false,
-          },
-        },
-      });
-      yield* Effect.flip(
-        preparePullRequestThread(mergedManager, {
-          cwd: repoDir,
-          reference: "77",
-          mode: "worktree",
-        }),
-      );
-      const localBranches = (yield* runGit(repoDir, ["branch", "--list"])).stdout;
-      expect(localBranches).not.toContain("feature/no-pull-ref");
-
-      const { manager } = yield* makeManager({
-        providerScenario: {
-          pullRequest: {
-            number: 78,
-            title: "Azure DevOps PR",
-            url: "https://dev.azure.com/org/project/_git/repo/pullrequest/78",
-            baseRefName: "main",
-            headRefName: "feature/no-pull-ref",
-            state: "open",
-            isCrossRepository: false,
-          },
-        },
-      });
-
-      const result = yield* preparePullRequestThread(manager, {
-        cwd: repoDir,
-        reference: "78",
-        mode: "worktree",
-      });
-
-      expect(result.branch).toBe("feature/no-pull-ref");
-      const worktreeHead = (yield* runGit(result.worktreePath as string, [
-        "rev-parse",
-        "HEAD",
-      ])).stdout.trim();
-      expect(worktreeHead).toBe(headSha);
-      const upstream = (yield* runGit(result.worktreePath as string, [
-        "rev-parse",
-        "--abbrev-ref",
-        "@{upstream}",
-      ])).stdout.trim();
-      expect(upstream).toBe("origin/feature/no-pull-ref");
-    }),
-  );
-
   it.effect("preserves fork upstream tracking when preparing a worktree PR thread", () =>
     Effect.gen(function* () {
       const repoDir = yield* makeTempDir("t3code-git-manager-");
@@ -4909,49 +4644,6 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       );
       expect(result.isOnPullRequestHead).toBe(true);
       expect((yield* runGit(worktreePath, ["rev-parse", "HEAD"])).stdout.trim()).toBe(updatedHead);
-    }),
-  );
-
-  it.effect("creates a merge request worktree from the host's own head ref", () =>
-    Effect.gen(function* () {
-      const repoDir = yield* makeTempDir("t3code-git-manager-");
-      yield* initRepo(repoDir);
-      const remoteDir = yield* createBareRemote();
-      yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
-      yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(repoDir, ["checkout", "-b", "feature/mr-ref-only"]);
-      NodeFS.writeFileSync(NodePath.join(repoDir, "mr.txt"), "merge request\n");
-      yield* runGit(repoDir, ["add", "mr.txt"]);
-      yield* runGit(repoDir, ["commit", "-m", "Merge request ref only"]);
-      const head = (yield* runGit(repoDir, ["rev-parse", "HEAD"])).stdout.trim();
-      yield* runGit(repoDir, ["push", "origin", "HEAD:refs/merge-requests/93/head"]);
-      yield* runGit(repoDir, ["checkout", "main"]);
-      yield* runGit(repoDir, ["branch", "-D", "feature/mr-ref-only"]);
-
-      const { manager } = yield* makeManager({
-        providerScenario: {
-          kind: "gitlab",
-          pullRequest: {
-            number: 93,
-            title: "Merge request ref only",
-            url: "https://gitlab.com/pingdotgg/codething-mvp/-/merge_requests/93",
-            baseRefName: "main",
-            headRefName: "feature/mr-ref-only",
-            state: "open",
-          },
-        },
-      });
-
-      const result = yield* preparePullRequestThread(manager, {
-        cwd: repoDir,
-        reference: "93",
-        mode: "worktree",
-      });
-
-      expect(result.isOnPullRequestHead).toBe(true);
-      expect(
-        (yield* runGit(result.worktreePath as string, ["rev-parse", "HEAD"])).stdout.trim(),
-      ).toBe(head);
     }),
   );
 

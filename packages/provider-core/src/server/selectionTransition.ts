@@ -12,10 +12,6 @@ export type ProviderSelectionTransitionPlan =
   | { readonly type: "create_with_handoff" }
   | { readonly type: "reject"; readonly reason: string };
 
-export function turnScopedSelectionTransition(): ProviderSelectionTransitionPlan {
-  return { type: "apply_on_next_turn" };
-}
-
 export function acpSelectionTransition(
   input: ProviderSelectionTransitionInput,
 ): ProviderSelectionTransitionPlan {

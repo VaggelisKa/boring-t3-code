@@ -75,12 +75,3 @@ export const checkpointWorkspace = (fixtureName: string, files?: ReplayWorkspace
   Effect.acquireRelease(makeCheckpointWorkspaceEffect(fixtureName, files), (cwd) =>
     removeCheckpointWorkspaceEffect(cwd).pipe(Effect.orDie),
   ).pipe(Effect.provide(NodeServices.layer));
-
-export async function makeCheckpointWorkspace(
-  fixtureName: string,
-  files?: ReplayWorkspaceFiles,
-): Promise<string> {
-  return await Effect.runPromise(
-    makeCheckpointWorkspaceEffect(fixtureName, files).pipe(Effect.provide(NodeServices.layer)),
-  );
-}

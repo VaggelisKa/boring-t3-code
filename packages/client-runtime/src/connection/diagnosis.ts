@@ -59,9 +59,6 @@ function locate(input: ConnectionDiagnosisInput): Located | null {
   if (input.state.network === "offline" || input.state.phase === "offline") {
     return { hop: "device", cause: "offline" };
   }
-  if (failure?._tag === "ConnectionBlockedError" && failure.serverUpdateRequired) {
-    return { hop: "server", cause: "outdated" };
-  }
   if (failure?.hop !== undefined) {
     return { hop: failure.hop, cause: failure.failureCause ?? null };
   }
@@ -331,18 +328,4 @@ export function presentConnectionDiagnosis(
     facts,
     moreInfoUrl: relayPath ? t3ConnectTroubleshootingUrl(helpSection(located, failure)) : null,
   };
-}
-
-const HOP_MARK = { ok: "ok", failed: "FAILED", unchecked: "not checked" } as const;
-
-/** One plain-text block for bug reports. */
-export function connectionDiagnosisText(hostLabel: string, diagnosis: ConnectionDiagnosis): string {
-  return [
-    `T3 Code connection to ${hostLabel}: ${diagnosis.headline}`,
-    "",
-    ...diagnosis.hops.map((hop) => `${hop.label}: ${HOP_MARK[hop.result]}`),
-    "",
-    ...diagnosis.facts.map(([label, value]) => `${label}: ${value}`),
-    ...(diagnosis.moreInfoUrl ? ["", `More info: ${diagnosis.moreInfoUrl}`] : []),
-  ].join("\n");
 }

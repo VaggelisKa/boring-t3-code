@@ -3,7 +3,6 @@ import {
   ArchiveIcon,
   FlaskConicalIcon,
   BotIcon,
-  createLucideIcon,
   FileDiffIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -19,7 +18,6 @@ import {
   ServerIcon,
   Settings2Icon,
   ShieldCheckIcon,
-  SmartphoneIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
@@ -46,21 +44,8 @@ import {
   type SettingsSearchItem,
 } from "./settingsSearch";
 import { useAvailableSettingsSearchItems } from "./useAvailableSettingsSearchItems";
-import { validateSettingsScopeSearch } from "./settingsScope";
 import { useSettingsSectionNavigation } from "./useSettingsSectionNavigation";
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
-
-const SnapShotIcon = createLucideIcon("snap-shot", [
-  [
-    "path",
-    {
-      d: "M8 3H6a3 3 0 0 0-3 3v2M16 3h2a3 3 0 0 1 3 3v2M21 16v2a3 3 0 0 1-3 3h-2M8 21H6a3 3 0 0 1-3-3v-2",
-      key: "capture-frame",
-    },
-  ],
-  ["rect", { width: "10", height: "8", x: "7", y: "8", rx: "2", key: "window" }],
-  ["circle", { cx: "12", cy: "12", r: "1.5", key: "lens" }],
-]);
 
 const SETTINGS_SECTION_ICONS: Readonly<
   Record<SettingsPath, ComponentType<{ className?: string }>>
@@ -72,11 +57,9 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/diffs": FileDiffIcon,
   "/settings/projects": PanelsTopLeftIcon,
   "/settings/keybindings": KeyboardIcon,
-  "/settings/snap-shot": SnapShotIcon,
   "/settings/providers": BotIcon,
   "/settings/threads": MessagesSquareIcon,
   "/settings/browser": GlobeIcon,
-  "/settings/devices": SmartphoneIcon,
   "/settings/source-control": GitBranchIcon,
   "/settings/worktrees": FolderTreeIcon,
   "/settings/connections": ServerIcon,
@@ -108,8 +91,6 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   const navArea = workspaceAreaProps("settings-nav", 0, "Settings sections");
   const navigate = useNavigate();
   const currentHash = useLocation({ select: (location) => location.hash });
-  const currentSearch = useLocation({ select: (location) => location.search });
-  const scopeSearch = validateSettingsScopeSearch(currentSearch);
   const activePath = SETTINGS_DETAIL_PAGE_PARENTS[pathname] ?? pathname;
   const navPaths = SETTINGS_NAV_GROUPS.flatMap((group) => group.paths);
   const sectionNavigation = useSettingsSectionNavigation(
@@ -122,7 +103,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   // Below md the nav is an icon rail; searching expands it over the page.
   const [compactSearchOpen, setCompactSearchOpen] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
-  const searchableItems = useAvailableSettingsSearchItems(scopeSearch);
+  const searchableItems = useAvailableSettingsSearchItems();
   const results = searchSettings(query, searchableItems);
   const isSearching = query.trim().length > 0;
   const hasResults = results.length > 0;

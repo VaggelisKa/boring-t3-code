@@ -33,17 +33,12 @@ import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
 import * as AcpRegistryRuntimeCoordinator from "@t3tools/provider-acp-registry/server/AcpRegistryRuntimeCoordinator";
 import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRegistrySupport";
-import * as AgentSessionImporter from "./project/AgentSessionImporter.ts";
-import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as AntigravityInstallation from "./provider/AntigravityInstallation.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as CommandOutputHub from "./orchestration-v2/CommandOutputHub.ts";
-import * as CodexInstallation from "./provider/CodexInstallation.ts";
-import * as DeviceService from "./device/DeviceService.ts";
 import * as DocumentText from "./provider/DocumentText.ts";
-import * as DirectEndpoints from "./environment/DirectEndpoints.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import * as EnvironmentTheme from "./environmentTheme.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
@@ -55,8 +50,6 @@ import * as ModelManifest from "./provider/ModelManifest.ts";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 import * as OtlpEndpointCheck from "./observability/OtlpEndpointCheck.ts";
 import * as PairingGrantStore from "./auth/PairingGrantStore.ts";
-import * as PeerLinkRequests from "./peer/PeerLinkRequests.ts";
-import * as PeerLinks from "./peer/PeerLinks.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
@@ -72,7 +65,6 @@ import * as ProviderSessionManager from "./orchestration-v2/ProviderSessionManag
 import * as PullRequestReviewGuideService from "./pullRequest/PullRequestReviewGuideService.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
 import * as PullRequestSyncReactor from "./orchestration-v2/PullRequestSyncReactor.ts";
-import * as RemoteOpenTargets from "./environment/RemoteOpenTargets.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as ReviewService from "./review/ReviewService.ts";
@@ -80,7 +72,6 @@ import * as SecretRequests from "./secrets/SecretRequests.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as ServerLifecycleEvents from "./serverLifecycleEvents.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
-import * as ServerSelfUpdate from "./service/selfUpdate.ts";
 import * as SessionStore from "./auth/SessionStore.ts";
 import * as SourceControlDiscovery from "./sourceControl/SourceControlDiscovery.ts";
 import * as SourceControlRepositoryService from "./sourceControl/SourceControlRepositoryService.ts";
@@ -90,7 +81,6 @@ import * as DatabaseStorage from "./persistence/DatabaseStorage.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadSearch from "./orchestration-v2/ThreadSearch.ts";
-import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
@@ -483,15 +473,11 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(ProjectEnrichment.ProjectEnrichmentService)({}),
   Layer.mock(AcpRegistryRuntimeCoordinator.AcpRegistryRuntimeCoordinator)({}),
   Layer.mock(AcpRegistrySupport.AcpRegistryCatalog)({}),
-  Layer.mock(AgentSessionImporter.AgentSessionImporter)({}),
-  Layer.mock(AgentSessionScanner.AgentSessionScanner)({}),
   Layer.mock(AnalyticsService.AnalyticsService)({}),
   Layer.mock(AntigravityInstallation.AntigravityInstallation)({ managedDirectory: "/unused" }),
   Layer.mock(BackgroundPolicy.BackgroundPolicy)({}),
   Layer.mock(CheckpointDiffQuery.CheckpointDiffQuery)({}),
   Layer.mock(CommandOutputHub.CommandOutputHub)({}),
-  Layer.mock(CodexInstallation.CodexInstallation)({ managedDirectory: "/unused" }),
-  Layer.mock(DeviceService.DeviceService)({}),
   Layer.mock(EnvironmentTheme.EnvironmentThemeService)({}),
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(HostResources.HostResources)({}),
@@ -501,8 +487,6 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(Orchestrator.OrchestratorV2)({}),
   Layer.mock(OtlpEndpointCheck.OtlpEndpointCheck)({}),
   Layer.mock(PairingGrantStore.PairingGrantStore)({}),
-  Layer.mock(PeerLinks.PeerLinks)({}),
-  Layer.mock(PeerLinkRequests.PeerLinkRequests)({}),
   Layer.mock(PortScanner.PortDiscovery)({ trackAgent: () => () => undefined }),
   Layer.mock(PreviewManager.PreviewManager)({}),
   Layer.mock(ProcessDiagnostics.ProcessDiagnostics)({}),
@@ -525,7 +509,6 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(SecretRequests.SecretRequests)({}),
   Layer.mock(ServerLifecycleEvents.ServerLifecycleEvents)({}),
   Layer.mock(ServerRuntimeStartup.ServerRuntimeStartup)({}),
-  Layer.mock(ServerSelfUpdate.ServerSelfUpdate)({}),
   Layer.mock(SessionStore.SessionStore)({ cookieName: "config-test", legacyCookieName: undefined }),
   Layer.mock(SourceControlDiscovery.SourceControlDiscovery)({}),
   Layer.mock(SourceControlRepositoryService.SourceControlRepositoryService)({}),
@@ -590,11 +573,6 @@ it.effect(
           getProviders: Effect.succeed([]),
           streamChanges: Stream.never,
         }),
-        Layer.mock(UsageLimitSources.UsageLimitSources)({ streamChanges: Stream.make([]) }),
-        Layer.mock(RemoteOpenTargets.RemoteOpenTargets)({
-          resolveTargets: () => Effect.succeed([]),
-        }),
-        Layer.mock(DirectEndpoints.DirectEndpoints)({ resolve: () => Effect.succeed([]) }),
         Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
           scratchRoot: Effect.succeedNone,
           namedProjectsRoot: process.cwd(),
@@ -764,14 +742,6 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
         ),
         refreshWorkspaceSnapshot: () => Effect.succeed([provider]),
       }),
-      Layer.mock(UsageLimitSources.UsageLimitSources)({
-        current: Effect.succeed([]),
-        streamChanges: Stream.make([]),
-      }),
-      Layer.mock(RemoteOpenTargets.RemoteOpenTargets)({
-        resolveTargets: () => Effect.succeed([]),
-      }),
-      Layer.mock(DirectEndpoints.DirectEndpoints)({ resolve: () => Effect.succeed([]) }),
       Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
         scratchRoot: Effect.succeedNone,
         namedProjectsRoot: process.cwd(),

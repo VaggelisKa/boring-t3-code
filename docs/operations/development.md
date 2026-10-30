@@ -51,18 +51,13 @@ To add a scenario, point a `SCENARIOS` entry at a generic ACP replay fixture
 The agent replays session updates, permission requests, and questions. It drops session setup
 and vendor frames, so Grok and fx recordings lose their vendor-only behavior.
 
-### Sharing and remote debugging
-
-`vp run dev --share` publishes the web port over the machine's tailnet and prints a pairing URL
-for that origin. Give the tester the complete URL, including its token. The dev runner removes
-its mapping on exit.
+### Bundled dev
 
 Leave `VITE_HTTP_URL` and `VITE_WS_URL` unset. Vite proxies the backend through the browser's
-origin so the same build works over localhost and remote connections.
+origin.
 
-Shared runs enable bundled dev to avoid a network round trip for each import level.
-`T3CODE_BUNDLED_DEV=0` opts out when debugging bundler differences. Two reload traps matter
-when changing this setup:
+`T3CODE_BUNDLED_DEV=1` serves a few bundled chunks instead of one request per module. Two reload
+traps matter when changing this setup:
 
 - The web entry must dynamically import the app so React refresh initializes before application
   chunks. Static imports can work on first load and fail after a route split.
@@ -75,14 +70,6 @@ when changing this setup:
 The workarounds live in the [web entry](../../apps/web/src/bootstrap.ts),
 [Tailwind plugin](../../apps/web/vite/tailwind.ts), and
 [startup warmup](../../apps/web/vite/warmBundledDev.ts).
-
-`vp run dev --share --built` skips the Vite dev server. It runs `vp build --watch` for the web
-app, and the backend serves `apps/web/dist` on the same tailnet URL and pairing flow. Use it when
-someone tests over a slow link or only needs to use the app: loads are production size, and the
-first load does not wait for dev bundling. There is no HMR. After an edit, wait for the
-`built in` line (about 6 s), then reload. Until the first build exists, the URL shows a page that
-reloads by itself. The license manifest is not generated in this mode. `--built` requires
-`--share` and the `dev` mode.
 
 #### Reusable dev credential
 
@@ -113,7 +100,7 @@ For a manual worktree or launcher without that link, export the same fixed value
 export T3CODE_DEV_AUTH_TOKEN="<the value generated above>"
 ```
 
-Do not generate a new value at startup. Start or restart `vp run dev --share` after configuration,
+Do not generate a new value at startup. Start or restart `vp run dev` after configuration,
 then open its printed startup pairing URL once per browser profile on that hostname. Later web dev
 servers on the same hostname accept the shared cookie across ports. The cookie expires after 30
 days. Reload an old tab if its URL now serves a replacement environment.
@@ -146,29 +133,26 @@ options.
 
 ### Linux AppImage prerequisites
 
-Build on Linux because the browser-secret helper links against the host's libsecret. Install
-Rust, C/C++ build tools, libsecret development headers, pkg-config, and ImageMagick.
+Install Rust, C/C++ build tools, and ImageMagick.
 
 Ubuntu and Debian:
 
 ```sh
 sudo apt-get update
-sudo apt-get install cargo rustc build-essential libsecret-1-dev pkg-config imagemagick
+sudo apt-get install cargo rustc build-essential imagemagick
 ```
 
 Fedora:
 
 ```sh
-sudo dnf install rust cargo gcc gcc-c++ make libsecret-devel pkgconf-pkg-config ImageMagick
+sudo dnf install rust cargo gcc gcc-c++ make ImageMagick
 ```
 
 Arch Linux:
 
 ```sh
-sudo pacman -S rust base-devel libsecret pkgconf imagemagick
+sudo pacman -S rust base-devel imagemagick
 ```
-
-The C toolchain, pkg-config, and libsecret headers are also needed for Linux desktop development.
 
 ### macOS DMG prerequisites
 

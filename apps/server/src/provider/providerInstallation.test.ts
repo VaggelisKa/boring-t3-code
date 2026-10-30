@@ -13,7 +13,6 @@ import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 
 import * as ServerSettings from "../serverSettings.ts";
-import * as CodexInstallation from "./CodexInstallation.ts";
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
 import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
 import { makeProviderInstallation } from "./providerInstallation.ts";
@@ -76,25 +75,6 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
             Effect.sync(() => {
               calls.push("refresh");
               return [];
-            }),
-        }),
-        Layer.mock(CodexInstallation.CodexInstallation)({
-          managedDirectory: "/unused-managed-codex",
-          start: Effect.sync(() => {
-            calls.push("codex-start");
-            return { ...state, driver: ProviderDriverKind.make("codex") };
-          }),
-          cancel: () =>
-            Effect.sync(() => {
-              calls.push("codex-cancel");
-              return { ...state, driver: ProviderDriverKind.make("codex") };
-            }),
-          state: Effect.succeed({ ...state, driver: ProviderDriverKind.make("codex") }),
-          changes: Stream.succeed({ ...state, driver: ProviderDriverKind.make("codex") }),
-          remove: (paths) =>
-            Effect.sync(() => {
-              protectedPaths = paths ?? [];
-              calls.push("codex-remove");
             }),
         }),
         Layer.mock(AntigravityInstallation.AntigravityInstallation)({

@@ -24,17 +24,17 @@ describe("ProviderSettingsForm helpers", () => {
   });
 
   it("preserves unknown config keys while omitting empty configurable fields", () => {
-    const opencode = providerClients.get(ProviderDriverKind.make("opencode"));
-    expect(opencode).toBeDefined();
+    const antigravity = providerClients.get(ProviderDriverKind.make("antigravity"));
+    expect(antigravity).toBeDefined();
 
-    const serverUrl = deriveProviderSettingsFields(opencode!).find(
-      (field) => field.key === "serverUrl",
+    const gcpProject = deriveProviderSettingsFields(antigravity!).find(
+      (field) => field.key === "gcpProject",
     );
-    expect(serverUrl).toBeDefined();
+    expect(gcpProject).toBeDefined();
 
     const next = nextProviderConfigWithFieldValue(
-      { forkOwned: 1, serverUrl: "http://127.0.0.1:4096" },
-      serverUrl!,
+      { forkOwned: 1, gcpProject: "my-project" },
+      gcpProject!,
       "",
     );
 

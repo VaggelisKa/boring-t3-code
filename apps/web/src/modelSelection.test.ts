@@ -1,6 +1,5 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
-  DEFAULT_TEXT_GENERATION_MODEL,
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
@@ -630,20 +629,27 @@ describe("instance-scoped model selection", () => {
     );
   });
   it("falls back to the text generation default, not the chat default, for a removed model", () => {
-    const codex = provider({ instanceId: "codex", models: ["gpt-6-astra", "gpt-6-luna"] });
+    const antigravity = provider({
+      provider: ProviderDriverKind.make("antigravity"),
+      instanceId: "antigravity",
+      models: ["gemini-3-pro", ANTIGRAVITY_DEFAULT_MODEL],
+    });
     const providers = [
-      { ...codex, models: codex.models.map((m, i) => (i === 0 ? { ...m, isDefault: true } : m)) },
+      {
+        ...antigravity,
+        models: antigravity.models.map((m, i) => (i === 0 ? { ...m, isDefault: true } : m)),
+      },
     ];
     const settings: UnifiedSettings = {
       ...settingsWithProviderInstances(),
       textGenerationModelSelection: createModelSelection(
-        ProviderInstanceId.make("codex"),
-        "gpt-5.6-luna",
+        ProviderInstanceId.make("antigravity"),
+        "gemini-2-flash",
       ),
     };
 
     expect(resolveAppModelSelectionState(settings, providers).model).toBe(
-      DEFAULT_TEXT_GENERATION_MODEL,
+      ANTIGRAVITY_DEFAULT_MODEL,
     );
   });
 

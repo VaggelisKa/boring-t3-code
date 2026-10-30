@@ -17,8 +17,6 @@ export const DesktopBackendBootstrap = Schema.Struct({
   desktopBootstrapSecret: Schema.optionalKey(Schema.String),
   // Absent means the backend must hydrate PATH, as WSL and older desktops require.
   shellEnvironmentPrepared: Schema.optionalKey(Schema.Boolean),
-  tailscaleServeEnabled: Schema.Boolean,
-  tailscaleServePort: PortSchema,
   otlpTracesUrl: Schema.optional(Schema.String),
   otlpMetricsUrl: Schema.optional(Schema.String),
   otlpLogsUrl: Schema.optional(Schema.String),
@@ -30,6 +28,3 @@ export const DesktopBackendBootstrap = Schema.Struct({
 });
 
 export type DesktopBackendBootstrap = typeof DesktopBackendBootstrap.Type;
-
-/** Written to `<t3Home>/runtime` before update shutdown so the backend retains its managed tunnel. */
-export const DESKTOP_UPDATE_RESTART_MARKER_FILE = "desktop-update-restart";

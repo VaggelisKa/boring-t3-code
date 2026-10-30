@@ -239,10 +239,7 @@ export function formatRelativeElapsed(elapsedMs: number): RelativeTimeParts {
   return { value: `${days}d`, suffix: "ago" };
 }
 
-export function formatRelativeTime(
-  isoDate: string,
-  nowMs: number = Date.now(),
-): RelativeTimeParts | null {
+function formatRelativeTime(isoDate: string, nowMs: number = Date.now()): RelativeTimeParts | null {
   const elapsedMs = relativeTimeElapsedMs(isoDate, nowMs);
   return elapsedMs === null ? null : formatRelativeElapsed(elapsedMs);
 }

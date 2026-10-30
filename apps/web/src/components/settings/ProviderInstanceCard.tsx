@@ -64,8 +64,6 @@ import { ProviderAccentColorPicker } from "./ProviderAccentColorPicker";
 import { RedactedSensitiveText } from "./RedactedSensitiveText";
 import { SettingResetButton, SettingsRow, SettingsSection } from "./settingsLayout";
 import { AcpSessionManagementSection } from "./AcpSessionManagementSection";
-import { FoldedSettingsSection } from "./FoldedSettingsSection";
-import { readCodexSetupMode } from "./CodexSetupSection.logic";
 import {
   getProviderVersionAdvisoryPresentation,
   PROVIDER_STATUS_STYLES,
@@ -568,7 +566,6 @@ interface ProviderInstanceCardProps {
   readonly onDelete?: (() => void) | undefined;
   readonly headerAction?: ReactNode | undefined;
   readonly setup?: ReactNode;
-  readonly runtime?: ReactNode;
   readonly hiddenModels: ReadonlyArray<string>;
   readonly favoriteModels: ReadonlyArray<string>;
   readonly modelOrder: ReadonlyArray<string>;
@@ -613,7 +610,6 @@ export function ProviderInstanceCard({
   onDelete,
   headerAction,
   setup,
-  runtime,
   hiddenModels,
   favoriteModels,
   modelOrder,
@@ -1190,22 +1186,7 @@ export function ProviderInstanceCard({
         </SettingsSection>
       ) : null}
 
-      {instance.driver === "codex" && readCodexSetupMode(instance.config) === "managed" ? (
-        <div
-          inert={readOnly}
-          aria-disabled={readOnly || undefined}
-          className={readOnly ? "opacity-50 select-none" : undefined}
-        >
-          <FoldedSettingsSection
-            key={instanceId}
-            id={`provider-instance-${instanceId}-runtime`}
-            title="Runtime"
-            headerPlacement="outside"
-          >
-            {runtime ?? runtimeFields}
-          </FoldedSettingsSection>
-        </div>
-      ) : !driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
+      {!driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
         <SettingsSection
           title="Runtime"
           inert={readOnly}

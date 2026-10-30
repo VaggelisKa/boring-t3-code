@@ -25,17 +25,7 @@ import { materializeReplayTranscriptRuntimeInstructions } from "./ReplayRuntimeI
 // Each driver's fixtures run from its own <Provider>ReplayFixtures.integration.test.ts,
 // so a focused run loads one adapter. A fixture for a driver missing here would
 // silently never run, so loading this module fails instead.
-const DRIVERS_WITH_REPLAY_FIXTURE_FILES = new Set([
-  "acpRegistry",
-  "claudeAgent",
-  "codex",
-  "cursor",
-  "fx",
-  "grok",
-  "muse",
-  "opencode",
-  "pi",
-]);
+const DRIVERS_WITH_REPLAY_FIXTURE_FILES = new Set(["acpRegistry"]);
 for (const fixture of ORCHESTRATOR_REPLAY_FIXTURES) {
   for (const provider of fixture.providers) {
     if (!DRIVERS_WITH_REPLAY_FIXTURE_FILES.has(provider.driver)) {
@@ -194,10 +184,6 @@ export function runReplayFixture<
   WorkspaceError = never,
 >(input: ReplayFixtureRun<Transcript, Error, WorkspaceError>) {
   return runFixtureProvider(input).pipe(Effect.mapError(normalizeTestError), Effect.scoped);
-}
-
-export function findReplayFixture(name: string) {
-  return ORCHESTRATOR_REPLAY_FIXTURES.find((fixture) => fixture.name === name);
 }
 
 /**

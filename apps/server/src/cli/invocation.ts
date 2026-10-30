@@ -4,7 +4,6 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
-import type { ServerInstallation } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { isCommandAvailable } from "@t3tools/shared/shell";
 
@@ -61,38 +60,6 @@ export const resolveEntryPath = Effect.gen(function* () {
   if (yield* HostProcess.IsExecutable) return yield* HostProcess.ExecutablePath;
   return (yield* HostProcess.Arguments)[1] ?? "";
 });
-
-export const resolveServerInstallation = Effect.gen(function* () {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const platform = yield* HostProcess.Platform;
-  const entry = yield* fs.realPath(yield* resolveEntryPath);
-  const match = /^(.*)\/lib\/node_modules\/t3\/(?:dist\/bin\.mjs|bin\/t3\.mjs)$/.exec(entry);
-  if (!match) {
-    const runner = detectCliRunner(entry);
-    return runner === null
-      ? null
-      : ({ kind: runner === "pnpm dlx" ? "pnpm-dlx" : runner } satisfies ServerInstallation);
-  }
-  if (platform === "win32") return null;
-  const prefix = match[1] || "/";
-  if (
-    prefix.includes("/node_modules/") ||
-    /\/(?:Cellar|Caskroom)\//i.test(prefix) ||
-    /\/mise\/installs\/(?!node\/)[^/]+\//.test(prefix)
-  )
-    return null;
-
-  const packageRoot = path.join(prefix, "lib/node_modules/t3");
-  const manifest = yield* fs
-    .readFileString(path.join(packageRoot, "package.json"))
-    .pipe(Effect.flatMap(decodeInstallManifest));
-  if (manifest.name !== "t3" || !manifest.bin) return null;
-  const bin = yield* fs.realPath(path.join(packageRoot, manifest.bin.t3));
-  const globalBin = yield* fs.realPath(path.join(prefix, "bin/t3"));
-  if (globalBin !== bin || bin !== entry) return null;
-  return { kind: "npm-global", prefix } satisfies ServerInstallation;
-}).pipe(Effect.orElseSucceed(() => null));
 
 /** The original package spec is unavailable at startup; infer its channel from the version. */
 function suggestedPackageSpec(version: string): string {

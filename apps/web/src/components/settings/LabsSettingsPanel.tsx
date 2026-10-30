@@ -1,7 +1,4 @@
-import { Link } from "@tanstack/react-router";
-
 import { Switch } from "../ui/switch";
-import { ScopedSwitch } from "./ScopedSwitch";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 import { LegacyFeaturesSection } from "./SettingsPanels";
@@ -14,8 +11,6 @@ export function LabsSettingsPanel() {
       <SettingsSection id="beta" title="Beta">
         <BoringSidebarRow />
         <BoringSidebarMultilineRow />
-        <LinkedEnvironmentsRow />
-        <SimlockHostsRow />
       </SettingsSection>
       <LegacyFeaturesSection />
     </SettingsPageContainer>
@@ -57,78 +52,6 @@ function BoringSidebarMultilineRow() {
             updateSettings({ boringSidebarMultilineRows: Boolean(checked) })
           }
           aria-label="Two-line folder rows"
-        />
-      }
-    />
-  );
-}
-
-function LinkedEnvironmentsRow() {
-  const settings = useScopedSettings();
-  const updateSettings = useUpdateScopedSettings();
-  return (
-    <SettingsRow
-      serverScoped
-      {...searchableSetting("linked-environments-beta")}
-      settingKeys={["linkedEnvironmentsEnabled"]}
-      description={
-        <>
-          Let agents here work on your other machines, and theirs here. Turn it on for each machine,
-          then link them in{" "}
-          <Link to="/settings/connections" className="underline underline-offset-2">
-            Connections
-          </Link>
-          . While it is off, nothing new starts over a link; tasks already running finish.
-        </>
-      }
-      control={
-        <ScopedSwitch
-          settingKeys={["linkedEnvironmentsEnabled"]}
-          checked={settings.linkedEnvironmentsEnabled}
-          onCheckedChange={(checked) =>
-            updateSettings({ linkedEnvironmentsEnabled: Boolean(checked) })
-          }
-          aria-label="Linked environments"
-        />
-      }
-    />
-  );
-}
-
-function SimlockHostsRow() {
-  const settings = useScopedSettings();
-  const updateSettings = useUpdateScopedSettings();
-  return (
-    <SettingsRow
-      serverScoped
-      {...searchableSetting("simlock-hosts")}
-      settingKeys={["simlockDeviceHostsEnabled"]}
-      description={
-        <>
-          Let the Device panel lease simulators and emulators from your own{" "}
-          <a
-            href="https://incubator.callstack.com/simlock/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            Simlock
-          </a>{" "}
-          pool, added in{" "}
-          <Link to="/settings/devices" className="underline underline-offset-2">
-            Devices
-          </Link>
-          . An alpha that may change or break. T3 Code never installs Simlock.
-        </>
-      }
-      control={
-        <ScopedSwitch
-          settingKeys={["simlockDeviceHostsEnabled"]}
-          checked={settings.simlockDeviceHostsEnabled}
-          onCheckedChange={(checked) =>
-            updateSettings({ simlockDeviceHostsEnabled: Boolean(checked) })
-          }
-          aria-label="Simlock device hosts"
         />
       }
     />

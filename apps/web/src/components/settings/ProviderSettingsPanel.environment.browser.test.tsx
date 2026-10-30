@@ -150,10 +150,6 @@ vi.mock(import("./settingsLayout"), async (original) => ({
     </div>
   )) as never,
 }));
-vi.mock(import("./UsageProviderSettings"), async (original) => ({
-  ...(await original()),
-  UsageProviderSettings: (() => null) as never,
-}));
 vi.mock(import("../ProviderUpdatesAction"), async (original) => ({
   ...(await original()),
   ProviderUpdatesAction: (() => null) as never,
@@ -308,52 +304,5 @@ describe("EnvironmentProviderSettings routing", () => {
       environmentId,
       input: { instanceId, elicitationId: action.elicitationId },
     });
-  });
-
-  it("lets a signed-out managed Codex account switch to the existing CLI", async () => {
-    await setup();
-    const codex = ProviderDriverKind.make("codex");
-    state.settings = {
-      ...DEFAULT_UNIFIED_SETTINGS,
-      providerInstances: {
-        [codexId]: {
-          driver: codex,
-          enabled: true,
-          config: { enabled: true, setupMode: "managed" },
-        },
-      },
-    };
-    state.providerAuth = {
-      instanceId: codexId,
-      phase: "idle",
-      flowId: null,
-      authorizationUrl: null,
-      expiresAt: null,
-      message: null,
-      methods: [{ id: "chatgpt-profile:work", name: "Work", description: null, type: "agent" }],
-    };
-    await setProviders([
-      {
-        ...provider(),
-        auth: { status: "unauthenticated" },
-        setup: { canAuthenticate: true, canInstall: true },
-      },
-    ]);
-    await using _screen = await render(panel({ targetInstanceId: codexId }));
-    await expect.element(page.getByRole("button", { name: "Reconnect account" })).toBeVisible();
-    await userEvent.click(page.getByRole("button", { name: "Use existing CLI" }).element());
-
-    expect(state.mutateProviderInstance).toHaveBeenCalledWith(
-      {
-        operation: "upsert",
-        instanceId: codexId,
-        instance: {
-          driver: codex,
-          enabled: true,
-          config: { enabled: true, setupMode: "existing" },
-        },
-      },
-      {},
-    );
   });
 });

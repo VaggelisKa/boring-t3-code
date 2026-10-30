@@ -6,7 +6,6 @@ import {
   type ThreadId,
   type ThreadPullRequestLink,
 } from "@t3tools/contracts";
-import { canonicalizeGitCafePullRequestUrl } from "@t3tools/source-control-definitions/registry";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -80,7 +79,7 @@ const resolveTarget = Effect.fn("PullRequestsToolkit.resolveTarget")(function* (
     }
     return {
       ...normalizeThreadPullRequestKey(parsed),
-      url: canonicalizeGitCafePullRequestUrl(input.url),
+      url: input.url,
     } satisfies ResolvedTarget;
   }
   if (input.repository === undefined || input.number === undefined) {
@@ -94,10 +93,7 @@ const resolveTarget = Effect.fn("PullRequestsToolkit.resolveTarget")(function* (
   const repository = input.repository.toLowerCase();
   // Without a URL, a public forge host says what shape its change request URLs take;
   // any other host is taken to run the project's own forge.
-  const recognizedKind = sourceControlDefinitions.recognizeRemote(`https://${host}`)?.kind;
-  const kind =
-    sourceControlDefinitions.findByPublicHost(host)?.kind ??
-    (recognizedKind === "gitcafe" ? recognizedKind : projectHost.kind);
+  const kind = sourceControlDefinitions.findByPublicHost(host)?.kind ?? projectHost.kind;
   const url =
     kind === null
       ? null
@@ -112,7 +108,7 @@ const resolveTarget = Effect.fn("PullRequestsToolkit.resolveTarget")(function* (
   }
   return {
     ...normalizeThreadPullRequestKey({ host, repository, number: input.number, url }),
-    url: canonicalizeGitCafePullRequestUrl(url),
+    url: url,
   } satisfies ResolvedTarget;
 });
 

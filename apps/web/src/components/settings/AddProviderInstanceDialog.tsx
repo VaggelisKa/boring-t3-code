@@ -24,7 +24,6 @@ import { cn } from "../../lib/utils";
 import { normalizeProviderAccentColor } from "../../providerInstances";
 import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
 import { Button } from "../ui/button";
-import { ChatGptConnectionButton } from "./ChatGptConnectionButton";
 import { Dialog } from "../ui/dialog";
 import { Badge } from "../ui/badge";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
@@ -51,8 +50,6 @@ import {
 import { AddProviderInstanceWizardSteps } from "./AddProviderInstanceWizardSteps";
 import { AcpRegistrySearchStep, useAcpRegistrySearch } from "./AcpRegistrySearchStep";
 import { ProviderWizardAuthenticationStep } from "./ProviderWizardAuthenticationStep";
-import { resolveOfficialAcpRegistryIconUrl } from "./AcpRegistryIcon";
-import { AddManagedCodexAccountDialog } from "./CodexSetupSection";
 import { MultipleAccountsNote } from "./MultipleAccountsNote";
 import { ProviderEnvironmentSection } from "./ProviderInstanceCard";
 
@@ -72,7 +69,7 @@ function deriveInstanceId(driver: ProviderDriverKind, label: string): string {
 }
 
 const INSTANCE_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
-const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("codex");
+const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("antigravity");
 const ACP_REGISTRY_DRIVER_KIND = ProviderDriverKind.make("acpRegistry");
 const DEFAULT_DRIVER_OPTION = providerClients.definitions[0]!;
 const DRIVER_OPTIONS = providerClients.definitions.filter(
@@ -164,7 +161,6 @@ export function AddProviderInstanceDialog({
   const canManageProviders = useEnvironmentScope(environmentId, AuthProvidersManageScope);
 
   const [wizardStep, setWizardStep] = useState(0);
-  const [addingChatGptAccount, setAddingChatGptAccount] = useState(false);
   const [driver, setDriver] = useState<ProviderDriverKind>(DEFAULT_DRIVER_KIND);
   const [identityByDriver, setIdentityByDriver] = useState<Record<string, ProviderIdentityDraft>>(
     {},
@@ -180,21 +176,13 @@ export function AddProviderInstanceDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [createdInstanceId, setCreatedInstanceId] = useState<ProviderInstanceId | null>(null);
 
-  // Reserve Codex/Claude default ids because they run before configuration; other unconfigured slots are
-  // available.
-  const existingIds = new Set([
-    "codex",
-    "claudeAgent",
-    ...Object.keys(settings.providerInstances ?? {}),
-  ]);
+  // Reserve the Antigravity default id because it runs before configuration.
+  const existingIds = new Set(["antigravity", ...Object.keys(settings.providerInstances ?? {})]);
 
   const driverOption = providerClients.get(driver) ?? DEFAULT_DRIVER_OPTION;
   const isAcpRegistry = driver === ACP_REGISTRY_DRIVER_KIND;
   const showRegistrySearch =
-    !createdInstanceId &&
-    !addingChatGptAccount &&
-    wizardStep === 0 &&
-    !(isAcpRegistry && isManualAcpConfiguration);
+    !createdInstanceId && wizardStep === 0 && !(isAcpRegistry && isManualAcpConfiguration);
   // Searches while Show more is closed, so the fold opens on results.
   const registry = useAcpRegistrySearch(environmentId, showRegistrySearch);
   const isPreparingRegistryAgent = registry.preparingId !== null;
@@ -297,7 +285,6 @@ export function AddProviderInstanceDialog({
   const handleAcpPrepared = (agent: AcpRegistrySearchAgent) => {
     setDriver(ACP_REGISTRY_DRIVER_KIND);
     const nextLabel = agent.name;
-    const registryIconUrl = resolveOfficialAcpRegistryIconUrl(agent.icon);
     const nextInstanceId = deriveAvailableInstanceId(
       (candidateLabel) => deriveInstanceId(ACP_REGISTRY_DRIVER_KIND, candidateLabel),
       nextLabel,
@@ -316,7 +303,6 @@ export function AddProviderInstanceDialog({
       [ACP_REGISTRY_DRIVER_KIND]: {
         agentId: agent.id,
         distribution: "auto",
-        ...(registryIconUrl ? { registryIconUrl } : {}),
       },
     }));
     setHasAttemptedSubmit(false);
@@ -365,10 +351,7 @@ export function AddProviderInstanceDialog({
     setHasAttemptedSubmit(true);
     if (instanceIdError !== null || (isAcpRegistry && acpSelectionError !== null)) return;
 
-    const config =
-      driver === "codex"
-        ? { ...configByDriver[driver], setupMode: "existing" }
-        : (configByDriver[driver] ?? {});
+    const config = configByDriver[driver] ?? {};
     const hasConfig = Object.keys(config).length > 0;
     const normalizedAccentColor = normalizeProviderAccentColor(accentColor);
 
@@ -411,15 +394,6 @@ export function AddProviderInstanceDialog({
     });
     onOpenChange(false);
   };
-
-  if (addingChatGptAccount) {
-    return (
-      <AddManagedCodexAccountDialog
-        environmentId={environmentId}
-        onClose={() => onOpenChange(false)}
-      />
-    );
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -706,17 +680,7 @@ export function AddProviderInstanceDialog({
               >
                 {wizardStep === 0 ? "Cancel" : "Back"}
               </Button>
-              {wizardStep === 0 && driver === "codex" ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => navigateToStep(1)}>
-                    Configure manually
-                  </Button>
-                  <ChatGptConnectionButton
-                    size="sm"
-                    onClick={() => setAddingChatGptAccount(true)}
-                  />
-                </>
-              ) : wizardStep < (isAcpRegistry ? 1 : 2) ? (
+              {wizardStep < (isAcpRegistry ? 1 : 2) ? (
                 <Button
                   size="sm"
                   disabled={isPreparingRegistryAgent}

@@ -38,7 +38,7 @@ import * as ServerSettings from "../serverSettings.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
-import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
+import { FullProviderCapabilitiesV2 } from "./testkit/ProviderCapabilitiesFixtures.ts";
 import * as EventSink from "./EventSink.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import { continueRestartedRun } from "./RestartContinuation.ts";
@@ -60,8 +60,8 @@ const layerServerConfig = ServerConfig.layerTest(process.cwd(), {
 });
 
 const modelSelection = {
-  instanceId: ProviderInstanceId.make("codex"),
-  model: "gpt-5.4",
+  instanceId: ProviderInstanceId.make("antigravity"),
+  model: "antigravity-default",
 } satisfies ModelSelection;
 
 const layerVcsDriverRegistryTest = VcsDriverRegistry.layer.pipe(
@@ -74,11 +74,11 @@ const layerCheckpointStoreTest = CheckpointStore.layer.pipe(
   Layer.provide(layerVcsDriverRegistryTest),
 );
 
-const driver = ProviderDriverKind.make("codex");
+const driver = ProviderDriverKind.make("antigravity");
 const orchestrationAdapter = {
   instanceId: modelSelection.instanceId,
   driver,
-  getCapabilities: () => Effect.succeed(CodexProviderCapabilitiesV2),
+  getCapabilities: () => Effect.succeed(FullProviderCapabilitiesV2),
   planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" }),
   openSession: () => Effect.die("sessions are not used by delegated completion tests"),
 } as ProviderAdapter.ProviderAdapterV2["Service"];

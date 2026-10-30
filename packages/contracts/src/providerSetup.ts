@@ -1,7 +1,6 @@
 import * as Schema from "effect/Schema";
 
 import {
-  EnvironmentId,
   ForwardCompatibleArray,
   ForwardCompatibleOptional,
   IsoDateTime,
@@ -181,55 +180,3 @@ export class ProviderSetupError extends Schema.TaggedError<ProviderSetupError>()
     return this.detail;
   }
 }
-
-export const ChatGptReconnectProfile = Schema.Struct({
-  clientId: Schema.String.check(Schema.isPattern(/^oaiapp_[\w-]+$/u)),
-  subject: Schema.optionalKey(Schema.String),
-  email: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  redirectUri: Schema.optionalKey(
-    Schema.String.check(
-      Schema.isPattern(/^http:\/\/(?:127\.0\.0\.1|localhost):[1-9]\d{0,4}\/auth\/callback$/u),
-    ),
-  ),
-  connectionLabel: Schema.optionalKey(Schema.String),
-  sharingEnabled: Schema.optionalKey(Schema.Boolean),
-  idTokenHint: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(16_384))),
-});
-export type ChatGptReconnectProfile = typeof ChatGptReconnectProfile.Type;
-export const ChatGptTransferredProfile = Schema.Struct({
-  registration: ChatGptReconnectProfile,
-  credentials: Schema.Struct({
-    clientId: Schema.String,
-    accessToken: Schema.NonEmptyString.check(Schema.isMaxLength(16_384)),
-    refreshToken: Schema.NullOr(Schema.String.check(Schema.isMaxLength(16_384))),
-    idToken: Schema.NonEmptyString.check(Schema.isMaxLength(16_384)),
-    issuer: Schema.String,
-    expiresAt: Schema.Finite,
-    earliestRefreshAt: Schema.NullOr(Schema.Finite),
-    scopes: Schema.Array(Schema.String),
-    subject: Schema.String,
-    email: Schema.NullOr(Schema.String),
-  }),
-});
-export type ChatGptTransferredProfile = typeof ChatGptTransferredProfile.Type;
-export const ChatGptReconnectProfileInput = Schema.Struct({
-  instanceId: ProviderInstanceId,
-  methodId: Schema.String,
-});
-export const ChatGptImportProfileInput = Schema.Struct({
-  instanceId: ProviderInstanceId,
-  profile: ChatGptTransferredProfile,
-});
-export const ChatGptHandoffInput = Schema.Struct({
-  instanceId: ProviderInstanceId,
-  environmentId: EnvironmentId,
-  attemptId: Schema.String.check(Schema.isMaxLength(128)),
-  returnUrl: Schema.String.check(Schema.isMaxLength(4_096)),
-  profile: Schema.NullOr(ChatGptReconnectProfile),
-});
-export type ChatGptHandoffInput = typeof ChatGptHandoffInput.Type;
-export const ChatGptHandoffState = Schema.Union([
-  Schema.Struct({ phase: Schema.Literal("auth"), state: ProviderAuthState }),
-  Schema.Struct({ phase: Schema.Literal("finished"), profile: ChatGptTransferredProfile }),
-]);
-export type ChatGptHandoffState = typeof ChatGptHandoffState.Type;

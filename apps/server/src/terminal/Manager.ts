@@ -31,8 +31,6 @@ import {
   type TerminalSessionStatus,
   type TerminalSummary,
   type TerminalWriteInput,
-  ClaudeSettings,
-  CodexSettings,
   ProviderInstanceId,
 } from "@t3tools/contracts";
 import { makeKeyedCoalescingWorker } from "@t3tools/shared/KeyedCoalescingWorker";
@@ -64,8 +62,6 @@ import * as SynchronizedRef from "effect/SynchronizedRef";
 
 import * as ServerConfig from "../config.ts";
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
-import { resolveCodexHomeLayout } from "../provider/Drivers/CodexHomeLayout.ts";
-import { makeClaudeEnvironment } from "../provider/Drivers/ClaudeHome.ts";
 import { deriveProviderInstanceConfigMap } from "../provider/ProviderInstanceRegistryHydration.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import { increment, terminalSessionsTotal } from "../observability/Metrics.ts";
@@ -125,8 +121,6 @@ const TERMINAL_ENV_BLOCKLIST = new Set([
 ]);
 const nowIso = Effect.map(DateTime.now, DateTime.formatIso);
 const MAX_TERMINAL_LABEL_LENGTH = 128;
-const decodeClaudeSettings = Schema.decodeUnknownOption(ClaudeSettings);
-const decodeCodexSettings = Schema.decodeUnknownOption(CodexSettings);
 
 class TerminalSubprocessCheckError extends Schema.TaggedError<TerminalSubprocessCheckError>()(
   "TerminalSubprocessCheckError",
@@ -1465,7 +1459,6 @@ export const resolveProviderInstanceTerminalEnvironment = Effect.fn(
   "terminal.resolveProviderInstanceTerminalEnvironment",
 )(function* (input: {
   readonly serverSettings: ServerSettings.ServerSettingsService["Service"];
-  readonly path: Path.Path;
   readonly rawProviderInstanceId: string;
   readonly env: Record<string, string> | undefined;
 }) {
@@ -1478,25 +1471,7 @@ export const resolveProviderInstanceTerminalEnvironment = Effect.fn(
     return yield* new TerminalProviderInstanceNotFoundError({ providerInstanceId });
   }
 
-  let resolved = yield* mergeProviderInstanceEnvironment(instance.environment, input.env ?? {});
-  if (instance.driver === "codex") {
-    const config = decodeCodexSettings(instance.config ?? {});
-    if (Option.isSome(config)) {
-      const layout = yield* resolveCodexHomeLayout(config.value).pipe(
-        Effect.provideService(Path.Path, input.path),
-      );
-      if (layout.effectiveHomePath)
-        resolved = { ...resolved, CODEX_HOME: layout.effectiveHomePath };
-    }
-  } else if (instance.driver === "claudeAgent") {
-    const config = decodeClaudeSettings(instance.config ?? {});
-    if (Option.isSome(config)) {
-      resolved = yield* makeClaudeEnvironment(config.value, resolved).pipe(
-        Effect.provideService(Path.Path, input.path),
-      );
-    }
-  }
-
+  const resolved = yield* mergeProviderInstanceEnvironment(instance.environment, input.env ?? {});
   return Object.fromEntries(
     Object.entries(resolved).filter((entry): entry is [string, string] => entry[1] !== undefined),
   );
@@ -1515,7 +1490,6 @@ export const make = Effect.fn("TerminalManager.make")(function* () {
   )((rawProviderInstanceId: string, env: Record<string, string> | undefined) =>
     resolveProviderInstanceTerminalEnvironment({
       serverSettings,
-      path,
       rawProviderInstanceId,
       env,
     }),

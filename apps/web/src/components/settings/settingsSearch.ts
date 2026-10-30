@@ -1,4 +1,3 @@
-import { HOSTED_APP_CHANNEL } from "~/branding";
 import { isElectron, isSecretsFeatureEnabled } from "~/env";
 import { isMacPlatform, isWindowsPlatform, normalizeSearchText } from "~/lib/utils";
 import { STATIC_KEYBINDING_COMMANDS, type KeybindingCommand } from "@t3tools/contracts";
@@ -23,11 +22,9 @@ export type SettingsPath =
   | "/settings/chat"
   | "/settings/diffs"
   | "/settings/keybindings"
-  | "/settings/snap-shot"
   | "/settings/providers"
   | "/settings/threads"
   | "/settings/browser"
-  | "/settings/devices"
   | "/settings/source-control"
   | "/settings/worktrees"
   | "/settings/connections"
@@ -56,15 +53,12 @@ export interface SettingsSearchItem {
   readonly desktopOnly?: boolean;
   readonly macOnly?: boolean;
   readonly windowsOnly?: boolean;
-  readonly releaseChannelOnly?: boolean;
   readonly secretsFeatureOnly?: boolean;
   readonly environmentOnly?: boolean;
   readonly providerSettingsOnly?: boolean;
-  readonly macProviderSettingsOnly?: boolean;
   readonly localBackendManagementOnly?: boolean;
   readonly localEnvironmentOnly?: boolean;
   readonly wslAvailableOnly?: boolean;
-  readonly peerLinksOnly?: boolean;
   readonly secondary?: boolean;
   readonly requiresThreadAutoSettlement?: boolean;
 }
@@ -73,11 +67,9 @@ export interface SettingsSearchAvailability {
   readonly localEnvironmentDisabled?: boolean;
   readonly hasEnvironment: boolean;
   readonly hasProviderSettingsEnvironment: boolean;
-  readonly hasMacProviderSettingsEnvironment: boolean;
   readonly canManageLocalBackend: boolean;
   readonly isWslSettingsRowVisible: boolean;
   readonly hasThreadAutoSettlement: boolean;
-  readonly hasPeerLinkHost?: boolean;
 }
 
 export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
@@ -88,11 +80,9 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/chat": "Chat",
   "/settings/diffs": "Diffs & pull requests",
   "/settings/keybindings": "Keybindings",
-  "/settings/snap-shot": "SnapShots",
   "/settings/providers": "Providers",
   "/settings/threads": "Threads",
   "/settings/browser": "Browser",
-  "/settings/devices": "Devices",
   "/settings/source-control": "Source control",
   "/settings/worktrees": "Worktrees",
   "/settings/connections": "Environments",
@@ -117,12 +107,11 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
       "/settings/chat",
       "/settings/diffs",
       "/settings/keybindings",
-      "/settings/snap-shot",
     ],
   },
   {
     heading: "Agents",
-    paths: ["/settings/providers", "/settings/threads", "/settings/browser", "/settings/devices"],
+    paths: ["/settings/providers", "/settings/threads", "/settings/browser"],
   },
   {
     heading: "Code",
@@ -444,20 +433,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["beta boring sidebar folder rows multiline branch pull request details"],
   },
   {
-    id: "linked-environments-beta",
-    title: "Linked environments",
-    to: "/settings/labs",
-    scope: "environment",
-    searchTerms: ["beta link another machine vps peer agents work there delegate"],
-  },
-  {
-    id: "simlock-hosts",
-    title: "Simlock device hosts (alpha)",
-    to: "/settings/labs",
-    scope: "environment",
-    searchTerms: ["beta alpha simlock callstack simulator emulator ios android pool lease gateway"],
-  },
-  {
     id: "auto-settle-inactive-threads",
     title: "Auto-settle inactive threads",
     to: "/settings/threads",
@@ -575,7 +550,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "provider-update-checks",
     title: "Provider update checks",
     to: "/settings/maintenance",
-    searchTerms: ["installed cli versions newer available codex claude cursor grok fx opencode"],
+    searchTerms: ["installed cli versions newer available antigravity copilot"],
     scope: "environment-defaults",
   },
   {
@@ -667,14 +642,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "app-version",
     title: "Version",
     to: "/settings/about",
-    searchTerms: ["about check for updates download install upgrade release"],
-  },
-  {
-    id: "update-track",
-    title: "Update track",
-    to: "/settings/about",
-    searchTerms: ["release channel stable latest nightly prerelease"],
-    releaseChannelOnly: true,
+    searchTerms: ["about release build"],
   },
   {
     id: "cli-command",
@@ -734,68 +702,12 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   ...KEYBINDING_SEARCH_ITEMS,
   {
-    id: "snap-shot-enabled",
-    title: "SnapShots",
-    searchTerms: ["window capture screenshot"],
-    to: "/settings/snap-shot",
-  },
-  {
-    id: "snap-shot-accessibility",
-    title: "Include app text",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-    searchTerms: [
-      "capture accessibility data text UI structure elements privacy omit agent context",
-    ],
-  },
-  {
-    id: "snap-shot-shortcut",
-    title: "Capture shortcut",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
-    id: "snap-shot-sound",
-    title: "Capture sound",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
-    id: "snap-shot-flash",
-    title: "Capture flash",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
-    id: "snap-shot-animations",
-    title: "Capture animations",
-    to: "/settings/snap-shot",
-    targetId: "snap-shot-enabled",
-  },
-  {
     id: "providers",
     title: "Providers",
     to: "/settings/providers",
     searchTerms: [
-      "agents cli codex claude cursor grok fx opencode antigravity google sign in sign out install subscription instances authentication api key models configuration binary path config directory endpoint arguments environment variables display name accent color custom favorite hidden auto compact",
+      "agents cli antigravity copilot github google sign in sign out install subscription instances authentication api key models configuration binary path config directory endpoint arguments environment variables display name accent color custom favorite hidden auto compact",
     ],
-  },
-  {
-    id: "usage-providers",
-    title: "Usage providers",
-    to: "/settings/providers",
-    searchTerms: [
-      "usage sources CLIProxyAPI CLI proxy hub quota subscription limits management key add remove",
-    ],
-    providerSettingsOnly: true,
-  },
-  {
-    id: "cursor-keychain-usage",
-    title: "Cursor account usage",
-    to: "/settings/providers",
-    searchTerms: ["cursor macOS keychain usage tokens cost limits permission"],
-    providerSettingsOnly: true,
-    macProviderSettingsOnly: true,
   },
   {
     id: "provider-health-check-interval",
@@ -810,35 +722,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     to: "/settings/browser",
     scope: "project-defaults",
     searchTerms: ["allow disable enable open drive preview tools sessions project override"],
-  },
-  {
-    id: "device-sources",
-    title: "Device sources",
-    to: "/settings/devices",
-    searchTerms: [
-      "device hosts ssh remote mac mini identity key connection eas expo cloud simlock pool gateway local simulators",
-    ],
-  },
-  {
-    id: "agent-device-access",
-    title: "Agents can use devices",
-    to: "/settings/devices",
-    targetId: "devices",
-    searchTerms: ["allow simulator emulator ios android drive tools sessions"],
-  },
-  {
-    id: "device-hub",
-    title: "Use devices",
-    to: "/settings/devices",
-    targetId: "devices",
-    searchTerms: ["device hub simulator emulator ios android install start version"],
-  },
-  {
-    id: "device-platform-support",
-    title: "Local simulators",
-    to: "/settings/devices",
-    targetId: "device-sources",
-    searchTerms: ["simulator support xcode android studio sdk avd runtime"],
   },
   {
     id: "browser-profiles",
@@ -911,7 +794,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "browser-auto-show-floating-preview",
     title: "Auto-show floating preview",
     to: "/settings/browser",
-    searchTerms: ["agent opens browser device simulator pop into view hide"],
+    searchTerms: ["agent opens browser pop into view hide"],
   },
   {
     id: "automatic-pull",
@@ -1038,23 +921,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     desktopOnly: true,
   },
   {
-    id: "network-access",
-    title: "Network access",
-    to: "/settings/access",
-    targetId: "connections-environment",
-    searchTerms: ["expose backend remote pairing local machine interfaces host restart"],
-    localBackendManagementOnly: true,
-  },
-  {
-    id: "tailscale-https",
-    title: "Tailscale HTTPS",
-    to: "/settings/access",
-    targetId: "connections-environment",
-    searchTerms: ["serve magicdns endpoint remote secure network"],
-    desktopOnly: true,
-    localBackendManagementOnly: true,
-  },
-  {
     id: "wsl-backend",
     title: "WSL backend",
     to: "/settings/access",
@@ -1073,20 +939,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [
       "connections server backend local remote access administrative permissions scope pairing links qr code authorized clients sessions revoke endpoint",
     ],
-  },
-  {
-    id: "linked-environments",
-    peerLinksOnly: true,
-    title: "Linked environments",
-    to: "/settings/connections",
-    targetId: "linked-environments",
-    searchTerms: ["link peer another machine vps agents work there handoff pairing code"],
-  },
-  {
-    id: "remote-environments",
-    title: "Environments",
-    to: "/settings/connections",
-    searchTerms: ["add pair backend host code ssh config agent tunnel saved t3 connect"],
   },
   {
     id: "load-balancing",
@@ -1138,12 +990,10 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/appearance": null,
   "/settings/chat": null,
   "/settings/diffs": null,
-  "/settings/snap-shot": null,
   "/settings/keybindings": null,
   "/settings/providers": null,
   "/settings/threads": null,
   "/settings/browser": null,
-  "/settings/devices": null,
   "/settings/source-control": "environment-defaults",
   "/settings/worktrees": "project-defaults",
   "/settings/connections": "connections",
@@ -1270,12 +1120,10 @@ export function filterAvailableSettingsSearchItems(
     (item) =>
       (!item.environmentOnly || availability.hasEnvironment) &&
       (!item.providerSettingsOnly || availability.hasProviderSettingsEnvironment) &&
-      (!item.macProviderSettingsOnly || availability.hasMacProviderSettingsEnvironment) &&
       (!item.localBackendManagementOnly || availability.canManageLocalBackend) &&
       (!item.localEnvironmentOnly || !availability.localEnvironmentDisabled) &&
       (!item.wslAvailableOnly || availability.isWslSettingsRowVisible) &&
-      (!item.requiresThreadAutoSettlement || availability.hasThreadAutoSettlement) &&
-      (!item.peerLinksOnly || availability.hasPeerLinkHost === true),
+      (!item.requiresThreadAutoSettlement || availability.hasThreadAutoSettlement),
   );
 }
 
@@ -1287,7 +1135,6 @@ export function settingsForThisPlatform(
   return items.filter(
     (item) =>
       (isElectron || item.desktopOnly !== true) &&
-      (!item.releaseChannelOnly || isElectron || HOSTED_APP_CHANNEL !== null) &&
       (!item.secretsFeatureOnly || isSecretsFeatureEnabled) &&
       (!item.macOnly || isMacPlatform(platform)) &&
       (!item.windowsOnly || isWindowsPlatform(platform)),

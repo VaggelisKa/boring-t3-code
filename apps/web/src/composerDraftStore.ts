@@ -3,7 +3,7 @@ import { composerFileAttachmentMimeType } from "./components/chat/composerAttach
 import { elementContextToPreviewAnnotation } from "./lib/elementContext";
 import {
   ElementContextDetails,
-  DEFAULT_MODEL,
+  ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   EnvironmentId,
@@ -1080,7 +1080,7 @@ function legacyToModelSelectionByProvider(
           instanceKey,
           modelSelection?.instanceId === instanceKey
             ? modelSelection.model
-            : (DEFAULT_MODEL_BY_PROVIDER[driverKind] ?? DEFAULT_MODEL),
+            : (DEFAULT_MODEL_BY_PROVIDER[driverKind] ?? ANTIGRAVITY_DEFAULT_MODEL),
           options,
         );
       }
@@ -2994,7 +2994,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
           const fallbackModel =
             normalizeModelSlug(options?.model, normalizedProvider) ??
             DEFAULT_MODEL_BY_PROVIDER[normalizedProvider] ??
-            DEFAULT_MODEL;
+            ANTIGRAVITY_DEFAULT_MODEL;
           const providerOpts =
             nextProviderOptions && nextProviderOptions.length > 0 ? nextProviderOptions : undefined;
 

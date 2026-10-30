@@ -6,7 +6,7 @@ import { ProviderDriverKind, ProviderInstanceId } from "./providerInstance.ts";
 import {
   ClientSettingsSchema,
   ClientSettingsPatch,
-  ClaudeSettings,
+  AntigravitySettings,
   DEFAULT_SERVER_SETTINGS,
   globalIdleCompaction,
   idleCompactionPatch,
@@ -26,7 +26,7 @@ const decodeServerSettings = Schema.decodeUnknownSync(ServerSettings);
 const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
 const encodeServerSettings = Schema.encodeSync(ServerSettings);
 const encodeServerSettingsPatch = Schema.encodeSync(ServerSettingsPatch);
-const decodeClaudeSettings = Schema.decodeUnknownSync(ClaudeSettings);
+const decodeAntigravitySettings = Schema.decodeUnknownSync(AntigravitySettings);
 
 describe("storage cleanup settings", () => {
   it("keeps cleanup disabled for existing installations", () => {
@@ -178,7 +178,7 @@ describe("custom model settings", () => {
   };
 
   it("accepts legacy bare slugs alongside full entries", () => {
-    const decoded = decodeClaudeSettings({
+    const decoded = decodeAntigravitySettings({
       customModels: ["bare-slug", { slug: "named", name: "Named", capabilities }],
     });
     expect(decoded.customModels).toEqual([
@@ -189,19 +189,17 @@ describe("custom model settings", () => {
 });
 
 describe("resolveIdleCompaction", () => {
-  it("lets a Claude instance override the global default", () => {
+  it("lets an instance override the global default", () => {
     const settings = decodeServerSettings({
       idleCompaction: "off",
       providerInstances: {
-        claude_work: { driver: "claudeAgent", config: { idleCompaction: "onReturn" } },
-        claude_personal: { driver: "claudeAgent" },
+        agy_work: { driver: "antigravity", config: { idleCompaction: "onReturn" } },
+        agy_personal: { driver: "antigravity" },
       },
     });
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("claude_work"))).toBe(
-      "onReturn",
-    );
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("claude_personal"))).toBe("off");
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("claudeAgent"))).toBe("off");
+    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_work"))).toBe("onReturn");
+    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_personal"))).toBe("off");
+    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("antigravity"))).toBe("off");
   });
 
   it("reads the mode from the legacy switch, in either form servers saved it", () => {
@@ -262,23 +260,27 @@ describe("ClientSettings quit confirmation", () => {
 
 describe("provider enabled defaults", () => {
   it("resolves instance enabled state with explicit false winning", () => {
-    const grok = ProviderDriverKind.make("grok");
-    const codex = ProviderDriverKind.make("codex");
-    expect(resolveProviderInstanceEnabled({ driver: grok, config: {} })).toBe(false);
-    expect(resolveProviderInstanceEnabled({ driver: codex, config: {} })).toBe(true);
+    const antigravity = ProviderDriverKind.make("antigravity");
+    expect(resolveProviderInstanceEnabled({ driver: antigravity, config: {} })).toBe(true);
     expect(
       resolveProviderInstanceEnabled({ driver: ProviderDriverKind.make("ollama"), config: {} }),
     ).toBe(true);
-    expect(resolveProviderInstanceEnabled({ driver: grok, enabled: true, config: {} })).toBe(true);
-    expect(resolveProviderInstanceEnabled({ driver: codex, enabled: false, config: {} })).toBe(
-      false,
-    );
-    expect(resolveProviderInstanceEnabled({ driver: grok, config: { enabled: true } })).toBe(true);
     expect(
-      resolveProviderInstanceEnabled({ driver: grok, enabled: true, config: { enabled: false } }),
+      resolveProviderInstanceEnabled({ driver: antigravity, enabled: false, config: {} }),
     ).toBe(false);
     expect(
-      resolveProviderInstanceEnabled({ driver: codex, enabled: false, config: { enabled: true } }),
+      resolveProviderInstanceEnabled({
+        driver: antigravity,
+        enabled: true,
+        config: { enabled: false },
+      }),
+    ).toBe(false);
+    expect(
+      resolveProviderInstanceEnabled({
+        driver: antigravity,
+        enabled: false,
+        config: { enabled: true },
+      }),
     ).toBe(false);
   });
 });
@@ -338,41 +340,6 @@ describe("ServerSettings environment icon", () => {
   });
 });
 
-const decodeDeviceHostSettings = Schema.decodeSync(ServerSettings);
-
-// `deviceHosts` as it was decoded before EAS hosts existed: an SSH host needs a target.
-const decodeOlderDeviceHostSettings = Schema.decodeUnknownSync(
-  Schema.Struct({
-    deviceHosts: Schema.Array(Schema.Struct({ id: Schema.String, target: Schema.String })),
-  }),
-);
-
-it("keeps EAS hosts out of the SSH host list servers and clients before EAS hosts decode", () => {
-  const settings = decodeDeviceHostSettings({
-    deviceHosts: [{ id: "mini", label: "Mac mini", target: "user@mini" }],
-    easDeviceHosts: [{ kind: "eas", id: "eas", label: "EAS Simulator" }],
-  });
-  const wire = encodeServerSettings(settings);
-  expect(decodeOlderDeviceHostSettings(wire).deviceHosts).toEqual([
-    { id: "mini", target: "user@mini" },
-  ]);
-  expect(settings.easDeviceHosts.map((host) => host.id)).toEqual(["eas"]);
-});
-
-it("validates remote device hosts and rejects ambiguous host ids", () => {
-  const host = { id: "mini", label: "Mac mini", target: "user@mini", port: 2222 };
-  // Hosts saved before EAS hosts existed have no `kind`; they are SSH hosts.
-  expect(decodeDeviceHostSettings({ deviceHosts: [host] }).deviceHosts).toEqual([
-    { kind: "ssh", ...host },
-  ]);
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [host, host] })).toThrow();
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [{ ...host, id: "local" }] })).toThrow();
-  expect(() =>
-    decodeDeviceHostSettings({ deviceHosts: [{ ...host, target: "-oProxyCommand=bad" }] }),
-  ).toThrow();
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [{ ...host, port: 0 }] })).toThrow();
-});
-
 describe("ServerSettings project overrides across versions", () => {
   it("sends back an override key from a newer server when an older client edits the entry", () => {
     const projectId = ProjectId.make("project-a");
@@ -396,13 +363,13 @@ describe("ServerSettings project overrides across versions", () => {
 
 describe("resolveProjectProviderInstanceEnabled", () => {
   const projectId = "project-a" as ProjectId;
-  const instanceId = ProviderInstanceId.make("codex_work");
+  const instanceId = ProviderInstanceId.make("agy_work");
 
   it("lets a project disable an instance the machine enabled", () => {
     const settings: ServerSettings = {
       ...DEFAULT_SERVER_SETTINGS,
       providerInstances: {
-        [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        [instanceId]: { driver: ProviderDriverKind.make("antigravity"), enabled: true },
       },
       projectSettingsOverrides: {
         [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },

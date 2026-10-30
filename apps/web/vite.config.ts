@@ -35,13 +35,8 @@ const host = explicitHost || "localhost";
 const configuredWsUrl = isSingleOriginDev ? undefined : process.env.VITE_WS_URL?.trim();
 const configuredHttpUrl = isSingleOriginDev ? undefined : process.env.VITE_HTTP_URL?.trim();
 const configuredHostedAppChannel = process.env.VITE_HOSTED_APP_CHANNEL?.trim() || "";
-const configuredReleaseChannel =
-  process.env.T3CODE_BUILT_DEV === "1" ? "dev" : process.env.VITE_RELEASE_CHANNEL?.trim() || "";
+const configuredReleaseChannel = process.env.VITE_RELEASE_CHANNEL?.trim() || "";
 const configuredAppVersion = process.env.APP_VERSION?.trim() || pkg.version;
-const configuredDesktopUpdateRepository =
-  process.env.T3CODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
-  process.env.GITHUB_REPOSITORY?.trim() ||
-  "";
 const configuredFeatureSecrets = process.env.T3CODE_FEATURE_SECRETS?.trim() || "";
 const configuredHostedAppUrl = (() => {
   const explicitHostedAppUrl = process.env.VITE_HOSTED_APP_URL?.trim();
@@ -57,10 +52,6 @@ const configuredHostedAppUrl = (() => {
   return undefined;
 })();
 const sourcemapEnv = process.env.T3CODE_WEB_SOURCEMAP?.trim().toLowerCase();
-
-// `vp run dev --share --built` rebuilds on every change. The license manifest
-// is about 2 s of each build, and nothing in that mode reads it.
-const builtDev = process.env.T3CODE_BUILT_DEV === "1";
 
 const bundledDevEnv = process.env.T3CODE_BUNDLED_DEV?.trim().toLowerCase();
 const bundledDev = bundledDevEnv === "1" || bundledDevEnv === "true";
@@ -261,17 +252,15 @@ export default defineConfig(() => {
     plugins: [
       devCompressionPlugin(),
       chunkCycleGuardPlugin(),
-      builtDev
-        ? undefined
-        : thirdPartyLicensesPlugin({
-            bundleName: "web",
-            configFile: new URL("../../third-party-licenses.config.json", import.meta.url),
-            packageManifests: [
-              { bundle: "web", path: new URL("./package.json", import.meta.url) },
-              { bundle: "server", path: new URL("../server/package.json", import.meta.url) },
-              { bundle: "desktop", path: new URL("../desktop/package.json", import.meta.url) },
-            ],
-          }),
+      thirdPartyLicensesPlugin({
+        bundleName: "web",
+        configFile: new URL("../../third-party-licenses.config.json", import.meta.url),
+        packageManifests: [
+          { bundle: "web", path: new URL("./package.json", import.meta.url) },
+          { bundle: "server", path: new URL("../server/package.json", import.meta.url) },
+          { bundle: "desktop", path: new URL("../desktop/package.json", import.meta.url) },
+        ],
+      }),
       tanstackRouter({ autoCodeSplitting: true }),
       react({ compiler: true }),
       tailwindPlugins(bundledDev),
@@ -294,9 +283,6 @@ export default defineConfig(() => {
       "import.meta.env.VITE_HTTP_URL": JSON.stringify(configuredHttpUrl ?? ""),
       "import.meta.env.VITE_HOSTED_APP_URL": JSON.stringify(configuredHostedAppUrl ?? ""),
       "import.meta.env.VITE_HOSTED_APP_CHANNEL": JSON.stringify(configuredHostedAppChannel),
-      "import.meta.env.T3CODE_DESKTOP_UPDATE_REPOSITORY": JSON.stringify(
-        configuredDesktopUpdateRepository,
-      ),
       "import.meta.env.T3CODE_FEATURE_SECRETS": JSON.stringify(configuredFeatureSecrets),
       "import.meta.env.VITE_RELEASE_CHANNEL": JSON.stringify(configuredReleaseChannel),
       "import.meta.env.APP_VERSION": JSON.stringify(configuredAppVersion),

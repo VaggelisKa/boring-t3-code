@@ -31,9 +31,6 @@ import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopShellEnvironment from "../shell/DesktopShellEnvironment.ts";
 import * as DesktopStartupRecovery from "./DesktopStartupRecovery.ts";
 import * as DesktopState from "./DesktopState.ts";
-import * as DesktopRemoteUpdates from "../updates/DesktopRemoteUpdates.ts";
-import * as DesktopUpdates from "../updates/DesktopUpdates.ts";
-import * as DesktopSnapShot from "../snapShot/DesktopSnapShot.ts";
 import * as DesktopWslBackend from "../wsl/DesktopWslBackend.ts";
 import * as DesktopRendererHistory from "../telemetry/DesktopRendererHistory.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
@@ -69,8 +66,7 @@ export class DesktopDevelopmentBackendPortRequiredError extends Schema.TaggedErr
   }
 }
 
-const { logInfo: logBootstrapInfo, logWarning: logBootstrapWarning } =
-  DesktopObservability.makeComponentLogger("desktop-bootstrap");
+const { logInfo: logBootstrapInfo } = DesktopObservability.makeComponentLogger("desktop-bootstrap");
 
 const { logInfo: logStartupInfo, logError: logStartupError } =
   DesktopObservability.makeComponentLogger("desktop-startup");
@@ -165,7 +161,6 @@ const bootstrap = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const desktopSettings = yield* DesktopAppSettings.DesktopAppSettings;
   const desktopWindow = yield* DesktopWindow.DesktopWindow;
-  const snapShot = yield* DesktopSnapShot.DesktopSnapShot;
   const appActivation = yield* DesktopAppActivation.DesktopAppActivation;
   yield* logBootstrapInfo("bootstrap start");
 
@@ -183,8 +178,6 @@ const bootstrap = Effect.gen(function* () {
   yield* (yield* DesktopLegacyLocalStorage.DesktopLegacyLocalStorage).load(
     yield* (yield* DesktopAppIdentity.DesktopAppIdentity).resolveUserDataPath,
   );
-
-  yield* snapShot.initialize;
 
   if (!settings.localEnvironmentEnabled) {
     yield* logBootstrapInfo("bootstrap skipping local environment (disabled in settings)");
@@ -215,28 +208,10 @@ const bootstrap = Effect.gen(function* () {
     },
   );
 
-  if (settings.serverExposureMode !== environment.defaultDesktopSettings.serverExposureMode) {
-    yield* logBootstrapInfo("bootstrap restoring persisted server exposure mode", {
-      mode: settings.serverExposureMode,
-    });
-  }
-  const serverExposureState = yield* serverExposure.configureFromSettings({ port: backendPort });
-  const backendConfig = yield* serverExposure.backendConfig;
+  const backendConfig = yield* serverExposure.configure({ port: backendPort });
   yield* logBootstrapInfo("bootstrap resolved backend endpoint", {
     baseUrl: backendConfig.httpBaseUrl.href,
   });
-  if (serverExposureState.endpointUrl) {
-    yield* logBootstrapInfo("bootstrap enabled network access", {
-      endpointUrl: serverExposureState.endpointUrl,
-    });
-  } else if (
-    settings.serverExposureMode === "network-accessible" &&
-    serverExposureState.mode === "local-only"
-  ) {
-    yield* logBootstrapWarning(
-      "bootstrap fell back to local-only because no advertised network host was available",
-    );
-  }
 
   if (!(yield* Ref.get(state.quitting))) {
     if (settings.wslOnly === true && settings.wslBackendEnabled === true) {
@@ -263,7 +238,6 @@ const startup = Effect.gen(function* () {
   const desktopSettings = yield* DesktopAppSettings.DesktopAppSettings;
   const preReadyElectronOptions = yield* DesktopPreReadyPlatform.DesktopPreReadyElectronOptions;
   const safeStorage = yield* ElectronSafeStorage.ElectronSafeStorage;
-  const updates = yield* DesktopUpdates.DesktopUpdates;
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const previewPasskeys = yield* PreviewPasskeys.PreviewPasskeys;
 
@@ -323,8 +297,6 @@ const startup = Effect.gen(function* () {
   yield* appIdentity.configure;
   yield* previewPasskeys.configure;
   yield* applicationMenu.configure;
-  yield* updates.configure;
-  yield* DesktopRemoteUpdates.listen;
   yield* DesktopStartupRecovery.listen;
   yield* linuxUrlHandler.register;
   yield* bootstrap.pipe(Effect.catchCause((cause) => fatalStartupCause("bootstrap", cause)));

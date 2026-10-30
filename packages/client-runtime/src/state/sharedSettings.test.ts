@@ -20,7 +20,11 @@ describe("filterSharedServerPatch", () => {
       const settings = {
         ...DEFAULT_SERVER_SETTINGS,
         providerInstances: {
-          codex: { driver: ProviderDriverKind.make("codex"), enabled: false, config: {} },
+          antigravity: {
+            driver: ProviderDriverKind.make("antigravity"),
+            enabled: false,
+            config: {},
+          },
           claudeAgent: {
             driver: ProviderDriverKind.make("claudeAgent"),
             enabled: true,

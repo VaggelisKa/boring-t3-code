@@ -56,7 +56,7 @@ it.effect.each([
     Effect.gen(function* () {
       const projectId = ProjectId.make("bootstrap-project");
       const instanceId = ProviderInstanceId.make(
-        scenario === "disabled-default" ? "custom" : "codex",
+        scenario === "disabled-default" ? "custom" : "antigravity",
       );
       const events: ServerLifecycleStreamEvent[] = [];
       const recovery = {
@@ -92,8 +92,6 @@ it.effect.each([
           devAllowedOrigins: [],
           desktopBootstrapToken: undefined,
           logWebSocketEvents: false,
-          tailscaleServeEnabled: false,
-          tailscaleServePort: 443,
           mode: "web",
           cwd: "/bootstrap-project",
           host: "localhost",

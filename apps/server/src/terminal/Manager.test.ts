@@ -5,7 +5,6 @@ import {
   type TerminalAttachStreamEvent,
   type TerminalEvent,
   type TerminalOpenInput,
-  ProviderDriverKind,
   ProviderInstanceId,
   TerminalProviderInstanceNotFoundError,
 } from "@t3tools/contracts";
@@ -32,7 +31,6 @@ import * as TestClock from "effect/testing/TestClock";
 import { expect, vi } from "vite-plus/test";
 
 import * as ProcessRunner from "../processRunner.ts";
-import * as ServerSettings from "../serverSettings.ts";
 import * as TerminalManager from "./Manager.ts";
 import { terminalOutputStream } from "./OutputProtocol.ts";
 import * as PtyAdapter from "@t3tools/shared/PtyAdapter";
@@ -1544,55 +1542,6 @@ it.layer(
       );
       expect(ptyAdapter.spawnInputs).toHaveLength(0);
     }),
-  );
-
-  it.effect.each([
-    {
-      name: "Codex home",
-      driver: "codex",
-      variable: "CODEX_HOME",
-      config: { homePath: "/configured/codex" },
-      expectedHome: "/configured/codex",
-    },
-    {
-      name: "Codex shadow home",
-      driver: "codex",
-      variable: "CODEX_HOME",
-      config: { homePath: "/configured/codex", shadowHomePath: "/configured/codex-shadow" },
-      expectedHome: "/configured/codex-shadow",
-    },
-    {
-      name: "Claude home",
-      driver: "claudeAgent",
-      variable: "CLAUDE_CONFIG_DIR",
-      config: { homePath: "/configured/claude" },
-      expectedHome: "/configured/claude",
-    },
-  ])("prefers $name over the instance environment", ({ driver, variable, config, expectedHome }) =>
-    Effect.gen(function* () {
-      const path = yield* Path.Path;
-      const serverSettings = yield* ServerSettings.ServerSettingsService;
-      const environment = yield* TerminalManager.resolveProviderInstanceTerminalEnvironment({
-        serverSettings,
-        path,
-        rawProviderInstanceId: "configured_home",
-        env: undefined,
-      });
-
-      expect(environment[variable]).toBe(path.resolve(expectedHome));
-    }).pipe(
-      Effect.provide(
-        ServerSettings.layerTest({
-          providerInstances: {
-            [ProviderInstanceId.make("configured_home")]: {
-              driver: ProviderDriverKind.make(driver),
-              environment: [{ name: variable, value: "~/.environment-account", sensitive: false }],
-              config,
-            },
-          },
-        }),
-      ),
-    ),
   );
 
   it.effect("restarts a running terminal when the resolved provider environment changes", () =>

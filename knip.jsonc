@@ -25,7 +25,7 @@
         "smoke-desktop-app.ts",
         "verify-windows-desktop-artifact.ts",
       ],
-      "ignoreDependencies": ["agent-device", "esbuild"],
+      "ignoreDependencies": ["esbuild"],
       // The `t3` npm package's files: copied into the package, never imported.
       // knip-schemas.test.ts writes a throwaway project to .knip-test-*, which a
       // concurrent knip run must not report.
@@ -82,10 +82,6 @@
       // named subcomponents even before they have callers; the file audit still
       // reports an entire component module when nothing imports it.
       "ignoreIssues": { "src/components/ui/*.tsx": ["exports", "nsExports", "duplicates"] },
-    },
-    "apps/marketing": {
-      // `astro check` runs from the typecheck task in vite.config.ts, which knip does not read.
-      "ignoreDependencies": ["@astrojs/check"],
     },
     "packages/*": {
       // These workspace packages are private to this monorepo.

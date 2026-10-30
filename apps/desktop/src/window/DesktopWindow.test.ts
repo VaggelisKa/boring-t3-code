@@ -1,7 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
-import { DesktopSnapShotId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
@@ -45,7 +44,6 @@ import * as ElectronMenu from "../electron/ElectronMenu.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
-import { SNAP_SHOT_EVENT_CHANNEL } from "../ipc/channels.ts";
 import * as DesktopServerExposure from "../backend/DesktopServerExposure.ts";
 import * as DesktopWindow from "./DesktopWindow.ts";
 import * as PreviewManager from "../preview/Manager.ts";
@@ -167,18 +165,12 @@ const layerDesktopAssets = Layer.succeed(DesktopAssets.DesktopAssets, {
 } satisfies DesktopAssets.DesktopAssets["Service"]);
 
 const layerDesktopServerExposure = Layer.succeed(DesktopServerExposure.DesktopServerExposure, {
-  getState: Effect.die("unexpected getState"),
   backendConfig: Effect.succeed({
     port: 3773,
     bindHost: "127.0.0.1",
     httpBaseUrl: new URL("http://127.0.0.1:3773"),
-    tailscaleServeEnabled: false,
-    tailscaleServePort: 443,
   }),
-  configureFromSettings: () => Effect.die("unexpected configureFromSettings"),
-  setMode: () => Effect.die("unexpected setMode"),
-  setTailscaleServeEnabled: () => Effect.die("unexpected setTailscaleServeEnabled"),
-  getAdvertisedEndpoints: Effect.die("unexpected getAdvertisedEndpoints"),
+  configure: () => Effect.die("unexpected configure"),
 } satisfies DesktopServerExposure.DesktopServerExposure["Service"]);
 
 const layerElectronMenu = Layer.succeed(ElectronMenu.ElectronMenu, {
@@ -254,9 +246,6 @@ function layerTest(input: {
         }
         return { settings: desktopSettings, changed };
       }),
-    setServerExposureMode: () => Effect.die("unexpected server exposure update"),
-    setTailscaleServe: () => Effect.die("unexpected Tailscale Serve update"),
-    setUpdateChannel: () => Effect.die("unexpected update channel change"),
     setWslBackendEnabled: () => Effect.die("unexpected WSL backend toggle"),
     setWslDistro: () => Effect.die("unexpected WSL distro change"),
     setWslOnly: () => Effect.die("unexpected WSL-only toggle"),
@@ -315,7 +304,6 @@ function layerTest(input: {
               input.openedExternalUrls?.push(url);
               return true;
             }),
-          openSystemSettings: () => Effect.succeed(true),
           copyText: (text) =>
             Effect.sync(() => {
               input.copiedTexts?.push(text);
@@ -428,7 +416,6 @@ const makeSplashScenario = (createOutcomes: readonly (Electron.BrowserWindow | n
           layerElectronMenu,
           Layer.succeed(ElectronShell.ElectronShell, {
             openExternal: () => Effect.succeed(true),
-            openSystemSettings: () => Effect.succeed(true),
             copyText: () => Effect.void,
           } satisfies ElectronShell.ElectronShell["Service"]),
           layerElectronTheme,
@@ -450,9 +437,6 @@ const makeSplashScenario = (createOutcomes: readonly (Electron.BrowserWindow | n
 
     return { layer, createCalls, mainWindow, revealedWindows } as const;
   });
-
-const captureOne = DesktopSnapShotId.make("11111111-1111-4111-8111-111111111111");
-const captureTwo = DesktopSnapShotId.make("22222222-2222-4222-8222-222222222222");
 
 describe("DesktopWindow", () => {
   it("restores bounds only when the window fits within a connected display", () => {
@@ -1018,67 +1002,5 @@ describe("DesktopWindow", () => {
           assert.equal(Option.getOrThrow(registeredMain), main.window);
         }).pipe(Effect.provide(scenario.layer));
       }),
-  );
-
-  it.effect("delivers capture completion and late errors without taking focus back", () =>
-    Effect.gen(function* () {
-      const operations: Array<string> = [];
-      let foreground = "Discord";
-      const fakeWindow = makeFakeBrowserWindow();
-      fakeWindow.send.mockImplementation(() => {
-        operations.push("send");
-      });
-      const createCount = yield* Ref.make(0);
-      const mainWindow = yield* Ref.make<Option.Option<Electron.BrowserWindow>>(Option.none());
-      const layer = layerTest({
-        window: fakeWindow.window,
-        createCount,
-        mainWindow,
-        onReveal: () => {
-          foreground = "T3 Code";
-          operations.push("reveal");
-        },
-      });
-
-      yield* Effect.gen(function* () {
-        const desktopWindow = yield* DesktopWindow.DesktopWindow;
-        yield* desktopWindow.handleBackendReady(new URL("http://127.0.0.1:3773"));
-        yield* desktopWindow.dispatchSnapShotEvent({ type: "started", id: captureOne });
-        assert.equal(foreground, "T3 Code");
-        foreground = "Explorer";
-        yield* desktopWindow.dispatchSnapShotEvent({ type: "ready", id: captureOne });
-        yield* desktopWindow.dispatchSnapShotEvent({ type: "failed", id: captureTwo });
-
-        assert.equal(foreground, "Explorer");
-        assert.deepEqual(operations, ["send", "reveal", "send", "send"]);
-        assert.deepEqual(fakeWindow.send.mock.calls, [
-          [SNAP_SHOT_EVENT_CHANNEL, { type: "started", id: captureOne }],
-          [SNAP_SHOT_EVENT_CHANNEL, { type: "ready", id: captureOne }],
-          [SNAP_SHOT_EVENT_CHANNEL, { type: "failed", id: captureTwo }],
-        ]);
-      }).pipe(Effect.provide(layer));
-    }),
-  );
-
-  it.effect("does not reopen a closed main window for a completed capture", () =>
-    Effect.gen(function* () {
-      const fakeWindow = makeFakeBrowserWindow();
-      const createCount = yield* Ref.make(0);
-      const mainWindow = yield* Ref.make<Option.Option<Electron.BrowserWindow>>(Option.none());
-      const onReveal = vi.fn();
-      const layer = layerTest({ window: fakeWindow.window, createCount, mainWindow, onReveal });
-
-      yield* Effect.gen(function* () {
-        const desktopWindow = yield* DesktopWindow.DesktopWindow;
-        yield* desktopWindow.handleBackendReady(new URL("http://127.0.0.1:3773"));
-        fakeWindow.isDestroyed.mockReturnValue(true);
-        yield* Ref.set(mainWindow, Option.none());
-        yield* desktopWindow.dispatchSnapShotEvent({ type: "ready", id: captureOne });
-
-        assert.equal(yield* Ref.get(createCount), 1);
-        assert.equal(fakeWindow.send.mock.calls.length, 0);
-        assert.equal(onReveal.mock.calls.length, 0);
-      }).pipe(Effect.provide(layer));
-    }),
   );
 });

@@ -12,7 +12,6 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 
-import * as ClientCapabilities from "../platform/capabilities.ts";
 import {
   type ConnectionCatalogEntry,
   type ConnectionCredential,
@@ -20,7 +19,6 @@ import {
   type ConnectionRegistration,
   type ConnectionRoute,
   type PlatformConnectionRegistration,
-  SshConnectionProfile,
   connectionRegistrationCatalogEntry,
 } from "./catalog.ts";
 import * as ConnectionCredentialStore from "./credentialStore.ts";
@@ -56,17 +54,12 @@ import {
   type ReportedEndpoint,
 } from "./routes.ts";
 
-const isSshConnectionProfile = Schema.is(SshConnectionProfile);
-
 function unsupportedState(
   entry: ConnectionCatalogEntry,
-): Pick<ConnectionCatalogEntry, "unsupportedReason" | "serverUpdateRequired"> {
-  return {
-    ...(entry.unsupportedReason === undefined
-      ? {}
-      : { unsupportedReason: entry.unsupportedReason }),
-    ...(entry.serverUpdateRequired === true ? { serverUpdateRequired: true } : {}),
-  };
+): Pick<ConnectionCatalogEntry, "unsupportedReason"> {
+  return entry.unsupportedReason === undefined
+    ? {}
+    : { unsupportedReason: entry.unsupportedReason };
 }
 
 export class EnvironmentNotRegisteredError extends Schema.TaggedError<EnvironmentNotRegisteredError>()(
@@ -219,14 +212,13 @@ export const make = Effect.gen(function* () {
   const connectivity = yield* Connectivity.Connectivity;
   const driver = yield* ConnectionDriver.ConnectionDriver;
   const wakeups = yield* ConnectionWakeups.ConnectionWakeups;
-  const ssh = yield* ClientCapabilities.SshEnvironmentGateway;
   const persistedTargets = yield* storage.list;
   const disabledEnvironmentIds = new Set(yield* storage.listDisabled);
   const loadRoute = Effect.fn("EnvironmentRegistry.loadRoute")(function* (
     target: ConnectionTarget,
   ) {
     const profile: Option.Option<ConnectionProfile> =
-      target._tag === "BearerConnectionTarget" || target._tag === "SshConnectionTarget"
+      target._tag === "BearerConnectionTarget"
         ? yield* profiles.get(target.connectionId)
         : Option.none();
     return { target, profile } satisfies ConnectionRoute;
@@ -537,7 +529,7 @@ export const make = Effect.gen(function* () {
     if (pullRequestRoutingConnectionKey(previous) === pullRequestRoutingConnectionKey(next)) {
       return { entry: next, addressesChanged: false };
     }
-    const { unsupportedReason: _reason, serverUpdateRequired: _update, ...rest } = next;
+    const { unsupportedReason: _reason, ...rest } = next;
     return { entry: rest, addressesChanged: true };
   };
 
@@ -832,7 +824,7 @@ export const make = Effect.gen(function* () {
         environmentId,
       });
     }
-    const entry = yield* getEntry(environmentId);
+    yield* getEntry(environmentId);
 
     yield* pullRequestRoutingPermissions.forget(environmentId);
     yield* registrations.remove(environmentId);
@@ -861,29 +853,11 @@ export const make = Effect.gen(function* () {
       ],
       { concurrency: "unbounded", discard: true },
     );
-
-    for (const route of connectionRoutes(entry)) {
-      const profile = Option.getOrNull(route.profile);
-      if (profile !== null && isSshConnectionProfile(profile)) {
-        yield* disconnectSsh(environmentId, profile);
-      }
-    }
   });
 
   const remove = Effect.fn("EnvironmentRegistry.remove")(function* (environmentId: EnvironmentId) {
     return yield* withLeaseLock(environmentId, removeLocked(environmentId));
   });
-
-  const disconnectSsh = (environmentId: EnvironmentId, profile: SshConnectionProfile) =>
-    ssh.disconnect(profile.target).pipe(
-      Effect.tapError((error) =>
-        Effect.logWarning("Could not disconnect the managed SSH environment.", {
-          environmentId,
-          error,
-        }),
-      ),
-      Effect.ignore,
-    );
 
   // Plain HTTP routes are unusable from an HTTPS page, which blocks mixed content.
   const allowInsecureRoutes =
@@ -968,10 +942,6 @@ export const make = Effect.gen(function* () {
         const remaining = routesAfterRemoving(routes, routeId);
         if (remaining.length === 0) return yield* removeLocked(environmentId);
         yield* replaceRoutesLocked(entry, remaining);
-        const profile = Option.getOrNull(route.profile);
-        if (profile !== null && isSshConnectionProfile(profile)) {
-          yield* disconnectSsh(environmentId, profile);
-        }
       }),
     );
   });
@@ -1049,7 +1019,7 @@ export const make = Effect.gen(function* () {
           yield* registrations.setEnabled(environmentId, enabled);
         }
         // A cached rejection can outlive a server update.
-        const { unsupportedReason: _reason, serverUpdateRequired: _update, ...rest } = entry;
+        const { unsupportedReason: _reason, ...rest } = entry;
         const next: ConnectionCatalogEntry = { ...(retryUnsupported ? rest : entry), enabled };
         // Update the lease in place so the supervisor keeps its generation and
         // durable streams; `installEntryLocked` would tear it down instead.
@@ -1070,16 +1040,6 @@ export const make = Effect.gen(function* () {
           yield* enabled ? lease.supervisor.connect : lease.supervisor.disconnect;
         } else if (enabled) {
           yield* createServiceScope(next);
-        }
-        // The supervisor only owns the RPC session. A managed SSH backend and
-        // its tunnel outlive it, so switching off tears those down as well.
-        if (!enabled) {
-          for (const route of connectionRoutes(entry)) {
-            const profile = Option.getOrNull(route.profile);
-            if (profile !== null && isSshConnectionProfile(profile)) {
-              yield* disconnectSsh(environmentId, profile);
-            }
-          }
         }
       }),
     );
@@ -1122,17 +1082,9 @@ export const make = Effect.gen(function* () {
       environmentId,
       Effect.gen(function* () {
         const entry = (yield* SubscriptionRef.get(entries)).get(environmentId);
-        if (
-          entry === undefined ||
-          (entry.unsupportedReason === (error?.message ?? undefined) &&
-            entry.serverUpdateRequired === (error?.serverUpdateRequired ?? undefined))
-        )
+        if (entry === undefined || entry.unsupportedReason === (error?.message ?? undefined))
           return;
-        const {
-          unsupportedReason: _previousReason,
-          serverUpdateRequired: _previousUpdateRequired,
-          ...rest
-        } = entry;
+        const { unsupportedReason: _previousReason, ...rest } = entry;
         // Compatibility pauses connections without changing the user's saved on/off choice.
         const next: ConnectionCatalogEntry =
           error === null
@@ -1140,7 +1092,6 @@ export const make = Effect.gen(function* () {
             : {
                 ...rest,
                 unsupportedReason: error.message,
-                ...(error.serverUpdateRequired === true ? { serverUpdateRequired: true } : {}),
               };
         const lease = (yield* SubscriptionRef.get(serviceScopes)).get(environmentId);
         if (lease !== undefined) {

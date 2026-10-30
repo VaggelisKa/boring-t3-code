@@ -1,6 +1,5 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
-  DEFAULT_TEXT_GENERATION_MODEL,
   DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   type ModelSelection,
@@ -34,7 +33,7 @@ import { sortModelsForProviderInstance } from "./modelOrdering";
 import { resolveModelShortName } from "@t3tools/client-runtime/provider-clients";
 
 export const MAX_CUSTOM_MODEL_LENGTH = 256;
-const DEFAULT_TEXT_GENERATION_INSTANCE_ID = ProviderInstanceId.make("codex");
+const DEFAULT_TEXT_GENERATION_INSTANCE_ID = ProviderInstanceId.make("antigravity");
 
 // Legacy per-driver buckets would leak custom-instance models into stock instances.
 function readInstanceCustomModels(
@@ -338,7 +337,7 @@ export function resolveAppModelSelectionState(
 ): ModelSelection {
   const selection = settings.textGenerationModelSelection ?? {
     instanceId: DEFAULT_TEXT_GENERATION_INSTANCE_ID,
-    model: DEFAULT_TEXT_GENERATION_MODEL,
+    model: ANTIGRAVITY_DEFAULT_MODEL,
   };
   const supportedProviders = providers.filter(
     (provider) => provider.supportsTextGeneration !== false,

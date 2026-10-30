@@ -7,11 +7,8 @@ import * as OrchestrationEventStore from "../persistence/OrchestrationEventStore
 import * as McpAppModelContext from "../mcpApps/McpAppModelContext.ts";
 import * as PreviewAgentActivity from "../preview/PreviewAgentActivity.ts";
 import * as McpAppRequests from "../mcpApps/McpAppRequests.ts";
-import * as ProviderSessionRuntime from "../persistence/ProviderSessionRuntime.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import * as ProviderAuthService from "../provider/ProviderAuthService.ts";
-import * as AgentSessionImporter from "../project/AgentSessionImporter.ts";
-import * as AgentSessionScanner from "../project/AgentSessionScanner.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
@@ -232,19 +229,6 @@ const layerOrchestratorProvided = Orchestrator.layer.pipe(
   ),
 );
 
-const layerAgentSessionImporterProvided = AgentSessionImporter.layer.pipe(
-  Layer.provide(
-    Layer.mergeAll(
-      AgentSessionScanner.layer,
-      layerProjectService,
-      layerOrchestratorProvided,
-      layerEventSink,
-      IdAllocator.layer,
-      ProviderSessionRuntime.layer,
-    ),
-  ),
-);
-
 const layerThreadManagementProvided = ThreadManagementService.layerWithLegacyImporter.pipe(
   Layer.provide(
     Layer.mergeAll(
@@ -371,7 +355,6 @@ export const layerProduction = Layer.mergeAll(
     ),
   ),
   layerProviderContinuationWorkerProvided,
-  layerAgentSessionImporterProvided,
   EffectOutbox.layerPruneWorker.pipe(Layer.provide(EffectOutbox.layer)),
 ).pipe(
   Layer.provide(ResourceCleanupService.layer),
