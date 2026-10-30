@@ -20,7 +20,6 @@ export function toolActivityFaviconUrl(
     readonly faviconUrlDark?: string | undefined;
   },
   appearance: "light" | "dark",
-  _size = 32,
 ): string | null {
   if (appearance === "dark") {
     return inlineFaviconUrl(icon.faviconUrlDark) ?? inlineFaviconUrl(icon.faviconUrl);
