@@ -90,11 +90,10 @@ interface TranscriptSource {
   readonly fileName?: string;
 }
 
-const RatesFile = Schema.Union([
-  Schema.Struct({ fetchedAtMs: Schema.Number, document: Schema.Unknown }),
-  Schema.Unknown,
-]);
-const decodeRatesFile = Schema.decodeUnknownEffect(Schema.fromJsonString(RatesFile));
+const RatesFile = Schema.fromJsonString(Schema.Unknown);
+const decodeRatesFile = Schema.decodeUnknownEffect(RatesFile);
+const WrappedRatesFile = Schema.Struct({ fetchedAtMs: Schema.Number, document: Schema.Unknown });
+const decodeWrappedRatesFile = Schema.decodeUnknownOption(WrappedRatesFile);
 
 const ScanCacheJson = Schema.fromJsonString(Schema.Unknown);
 const decodeScanCacheFile = Schema.decodeUnknownEffect(ScanCacheJson);
@@ -223,10 +222,7 @@ export const make = Effect.gen(function* () {
       Effect.catchCause(() => Effect.succeed(null)),
     );
     if (fromDisk === null) return;
-    const wrapped =
-      typeof fromDisk === "object" && fromDisk !== null && "document" in fromDisk
-        ? (fromDisk as { fetchedAtMs: number; document: unknown })
-        : null;
+    const wrapped = Option.getOrUndefined(decodeWrappedRatesFile(fromDisk));
     const parsed = parseRateTable(wrapped ? wrapped.document : fromDisk);
     if (parsed.size === 0) return;
     rates = parsed;

@@ -68,6 +68,9 @@ export const cascadeRebaseStack = Effect.fn("cascadeRebaseStack")(function* (inp
     GIT_CONFIG_COUNT: "1",
     GIT_CONFIG_KEY_0: `http.${remote}.extraheader`,
     GIT_CONFIG_VALUE_0: authorization,
+    // Rebasing creates commits, so the temp repo needs an identity even without a global one.
+    GIT_COMMITTER_NAME: "T3 Code",
+    GIT_COMMITTER_EMAIL: "t3code@localhost",
   };
   const git = (args: ReadonlyArray<string>, allowNonZeroExit = false) =>
     process.run({

@@ -26,10 +26,9 @@
         "verify-windows-desktop-artifact.ts",
       ],
       "ignoreDependencies": ["esbuild"],
-      // The `t3` npm package's files: copied into the package, never imported.
       // knip-schemas.test.ts writes a throwaway project to .knip-test-*, which a
       // concurrent knip run must not report.
-      "ignore": ["npm-launcher/**", ".knip-test-*/**"],
+      "ignore": [".knip-test-*/**"],
     },
     "apps/server": {
       // Vite+ pack entries.

@@ -314,7 +314,6 @@ export const createDevRunnerEnv = Effect.fn("dev-runner.createDevRunnerEnv")(fun
     delete output.T3CODE_SINGLE_ORIGIN_DEV;
     delete output.T3CODE_MODE;
     delete output.T3CODE_NO_BROWSER;
-    delete output.T3CODE_HOST;
     delete output.T3CODE_DEV_AUTH_TOKEN;
   }
 

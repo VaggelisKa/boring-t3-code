@@ -183,8 +183,6 @@ interface BuildCliInput {
   readonly keepStage: Option.Option<boolean>;
   readonly signed: Option.Option<boolean>;
   readonly verbose: Option.Option<boolean>;
-  readonly mockUpdates: Option.Option<boolean>;
-  readonly mockUpdateServerPort: Option.Option<number>;
   readonly wslRuntime: Option.Option<string>;
 }
 
@@ -260,33 +258,6 @@ export class UnsupportedDesktopBuildArchitectureError extends Schema.TaggedError
 ) {
   override get message(): string {
     return `Unsupported architecture '${this.arch}' for ${this.platform}.`;
-  }
-}
-
-const InvalidMockUpdateServerPortReason = Schema.Literals([
-  "not-numeric",
-  "not-integer",
-  "out-of-range",
-]);
-
-export class InvalidMockUpdateServerPortError extends Schema.TaggedError<InvalidMockUpdateServerPortError>()(
-  "InvalidMockUpdateServerPortError",
-  {
-    reason: InvalidMockUpdateServerPortReason,
-    inputLength: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-    cause: Schema.Defect(),
-  },
-) {
-  override get message(): string {
-    return "Invalid mock update server port.";
-  }
-
-  static fromConfigValue(configuredPort: string, cause: unknown) {
-    return new InvalidMockUpdateServerPortError({
-      reason: invalidMockUpdateServerPortReason(configuredPort),
-      inputLength: configuredPort.length,
-      cause,
-    });
   }
 }
 
@@ -915,8 +886,6 @@ interface ResolvedBuildOptions {
   readonly keepStage: boolean;
   readonly signed: boolean;
   readonly verbose: boolean;
-  readonly mockUpdates: boolean;
-  readonly mockUpdateServerPort: number | undefined;
   readonly wslRuntime: string | undefined;
 }
 
@@ -1482,43 +1451,13 @@ const BuildEnvConfig = Config.all({
   keepStage: Config.Boolean("T3CODE_DESKTOP_KEEP_STAGE").pipe(Config.withDefault(false)),
   signed: Config.Boolean("T3CODE_DESKTOP_SIGNED").pipe(Config.withDefault(false)),
   verbose: Config.Boolean("T3CODE_DESKTOP_VERBOSE").pipe(Config.withDefault(false)),
-  mockUpdates: Config.Boolean("T3CODE_DESKTOP_MOCK_UPDATES").pipe(Config.withDefault(false)),
-  mockUpdateServerPort: Config.String("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.option),
   wslRuntime: Config.String("T3CODE_DESKTOP_WSL_RUNTIME").pipe(Config.option),
 });
-
-const MockUpdateServerPortSchema = Schema.NumberFromString.check(
-  Schema.isInt(),
-  Schema.isBetween({ minimum: 1, maximum: 65535 }),
-);
-const decodeMockUpdateServerPort = Schema.decodeUnknownEffect(MockUpdateServerPortSchema);
-
-function invalidMockUpdateServerPortReason(
-  configuredPort: string,
-): typeof InvalidMockUpdateServerPortReason.Type {
-  const parsed = Number(configuredPort);
-  if (!Number.isFinite(parsed)) return "not-numeric";
-  if (!Number.isInteger(parsed)) return "not-integer";
-  if (parsed < 1 || parsed > 65535) return "out-of-range";
-  // Decoding already failed; valid integers here used unsupported representations.
-  return "not-numeric";
-}
 
 const resolveBooleanFlag = (flag: Option.Option<boolean>, envValue: boolean) =>
   Option.getOrElse(flag, () => envValue);
 const mergeOptions = <A>(a: Option.Option<A>, b: Option.Option<A>, defaultValue: A) =>
   Option.getOrElse(a, () => Option.getOrElse(b, () => defaultValue));
-
-export const resolveMockUpdateServerPort = Effect.fn("resolveMockUpdateServerPort")(function* (
-  mockUpdateServerPort: string | undefined,
-) {
-  const port = mockUpdateServerPort?.trim();
-  if (!port) {
-    return undefined;
-  }
-
-  return yield* decodeMockUpdateServerPort(port);
-});
 
 export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
   input: BuildCliInput,
@@ -1550,30 +1489,12 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
     });
   }
   const version = mergeOptions(input.buildVersion, env.version, undefined);
-  const releaseDir = resolveBooleanFlag(input.mockUpdates, env.mockUpdates)
-    ? "release-mock"
-    : "release";
-  const outputDir = path.resolve(
-    repoRoot,
-    mergeOptions(input.outputDir, env.outputDir, releaseDir),
-  );
+  const outputDir = path.resolve(repoRoot, mergeOptions(input.outputDir, env.outputDir, "release"));
 
   const skipBuild = resolveBooleanFlag(input.skipBuild, env.skipBuild);
   const keepStage = resolveBooleanFlag(input.keepStage, env.keepStage);
   const signed = resolveBooleanFlag(input.signed, env.signed);
   const verbose = resolveBooleanFlag(input.verbose, env.verbose);
-
-  const mockUpdates = resolveBooleanFlag(input.mockUpdates, env.mockUpdates);
-  const configuredMockUpdateServerPort = Option.getOrUndefined(env.mockUpdateServerPort);
-  const mockUpdateServerPort =
-    Option.getOrUndefined(input.mockUpdateServerPort) ??
-    (configuredMockUpdateServerPort === undefined
-      ? undefined
-      : yield* resolveMockUpdateServerPort(configuredMockUpdateServerPort).pipe(
-          Effect.mapError((cause) =>
-            InvalidMockUpdateServerPortError.fromConfigValue(configuredMockUpdateServerPort, cause),
-          ),
-        ));
 
   const wslRuntime =
     Option.getOrUndefined(input.wslRuntime) ?? Option.getOrUndefined(env.wslRuntime);
@@ -1588,8 +1509,6 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
     keepStage,
     signed,
     verbose,
-    mockUpdates,
-    mockUpdateServerPort,
     wslRuntime,
   } satisfies ResolvedBuildOptions;
 });
@@ -2423,38 +2342,8 @@ export function resolveDesktopRuntimeDependencies(
   );
 }
 
-export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
-  updateChannel: "latest" | "nightly",
-) {
-  const env = yield* Config.all({
-    updateRepository: Config.String("T3CODE_DESKTOP_UPDATE_REPOSITORY").pipe(Config.option),
-    githubRepository: Config.String("GITHUB_REPOSITORY").pipe(Config.option),
-  });
-  const rawRepo = (
-    Option.getOrUndefined(env.updateRepository)?.trim() ||
-    Option.getOrUndefined(env.githubRepository)?.trim() ||
-    ""
-  ).trim();
-  if (!rawRepo) return undefined;
-
-  const [owner, repo, ...rest] = rawRepo.split("/");
-  if (!owner || !repo || rest.length > 0) return undefined;
-
-  return {
-    provider: "github",
-    owner,
-    repo,
-    releaseType: updateChannel === "nightly" ? "prerelease" : "release",
-    ...(updateChannel === "nightly" ? { channel: "nightly" as const } : {}),
-  };
-});
-
 export function resolveDesktopUpdateChannel(version: string): "latest" | "nightly" {
   return /-nightly\.\d{8}\.\d+$/.test(version) ? "nightly" : "latest";
-}
-
-export function isDesktopPreviewVersion(version: string): boolean {
-  return /-pr\./.test(version) || /-preview\.\d{8}\.\d+$/.test(version);
 }
 
 export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
@@ -2475,10 +2364,6 @@ export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIcon
     linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
     windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
   };
-}
-
-export function resolveMockUpdateServerUrl(mockUpdateServerPort: number | undefined): string {
-  return `http://localhost:${mockUpdateServerPort ?? 3000}`;
 }
 
 // electron-builder reads user-agent syntax (pnpm/version), not packageManager syntax (pnpm@version).
@@ -2503,8 +2388,6 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   target: string,
   version: string,
   signed: boolean,
-  mockUpdates: boolean,
-  mockUpdateServerPort: number | undefined,
   macPasskeySigning:
     | {
         readonly entitlementsPath: string;
@@ -2541,21 +2424,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     ],
   };
   const updateChannel = resolveDesktopUpdateChannel(version);
-  // Missing publish config infers a GitHub feed from tokens; staging has no repository, so manifest generation would crash.
+  // No updater ships, so no update feed is generated; electron-builder would otherwise infer one from tokens.
   buildConfig.publish = null;
-  if (!isDesktopPreviewVersion(version)) {
-    const publishConfig = yield* resolveGitHubPublishConfig(updateChannel);
-    if (publishConfig) {
-      buildConfig.publish = [publishConfig];
-    } else if (mockUpdates) {
-      buildConfig.publish = [
-        {
-          provider: "generic",
-          url: resolveMockUpdateServerUrl(mockUpdateServerPort),
-        },
-      ];
-    }
-  }
 
   if (platform === "mac") {
     const path = yield* Path.Path;
@@ -3586,8 +3456,6 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
       options.target,
       appVersion,
       options.signed,
-      options.mockUpdates,
-      options.mockUpdateServerPort,
       macPasskeySigning && macEntitlementsPath
         ? {
             entitlementsPath: macEntitlementsPath,
@@ -3848,15 +3716,6 @@ const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
   ),
   verbose: Flag.Boolean("verbose").pipe(
     Flag.withDescription("Stream subprocess stdout (env: T3CODE_DESKTOP_VERBOSE)."),
-    Flag.optional,
-  ),
-  mockUpdates: Flag.Boolean("mock-updates").pipe(
-    Flag.withDescription("Enable mock updates (env: T3CODE_DESKTOP_MOCK_UPDATES)."),
-    Flag.optional,
-  ),
-  mockUpdateServerPort: Flag.Int("mock-update-server-port").pipe(
-    Flag.withSchema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 }))),
-    Flag.withDescription("Mock update server port (env: T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT)."),
     Flag.optional,
   ),
   wslRuntime: Flag.String("wsl-runtime").pipe(
