@@ -7,7 +7,7 @@ import {
   type AuthEnvironmentScope,
   AuthWebSocketTicketUse,
   RuntimeMode,
-  type ServerAuthSessionMethod,
+  ServerAuthSessionMethod,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -46,7 +46,6 @@ export interface IssuedSession {
   readonly client: AuthClientMetadata;
   readonly expiresAt: DateTime.DateTime;
   readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
-  readonly proofKeyThumbprint?: string;
 }
 
 export interface VerifiedSession {
@@ -57,7 +56,6 @@ export interface VerifiedSession {
   readonly expiresAt?: DateTime.DateTime;
   readonly subject: string;
   readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
-  readonly proofKeyThumbprint?: string;
   readonly runtimeModeCeiling?: RuntimeMode;
   /** An MCP client that is another T3 Code environment's peer link. */
   readonly peerLink?: true;
@@ -380,7 +378,6 @@ export class SessionStore extends Context.Service<
       readonly method?: ServerAuthSessionMethod;
       readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
       readonly client?: AuthClientMetadata;
-      readonly proofKeyThumbprint?: string;
       readonly runtimeModeCeiling?: RuntimeMode;
       readonly peerLink?: boolean;
       readonly replaceActiveForSubjectAndMethod?: boolean;
@@ -392,7 +389,6 @@ export class SessionStore extends Context.Service<
       input?: {
         readonly ttl?: Duration.Duration;
         readonly audience?: AuthWebSocketTicketUse;
-        readonly proofKeyThumbprint?: string;
       },
     ) => Effect.Effect<
       {
@@ -433,8 +429,7 @@ const SessionClaims = Schema.Struct({
   sid: AuthSessionId,
   sub: Schema.String,
   scopes: AuthEnvironmentScopes,
-  method: Schema.Literals(["browser-session-cookie", "bearer-access-token", "dpop-access-token"]),
-  jkt: Schema.optionalKey(Schema.String),
+  method: ServerAuthSessionMethod,
   rtc: Schema.optionalKey(RuntimeMode),
   /** Signed, so a client cannot shed its peer link's limits. */
   plk: Schema.optionalKey(Schema.Literal(1)),
@@ -448,7 +443,6 @@ const WebSocketClaims = Schema.Struct({
   kind: Schema.Literal("websocket"),
   sid: AuthSessionId,
   aud: Schema.optionalKey(AuthWebSocketTicketUse),
-  jkt: Schema.optionalKey(Schema.String),
   iat: Schema.Number,
   exp: Schema.Number,
 });
@@ -653,7 +647,6 @@ const make = Effect.gen(function* () {
         sub: input?.subject ?? "browser",
         scopes: input?.scopes ?? AuthStandardClientScopes,
         method: input?.method ?? "browser-session-cookie",
-        ...(input?.proofKeyThumbprint ? { jkt: input.proofKeyThumbprint } : {}),
         ...(input?.runtimeModeCeiling ? { rtc: input.runtimeModeCeiling } : {}),
         ...(input?.peerLink === true ? { plk: 1 as const } : {}),
         iat: issuedAt.epochMilliseconds,
@@ -737,7 +730,6 @@ const make = Effect.gen(function* () {
         client,
         expiresAt: expiresAt,
         scopes: claims.scopes,
-        ...(claims.jkt ? { proofKeyThumbprint: claims.jkt } : {}),
       } satisfies IssuedSession;
     },
   );
@@ -835,7 +827,6 @@ const make = Effect.gen(function* () {
         expiresAt: expiresAt.value,
         subject: claims.sub,
         scopes: claims.scopes,
-        ...(claims.jkt ? { proofKeyThumbprint: claims.jkt } : {}),
         ...(claims.rtc ? { runtimeModeCeiling: claims.rtc } : {}),
         ...(claims.plk === 1 ? { peerLink: true as const } : {}),
       } satisfies VerifiedSession;
@@ -855,7 +846,6 @@ const make = Effect.gen(function* () {
       kind: "websocket",
       sid: sessionId,
       ...(input?.audience ? { aud: input.audience } : {}),
-      ...(input?.proofKeyThumbprint ? { jkt: input.proofKeyThumbprint } : {}),
       iat: issuedAt.epochMilliseconds,
       exp: expiresAt.epochMilliseconds,
     };
@@ -949,7 +939,6 @@ const make = Effect.gen(function* () {
       subject: row.value.subject,
       scopes: row.value.scopes,
       ...(claims.aud ? { audience: claims.aud } : {}),
-      ...(claims.jkt ? { proofKeyThumbprint: claims.jkt } : {}),
     } satisfies VerifiedWebSocketTicket;
   });
 

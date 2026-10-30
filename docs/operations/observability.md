@@ -61,12 +61,6 @@ span spent waiting for that connection, behind other SQL. That wait does not blo
 so subtract it before you blame a slow span on the query. Statements inside a transaction use its
 connection and do not carry these attributes.
 
-DPoP proof failures include the safe `environment.dpop.failure_code` span
-attribute. A `time_window` failure means that a signed proof was too old or too
-far in the future for the environment server's allowed window. It can point to
-a date or time problem on either device, but it can also result from a delayed
-request.
-
 #### Summarize the trace file
 
 `t3 trace summary` reads the trace file and its rotated backups directly, so it works while the

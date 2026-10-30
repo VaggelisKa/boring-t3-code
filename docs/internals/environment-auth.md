@@ -20,10 +20,8 @@ secrets. Only the creation response returns the raw credential. Otherwise read
 access to the connections list would become a way to acquire another client's
 authority.
 
-Browser cookies, bearer tokens, and DPoP tokens adapt the same scoped session
-model. DPoP binds a token to a client's proof key; an invalid proof must fail
-rather than fall back to bearer authentication. The OAuth token-exchange
-vocabulary gives these grants a familiar meaning.
+Browser cookies and bearer tokens adapt the same scoped session model. The
+OAuth token-exchange vocabulary gives these grants a familiar meaning.
 
 ### MCP clients are a separate audience
 
@@ -36,7 +34,7 @@ approval page names the host access goes to and approving stays the owner's
 call. Every client is public and proves itself with PKCE; a client that asks
 for a secret is registered without one. Client registration is stateless, so an unauthenticated caller cannot grow server
 state. Approval spends a one-time pairing code, or uses a browser session with
-`access:write`; proof-bound T3 Connect codes are refused without being spent.
+`access:write`.
 
 The user grants either read-only access or a runtime-mode ceiling, not a
 scope list: MCP tools are all orchestration, and `orchestration:operate`
@@ -56,16 +54,11 @@ Issuer and resource URLs come from the request's Host and
 reverse proxy. A proxy that rewrites Host or drops the protocol header
 breaks sign-in.
 
-Bearer and DPoP clients obtain short-lived WebSocket tickets through authenticated
+Bearer clients obtain short-lived WebSocket tickets through authenticated
 HTTP so long-lived tokens stay out of socket URLs. A ticket names the route it
 opens: the RPC socket, or the media routes (device hub, preview stream), which
-share one ticket across `<img>`, `EventSource` and several sockets. A DPoP
-client's RPC ticket is bound to its proof key and the upgrade carries a fresh
-proof in the `dpop` query parameter, since a WebSocket cannot set headers; a
-ticket captured on a plain HTTP LAN route is useless without the key, and the
-proof's `jti` is consumed like any other. Media tickets stay bearer because each
-media request would need its own proof. Clients that predate this mint unbound
-tickets that open either route. Browser sessions can authenticate the upgrade
+share one ticket across `<img>`, `EventSource` and several sockets. Clients that
+predate this mint unbound tickets that open either route. Browser sessions can authenticate the upgrade
 with their cookie. A successful handshake grants no
 extra authority: [every RPC declares a required
 scope](../../apps/server/src/auth/RpcAuthorization.ts), and the WebSocket RPC
@@ -107,7 +100,7 @@ and restarting invalidates the old credential and its WebSocket tickets.
 
 Normal credentials keep precedence. A rejected normal credential never falls
 back to the reusable credential. OAuth exchanges create ordinary local bearer
-or DPoP children with normal expiry and revocation. The reusable cookie expires
+children with normal expiry and revocation. The reusable cookie expires
 after 30 days.
 
 ## The environment is the filesystem boundary
