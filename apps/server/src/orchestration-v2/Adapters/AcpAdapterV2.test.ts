@@ -1661,7 +1661,10 @@ describe("AcpAdapterV2", () => {
                       rawOutput: {
                         result: {
                           _meta: {
-                            source: { name: "Weather", logoUrl: "https://example.com/weather.png" },
+                            source: {
+                              name: "Weather",
+                              logoUrl: "data:image/png;base64,d2VhdGhlcg==",
+                            },
                           },
                           content: [{ type: "text", text: "Sunny" }],
                         },
@@ -1688,7 +1691,10 @@ describe("AcpAdapterV2", () => {
                       rawInput: { server: "weather", tool: "get_weather", city: "Berlin" },
                       rawOutput: {
                         _meta: {
-                          source: { name: "Weather", logoUrl: "https://example.com/weather.png" },
+                          source: {
+                            name: "Weather",
+                            logoUrl: "data:image/png;base64,d2VhdGhlcg==",
+                          },
                         },
                         content: [{ type: "text", text: "Sunny" }],
                       },
@@ -1849,7 +1855,7 @@ describe("AcpAdapterV2", () => {
           key: "mcp:weather",
           name: "Weather",
           kind: "integration",
-          icon: { _tag: "themed-logo", logoUrl: "https://example.com/weather.png" },
+          icon: { _tag: "themed-logo", logoUrl: "data:image/png;base64,d2VhdGhlcg==" },
         });
         assert.deepEqual(item?.toolIcon, item?.toolSource?.icon);
       }

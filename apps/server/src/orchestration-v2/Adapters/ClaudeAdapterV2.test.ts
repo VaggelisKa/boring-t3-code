@@ -4341,7 +4341,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
               id,
               display_name: title,
               server_display_name: "Weather",
-              icon_url: "https://example.com/weather.png",
+              icon_url: "data:image/png;base64,d2VhdGhlcg==",
             },
           ],
         }),
@@ -4384,13 +4384,13 @@ describe("ClaudeAdapterV2 background wake turns", () => {
         assert.equal(item.title, title ?? "get weather");
         assert.deepEqual(item.toolIcon, {
           _tag: "themed-logo",
-          logoUrl: "https://example.com/weather.png",
+          logoUrl: "data:image/png;base64,d2VhdGhlcg==",
         });
         assert.deepEqual(item.toolSource, {
           key: "mcp:weather",
           name: "Weather",
           kind: "integration",
-          icon: { _tag: "themed-logo", logoUrl: "https://example.com/weather.png" },
+          icon: { _tag: "themed-logo", logoUrl: "data:image/png;base64,d2VhdGhlcg==" },
         });
         assert.deepEqual(item.input, { city: "Berlin" });
       }

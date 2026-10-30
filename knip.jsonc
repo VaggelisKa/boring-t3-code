@@ -7,14 +7,7 @@
   "workspaces": {
     ".": {
       // Keep vendored reference repositories outside the root project.
-      "project": ["*.{js,mjs,cjs,ts,mts,cts}", ".github/**/*.cjs"],
-      "entry": [
-        // CodeRabbit loads its configuration by filename.
-        ".coderabbit.config.ts",
-        ".github/scripts/thread-transfer-report.cjs",
-      ],
-      "vite": { "entry": [".github/**/*.test.cjs"] },
-      "vitest": { "entry": [".github/**/*.test.cjs"] },
+      "project": ["*.{js,mjs,cjs,ts,mts,cts}"],
     },
     "scripts": {
       // Knip loads its preprocessor through a CLI option; native verification and
@@ -38,7 +31,7 @@
       "ignoreDependencies": ["agent-device", "esbuild"],
       // The `t3` npm package's files: copied into the package, never imported.
       // knip-schemas.test.ts writes a throwaway project to .knip-test-*, which a
-      // knip run beside it in check:changed must not report.
+      // concurrent knip run must not report.
       "ignore": ["npm-launcher/**", ".knip-test-*/**"],
     },
     "apps/server": {
@@ -118,19 +111,6 @@
     "apps/mobile/modules/t3-source-text": {
       // React Native codegen discovers component specifications by filename.
       "entry": ["src/*NativeComponent.ts!"],
-    },
-    "infra/task-cache": {
-      "ignore": ["vendor/**"],
-      // The bootstrap and Vite+ hook are loaded by shell/package configuration.
-      "entry": [
-        "alchemy.run.ts!",
-        "scripts/install.ts",
-        "scripts/install-ci.ts",
-        "src/runHook.ts",
-        "src/flush.ts",
-        "src/nativeRunHook.js",
-        "src/preload.mjs",
-      ],
     },
     "infra/relay": {
       // Alchemy loads src/worker.ts as the Worker entry and reads its default export.

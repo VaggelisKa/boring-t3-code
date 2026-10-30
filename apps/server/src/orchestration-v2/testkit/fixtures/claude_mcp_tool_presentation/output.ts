@@ -37,10 +37,6 @@ export function assertClaudeMcpToolPresentationOutput(
     key: "mcp:firecrawl",
     name: "Firecrawl",
     kind: "integration",
-    icon: {
-      _tag: "themed-logo",
-      logoUrl: "https://www.google.com/s2/favicons?domain=firecrawl.dev&sz=64",
-    },
   });
 
   assert.equal(map?.status, "completed");
