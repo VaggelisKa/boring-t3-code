@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 import {
   DEFAULT_THEME_ID,
   applyThemePalette,
+  themeFollowsSystemByDefault,
   CUSTOM_THEMES_STORAGE_KEY,
   invalidateCustomThemes,
   canonicalThemePreference,
@@ -145,8 +146,7 @@ function getSystemDark() {
 }
 
 function readStoredFollowSystem(theme: Theme): boolean {
-  // Selecting a theme always stores an appearance mode, so the default theme only lands here unchosen.
-  const followsByDefault = theme === "system" || theme === DEFAULT_THEME_ID;
+  const followsByDefault = themeFollowsSystemByDefault(theme);
   if (typeof window === "undefined") return followsByDefault;
 
   try {

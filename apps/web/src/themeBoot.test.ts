@@ -17,6 +17,7 @@ import {
   OCEAN_THEME,
   THEME_APPEARANCE_MODE_STORAGE_KEY,
   THEME_FOLLOW_SYSTEM_STORAGE_KEY,
+  themeFollowsSystemByDefault,
   toCanonicalThemeColor,
 } from "./themePalette";
 
@@ -122,7 +123,7 @@ function runtimeResolvedAppearance(
           ? "system"
           : followRaw === "false"
             ? null
-            : theme === "system" || theme === DEFAULT_THEME_ID
+            : themeFollowsSystemByDefault(theme)
               ? "system"
               : null;
     const followSystem = appearanceMode === "system";

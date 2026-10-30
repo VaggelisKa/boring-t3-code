@@ -1643,6 +1643,11 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
   applyContextChipVariables(root, getStandardPaintedThemeColors(appearance ?? "light"));
 }
 
+/** Whether a theme with no stored appearance mode follows the OS. */
+export function themeFollowsSystemByDefault(theme: ThemePreference): boolean {
+  return theme === "system" || theme === DEFAULT_THEME_ID;
+}
+
 export function resolveThemeAppearance(
   theme: ThemePreference,
   systemDark: boolean,
@@ -1651,7 +1656,8 @@ export function resolveThemeAppearance(
   halves?: ThemeHalves | null,
 ): "light" | "dark" {
   const systemAppearance = systemDark ? "dark" : "light";
-  const mode = appearanceMode ?? ((followSystem ?? theme === "system") ? "system" : null);
+  const mode =
+    appearanceMode ?? ((followSystem ?? themeFollowsSystemByDefault(theme)) ? "system" : null);
   if (mode === "system") {
     if (halves?.[systemAppearance]) return systemAppearance;
     const definition = getThemeDefinition(theme);
@@ -1675,7 +1681,8 @@ export function resolveDesktopTheme(
   appearanceMode?: ThemePreferenceMode,
   halves?: ThemeHalves | null,
 ): "light" | "dark" | "system" {
-  const mode = appearanceMode ?? ((followSystem ?? theme === "system") ? "system" : null);
+  const mode =
+    appearanceMode ?? ((followSystem ?? themeFollowsSystemByDefault(theme)) ? "system" : null);
   if (mode === "system") {
     const definition = getThemeDefinition(theme);
     const hasLightMode =

@@ -240,19 +240,21 @@
             "t3-iris": "iris",
           };
           const rawThemeId = LEGACY_THEME_IDS[rawStoredTheme] ?? rawStoredTheme;
-          const storedTheme =
+          const customTheme =
+            rawStoredTheme === null || BUILT_IN_THEME_MODES[rawThemeId]
+              ? null
+              : findCustomTheme(rawThemeId);
+          const isKnownTheme =
             rawStoredTheme === "light" ||
             rawStoredTheme === "dark" ||
             rawStoredTheme === "system" ||
-            (rawStoredTheme !== null &&
-              (BUILT_IN_THEME_MODES[rawThemeId] || findCustomTheme(rawThemeId)))
-              ? rawStoredTheme
-              : DEFAULT_THEME_ID;
-          const isLegacyT3ChatDark = storedTheme === "t3-chat-dark";
-          const themeId = LEGACY_THEME_IDS[storedTheme] ?? storedTheme;
+            (rawStoredTheme !== null && BUILT_IN_THEME_MODES[rawThemeId] !== undefined) ||
+            customTheme !== null;
+          const theme = isKnownTheme ? rawStoredTheme : DEFAULT_THEME_ID;
+          const themeId = isKnownTheme ? rawThemeId : DEFAULT_THEME_ID;
+          const isLegacyT3ChatDark = theme === "t3-chat-dark";
           const legacyMode = isLegacyT3ChatDark ? "dark" : null;
           const builtInModes = BUILT_IN_THEME_MODES[themeId] ?? null;
-          const customTheme = builtInModes ? null : findCustomTheme(themeId);
           const themeModes =
             builtInModes ??
             (customTheme
@@ -260,13 +262,7 @@
                   (mode) => mode === customTheme.appearance || customTheme.variants?.[mode],
                 )
               : null);
-          const isKnownTheme =
-            storedTheme === "light" ||
-            storedTheme === "dark" ||
-            storedTheme === "system" ||
-            themeModes !== null;
-          const theme = isKnownTheme && storedTheme ? storedTheme : "system";
-          const isThemed = isKnownTheme && themeModes !== null;
+          const isThemed = themeModes !== null;
           const baseAppearance = customTheme ? customTheme.appearance : "light";
           const systemMode = prefersDark ? "dark" : "light";
           const storedAppearanceMode = window.localStorage.getItem(
@@ -371,14 +367,9 @@
           } else {
             delete document.documentElement.dataset.themeId;
           }
-          // A resolved half is a selection even when the base theme is gone
-          // (deleting the base leaves the mix pointing at a real theme).
-          const hasSelection = halfThemeId !== null || (isKnownTheme && storedTheme !== null);
-          if (hasSelection) {
-            document.documentElement.dataset.themeSelected = "true";
-          } else {
-            delete document.documentElement.dataset.themeSelected;
-          }
+          // An unset or unknown preference resolves to the default theme, so
+          // readable storage always yields a selection.
+          document.documentElement.dataset.themeSelected = "true";
           document.documentElement.classList.toggle("dark", isDark);
           const chromeColor = customColors
             ? isThemeColor(customColors.chrome)
@@ -390,11 +381,9 @@
                 ? DARK_BACKGROUND
                 : LIGHT_BACKGROUND;
           document.documentElement.style.backgroundColor = chromeColor;
-          if (hasSelection) {
-            const splashColors = customSplash ?? builtInSplash ?? fallbackSplash;
-            for (const [name, value] of Object.entries(splashColors)) {
-              document.documentElement.style.setProperty(`--boot-${name}`, value);
-            }
+          const splashColors = customSplash ?? builtInSplash ?? fallbackSplash;
+          for (const [name, value] of Object.entries(splashColors)) {
+            document.documentElement.style.setProperty(`--boot-${name}`, value);
           }
           setThemeColor(chromeColor);
         } catch {
