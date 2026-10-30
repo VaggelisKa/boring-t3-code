@@ -1,11 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId, ScopedProjectRef, ServerProvider } from "@t3tools/contracts";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
 import { ProviderDriverKind } from "@t3tools/contracts";
-import { ArrowRightIcon, CheckIcon, ChevronRightIcon, LinkIcon, MonitorIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, MonitorIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { PRIVACY_POLICY_URL } from "../../legalLinks";
@@ -22,33 +18,25 @@ import {
 import { resolveOnboardingSetup } from "../../onboarding/targetEnvironment.logic";
 import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
-import { connectPairing } from "../../connection/onboarding";
 import { getProviderSummary } from "../settings/providerStatus";
 import { providerClients } from "../settings/providerDriverMeta";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
-import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
-import { CommandBlock } from "../CommandBlock";
 import { Checkbox } from "../ui/checkbox";
-import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
-import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
 import { WizardPanel, WizardSteps, WizardPopup, WizardHeader } from "../ui/wizard";
 import { Dialog } from "../ui/dialog";
 import { toastManager } from "../ui/toast";
-import { cn } from "../../lib/utils";
 
 type WizardStep = "connection" | "agents";
 
 const ONBOARDING_STAGES = ["Connect", "Agents"] as const;
 
 export function WelcomeWizard({
-  localAvailable,
   onDone,
   resumeEnvironmentId,
 }: {
-  readonly localAvailable: boolean;
   readonly resumeEnvironmentId?: EnvironmentId | undefined;
   readonly onDone: (projectRef?: ScopedProjectRef) => void | Promise<void>;
 }) {
@@ -138,11 +126,7 @@ export function WelcomeWizard({
         if (event.reason === "close-press") void finish();
       }}
     >
-      <WizardPopup
-        size="wide"
-        bottomStickOnMobile={false}
-        initialFocus={() => document.getElementById("onboarding-pairing-url") ?? true}
-      >
+      <WizardPopup size="wide" bottomStickOnMobile={false}>
         <WizardHeader
           title="Set up T3 Code"
           identity={
@@ -168,15 +152,11 @@ export function WelcomeWizard({
         <WizardPanel>
           {step === "connection" ? (
             <ConnectionStep
-              expandPairingInitially={!localAvailable}
               selectedIds={selectedIds}
               onSelectionChange={setSelection}
               onContinue={() =>
                 startSetup(resolveOnboardingSetup(environments, selectedIds).environmentIds)
               }
-              onPaired={(environmentId) => {
-                setSelection(new Set([...selectedIds, environmentId]));
-              }}
             />
           ) : (
             <AgentsStep environmentIds={setupIds} onContinue={() => void finish()} />
@@ -200,21 +180,15 @@ const CONNECTION_PHASE_LABELS: Readonly<
 };
 
 function ConnectionStep({
-  expandPairingInitially,
   selectedIds,
   onSelectionChange,
   onContinue,
-  onPaired,
 }: {
-  readonly expandPairingInitially: boolean;
   readonly selectedIds: ReadonlySet<EnvironmentId>;
   readonly onSelectionChange: (ids: ReadonlySet<EnvironmentId>) => void;
   readonly onContinue: () => void;
-  readonly onPaired: (environmentId: EnvironmentId) => void;
 }) {
   const { environments } = useEnvironments();
-  const [pairingOpen, setPairingOpen] = useState(expandPairingInitially);
-  const [isPairing, setIsPairing] = useState(false);
   const { ready, skippedIds } = resolveOnboardingSetup(environments, selectedIds);
   const skippedLabels = environments
     .filter((environment) => skippedIds.includes(environment.environmentId))
@@ -233,10 +207,10 @@ function ConnectionStep({
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        Connect your computers
+        Choose your environments
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Choose one or more computers. We’ll set up agents and projects on each.
+        Choose one or more environments on this computer. We’ll set up agents and projects on each.
       </p>
       {environments.length > 0 ? (
         <fieldset className="mt-5 space-y-2">
@@ -282,41 +256,6 @@ function ConnectionStep({
           ))}
         </fieldset>
       ) : null}
-      <div className="mt-4 space-y-2">
-        <div className="rounded-lg border border-border bg-background">
-          <Collapsible open={pairingOpen} onOpenChange={setPairingOpen}>
-            <CollapsibleTrigger
-              disabled={isPairing}
-              render={
-                <Button
-                  variant="ghost"
-                  size="sm-multiline"
-                  className="min-h-14 w-full justify-start"
-                />
-              }
-            >
-              <LinkIcon className="size-4 text-muted-foreground" />
-              <span className="flex-1 text-left">Add a computer</span>
-              <ChevronRightIcon
-                className={cn("size-4 text-muted-foreground", pairingOpen && "rotate-90")}
-              />
-            </CollapsibleTrigger>
-            <CollapsiblePanel>
-              <div className="px-3 pb-3">
-                <PairingForm
-                  isPairing={isPairing}
-                  setIsPairing={setIsPairing}
-                  onPaired={(environmentId) => {
-                    setPairingOpen(false);
-                    onPaired(environmentId);
-                    requestAnimationFrame(() => continueRef.current?.focus());
-                  }}
-                />
-              </div>
-            </CollapsiblePanel>
-          </Collapsible>
-        </div>
-      </div>
       {skippedLabels.length > 0 ? (
         <p className="mt-4 text-xs text-muted-foreground">
           Not connected, so setup skips {skippedLabels.join(", ")}. You can set{" "}
@@ -340,125 +279,14 @@ function ConnectionStep({
         <Button
           className="shrink-0 self-end"
           ref={continueRef}
-          autoFocus={!expandPairingInitially}
-          disabled={!ready || isPairing}
+          autoFocus
+          disabled={!ready}
           onClick={onContinue}
         >
           Continue
           <ArrowRightIcon className="size-3.5" />
         </Button>
       </div>
-    </>
-  );
-}
-
-function PairingForm({
-  isPairing,
-  setIsPairing,
-  onPaired,
-}: {
-  readonly isPairing: boolean;
-  readonly setIsPairing: (value: boolean) => void;
-  readonly onPaired: (environmentId: EnvironmentId) => void;
-}) {
-  const connectPairingEnvironment = useAtomCommand(connectPairing, { reportFailure: false });
-  const [pairingUrl, setPairingUrl] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const mountedRef = useRef(true);
-
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- tracks mount so a pairing request that settles after unmount does not set state
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const submit = async () => {
-    if (isPairing || pairingUrl.trim().length === 0) return;
-    setIsPairing(true);
-    setErrorMessage("");
-    const result = await connectPairingEnvironment({ pairingUrl: pairingUrl.trim() });
-    if (!mountedRef.current) return;
-    setIsPairing(false);
-    if (result._tag === "Success") {
-      onPaired(result.value);
-      return;
-    }
-    if (isAtomCommandInterrupted(result)) return;
-    const cause = squashAtomCommandFailure(result);
-    setErrorMessage(cause instanceof Error ? cause.message : "Pairing failed.");
-  };
-
-  return (
-    <>
-      <form
-        className="space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
-        <div>
-          <label className="block text-sm text-muted-foreground" htmlFor="onboarding-pairing-url">
-            Pairing link
-          </label>
-          <Input
-            id="onboarding-pairing-url"
-            autoFocus
-            aria-invalid={errorMessage.length > 0}
-            aria-describedby={errorMessage ? "onboarding-pairing-error" : undefined}
-            className="mt-2"
-            size="lg"
-            autoCapitalize="none"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            nativeInput
-            readOnly={isPairing}
-            placeholder="https://your-server:5230/pair#token=…"
-            value={pairingUrl}
-            onChange={(event) => setPairingUrl(event.currentTarget.value)}
-            onKeyDown={(event) => {
-              if (
-                event.key === "Enter" &&
-                (event.nativeEvent.isComposing || event.keyCode === 229)
-              ) {
-                event.preventDefault();
-              }
-            }}
-          />
-        </div>
-        {errorMessage ? (
-          <Alert id="onboarding-pairing-error" variant="error">
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        ) : null}
-        <Collapsible>
-          <div className="flex items-center justify-between gap-3">
-            <CollapsibleTrigger
-              type="button"
-              className="group flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ChevronRightIcon className="size-3.5 group-data-panel-open:rotate-90" />
-              Need a pairing link?
-            </CollapsibleTrigger>
-            <Button type="submit" disabled={isPairing || pairingUrl.trim().length === 0}>
-              {isPairing ? "Pairing..." : "Pair"}
-            </Button>
-          </div>
-          <CollapsiblePanel>
-            <p className="pt-3 text-sm text-muted-foreground">
-              Run this on the computer with your code.
-            </p>
-            <CommandBlock command="npx t3 pair" className="mt-2" />
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start T3 Code first, or run <code className="font-mono">npx t3 serve</code>. Add{" "}
-              <code className="font-mono">--tailscale</code> to use your tailnet.
-            </p>
-          </CollapsiblePanel>
-        </Collapsible>
-      </form>
     </>
   );
 }

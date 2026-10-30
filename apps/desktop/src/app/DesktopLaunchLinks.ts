@@ -7,7 +7,6 @@ import * as Scope from "effect/Scope";
 
 import { providerAuthReturnUrl } from "@t3tools/shared/providerAuthReturnUrl";
 import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
-import { readPairingAppLink } from "@t3tools/shared/remote";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
@@ -89,8 +88,7 @@ export const make = Effect.gen(function* () {
         return true;
       };
       const openAppLink = (value: string | undefined) => {
-        if (!value || (promptLinkAppPath(value) === null && readPairingAppLink(value) === null))
-          return false;
+        if (!value || promptLinkAppPath(value) === null) return false;
         void runPromise(webLinks.receive(value));
         return true;
       };
@@ -101,10 +99,7 @@ export const make = Effect.gen(function* () {
         void runPromise(webLinks.receive(url));
         return true;
       };
-      handleOpenUrl = (url) =>
-        resumeProviderAuth(url) ||
-        openWebLink(url) ||
-        openAppLink(url);
+      handleOpenUrl = (url) => resumeProviderAuth(url) || openWebLink(url) || openAppLink(url);
       for (const url of pendingOpenUrls.splice(0)) handleOpenUrl(url);
       yield* electronApp.on("open-file", (event: { preventDefault: () => void }, path: string) => {
         if (!DesktopWebLinks.isWebPageFile(path)) return;
@@ -112,13 +107,7 @@ export const make = Effect.gen(function* () {
         void runPromise(webLinks.receive(NodeURL.pathToFileURL(path).href));
       });
       handleSecondInstance = (argv) => {
-        if (
-          argv?.some(
-            (value) =>
-              resumeProviderAuth(value) || openAppLink(value),
-          )
-        )
-          return;
+        if (argv?.some((value) => resumeProviderAuth(value) || openAppLink(value))) return;
         void runPromise(
           Effect.gen(function* () {
             const mainWindow = yield* electronWindow.currentMainOrFirst;

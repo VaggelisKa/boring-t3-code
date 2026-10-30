@@ -7,7 +7,6 @@ import {
 import { resolveWorktreeT3Home } from "@t3tools/shared/devHome";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { DEFAULT_SIGNAL_EXPORT } from "@t3tools/shared/observability";
-import { buildPairingAppLink } from "@t3tools/shared/remote";
 import * as OtelEnvironment from "@t3tools/shared/otelEnvironment";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
@@ -29,12 +28,7 @@ import {
   isProcessAlive,
   readPersistedServerRuntimeState,
 } from "../serverRuntimeState.ts";
-import {
-  buildPairingUrl,
-  isLoopbackHost,
-  renderTerminalQrCode,
-  resolveHeadlessConnectionString,
-} from "../startupAccess.ts";
+import { buildPairingUrl, resolveHeadlessConnectionString } from "../startupAccess.ts";
 import { authScopesFlag } from "./authScopes.ts";
 import { baseDirFlag, DurationFromString } from "./config.ts";
 
@@ -77,7 +71,7 @@ export class IncompatibleServerProtocolError extends Schema.TaggedError<Incompat
   }
 }
 
-const resolveDirectPairingBaseUrl = (state: PersistedServerRuntimeState): string =>
+const resolveLocalPairingBaseUrl = (state: PersistedServerRuntimeState): string =>
   state.devUrl ?? resolveHeadlessConnectionString(state.host, state.port);
 
 const formatPairOutput = (input: {
@@ -91,10 +85,7 @@ const formatPairOutput = (input: {
   [
     `Pairing with ${input.serverLabel} (${input.origin}).`,
     "",
-    renderTerminalQrCode(input.pairingUrl),
-    "",
     `Pairing URL: ${input.pairingUrl}`,
-    `App link: ${buildPairingAppLink(input.pairingUrl)}`,
     `Token: ${input.token}`,
     `Expires: ${DateTime.formatIso(input.expiresAt)}`,
     ...input.notes.flatMap((note) => ["", `Note: ${note}`]),
@@ -282,7 +273,7 @@ export const pairCommand = Command.make("pair", {
   label: labelFlag,
 }).pipe(
   Command.withDescription(
-    "Mint a pairing token for a running T3 Code server and print it as a QR code.",
+    "Mint a pairing link for a browser on this machine to reach a running T3 Code server.",
   ),
   Command.withHandler((flags) =>
     Effect.gen(function* () {
@@ -302,12 +293,7 @@ export const pairCommand = Command.make("pair", {
       }
 
       const notes: Array<string> = [];
-      const pairingBaseUrl = resolveDirectPairingBaseUrl(target.state);
-      if (isLoopbackHost(new URL(pairingBaseUrl).hostname)) {
-        notes.push(
-          "This URL is only reachable from this machine. Restart the server with a reachable --host to pair from elsewhere.",
-        );
-      }
+      const pairingBaseUrl = resolveLocalPairingBaseUrl(target.state);
       if (target.variant === "dev" && target.state.devUrl === undefined) {
         notes.push(
           "This dev server did not record its web URL; restart it so pairing can go through the web origin.",

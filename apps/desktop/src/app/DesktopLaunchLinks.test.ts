@@ -185,7 +185,7 @@ describe("DesktopLaunchLinks", () => {
     const first = "t3code://new?prompt=first";
     const second = "t3code://threads/env-1/thread-1";
     const later = "t3code://new?prompt=later";
-    const launchPair = "t3code://pair?pairingUrl=https%3A%2F%2Fvps.example.com%2F%23token%3Dabc";
+    const launchThread = "t3code://threads/env-1/thread-2";
     const delivered = Promise.withResolvers<void>();
     const electronApp = {
       on: (name: string, listener: (...args: unknown[]) => void) =>
@@ -198,14 +198,14 @@ describe("DesktopLaunchLinks", () => {
       const launchLinks = yield* DesktopLaunchLinks.DesktopLaunchLinks;
       listeners.get("second-instance")?.({}, ["t3", first]);
       listeners.get("second-instance")?.({}, ["t3", second]);
-      listeners.get("open-url")?.({ preventDefault: () => undefined }, launchPair);
+      listeners.get("open-url")?.({ preventDefault: () => undefined }, launchThread);
       assert.deepEqual(received, []);
 
       yield* launchLinks.configure;
       listeners.get("second-instance")!({}, ["t3", later]);
       yield* Effect.promise(() => delivered.promise);
 
-      assert.deepEqual(received, [launchPair, first, second, later]);
+      assert.deepEqual(received, [launchThread, first, second, later]);
     }).pipe(
       Effect.scoped,
       Effect.provide(layerDesktopLaunchLinks(true, [], "darwin", undefined, undefined, listeners)),
@@ -311,7 +311,6 @@ it.effect("hands web and app links to the renderer and leaves other links alone"
         }),
     } as unknown as ElectronApp.ElectronApp["Service"];
     const received: Array<string> = [];
-    const pairLink = "t3code://pair?pairingUrl=https%3A%2F%2Fvps.example.com%2F%23token%3Dabc";
     yield* Effect.gen(function* () {
       const launchLinks = yield* DesktopLaunchLinks.DesktopLaunchLinks;
       yield* launchLinks.configure;
@@ -324,8 +323,7 @@ it.effect("hands web and app links to the renderer and leaves other links alone"
       assert.strictEqual(open("http://localhost:3000/"), 1);
       assert.strictEqual(open("t3code://new?prompt=hi"), 1);
       assert.strictEqual(open("t3code://threads/env-1/thread-1"), 1);
-      assert.strictEqual(open(pairLink), 1);
-      assert.strictEqual(open("t3code://pair"), 0);
+      assert.strictEqual(open("t3code://pair?pairingUrl=https%3A%2F%2Fvps.example.com"), 0);
       assert.strictEqual(open("mailto:hello@example.com"), 0);
       assert.strictEqual(open("t3code://somewhere-else"), 0);
       yield* Effect.yieldNow;
@@ -334,7 +332,6 @@ it.effect("hands web and app links to the renderer and leaves other links alone"
         "http://localhost:3000/",
         "t3code://new?prompt=hi",
         "t3code://threads/env-1/thread-1",
-        pairLink,
       ]);
     }).pipe(
       Effect.provide(layerDesktopLaunchLinks(true, [], "darwin", undefined, undefined, listeners)),

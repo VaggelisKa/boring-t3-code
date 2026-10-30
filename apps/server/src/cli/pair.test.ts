@@ -29,7 +29,6 @@ import {
 } from "../serverRuntimeState.ts";
 
 import packageJson from "../../package.json" with { type: "json" };
-import { buildPairingAppLink } from "@t3tools/shared/remote";
 
 const layerCliRuntime = Layer.mergeAll(NodeServices.layer, NetService.layer);
 
@@ -88,7 +87,7 @@ const withDescriptorServer = <A, E, R>(
   );
 
 describe("t3 pair", () => {
-  it.effect("mints a token and prints a QR pairing URL for a live server", () =>
+  it.effect("mints a token and prints a pairing URL for a live server", () =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {
         const baseDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-pair-test-"));
@@ -106,12 +105,9 @@ describe("t3 pair", () => {
 
         assert.include(output, `Pairing with pair-test (${origin})`);
         assert.include(output, `Pairing URL: ${origin}/pair#token=`);
-        assert.isTrue(output.includes("█") || output.includes("▀") || output.includes("▄"));
-        assert.include(output, "only reachable from this machine");
 
         const token = /#token=([A-Z2-9]+)/.exec(output)?.[1];
         assert.isString(token);
-        assert.include(output, `App link: ${buildPairingAppLink(`${origin}/pair#token=${token}`)}`);
 
         const listed = yield* captureStdout(
           runCli(["auth", "pairing", "list", "--base-dir", baseDir, "--json"]),
