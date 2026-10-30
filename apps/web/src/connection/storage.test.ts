@@ -48,6 +48,33 @@ describe("ConnectionStorage.makeCatalogStore", () => {
     }),
   );
 
+  it.effect("drops saved SSH hosts and their credentials instead of quarantining", () =>
+    Effect.gen(function* () {
+      const quarantined: string[] = [];
+      const legacy = JSON.stringify({
+        ...emptyCatalog,
+        targets: [
+          {
+            _tag: "SshConnectionTarget",
+            environmentId: "env-ssh",
+            label: "Box",
+            connectionId: "ssh:box",
+          },
+        ],
+        profiles: [{ _tag: "SshConnectionProfile", connectionId: "ssh:box", host: "box" }],
+        credentials: [{ connectionId: "ssh:box", credential: { token: "secret" } }],
+      });
+      const store = yield* ConnectionStorage.makeCatalogStore({
+        read: Effect.succeed(legacy),
+        write: () => Effect.void,
+        quarantine: (raw) => Effect.sync(() => quarantined.push(raw)),
+      });
+
+      expect(yield* store.read).toEqual(emptyCatalog);
+      expect(quarantined).toEqual([]);
+    }),
+  );
+
   it.effect("does not hide catalog read failures", () =>
     Effect.gen(function* () {
       const failure = new ConnectionTransientError({

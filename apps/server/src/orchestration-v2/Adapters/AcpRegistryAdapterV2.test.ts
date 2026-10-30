@@ -1,6 +1,11 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
-import { type ModelSelection, ProviderInstanceId, ProviderSessionId, ThreadId } from "@t3tools/contracts";
+import {
+  type ModelSelection,
+  ProviderInstanceId,
+  ProviderSessionId,
+  ThreadId,
+} from "@t3tools/contracts";
 import { resolveSelfInvocation } from "@t3tools/shared/nodeRuntime";
 import * as DateTime from "effect/DateTime";
 import * as Stream from "effect/Stream";
@@ -22,10 +27,20 @@ import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRe
 import * as AcpRegistryRuntimeCoordinator from "@t3tools/provider-acp-registry/server/AcpRegistryRuntimeCoordinator";
 import { ACP_SESSION_MODE_OPTION_ID } from "@t3tools/provider-acp/server/sessionConfig";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
-import { decodeAcpReplayTranscript, makeAcpReplayCompletenessAssertion, makeAcpReplayRuntime, makeTurnInput } from "./AcpAdapterV2.testkit.ts";
+import {
+  decodeAcpReplayTranscript,
+  makeAcpReplayCompletenessAssertion,
+  makeAcpReplayRuntime,
+  makeTurnInput,
+} from "./AcpAdapterV2.testkit.ts";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import { AcpRegistryAdapterV2Driver } from "@t3tools/provider-acp-registry/server";
-import { ACP_REGISTRY_PROVIDER, makeAcpRegistryAdapterV2, acpRegistryPromptFailure, acpRegistryProbeResult } from "@t3tools/provider-acp-registry/testing";
+import {
+  ACP_REGISTRY_PROVIDER,
+  makeAcpRegistryAdapterV2,
+  acpRegistryPromptFailure,
+  acpRegistryProbeResult,
+} from "@t3tools/provider-acp-registry/testing";
 
 const decodeAcpRegistryAdapterSettings = Schema.decodeUnknownEffect(
   AcpRegistryAdapterV2Driver.configSchema,
@@ -86,15 +101,14 @@ describe("AcpRegistryAdapterV2", () => {
   it("preserves and sanitizes structured ACP errors without exposing arbitrary defects", () => {
     const limit = new EffectAcpErrors.AcpRequestError({
       code: -31001,
-      errorMessage: "Rate limit exceeded for mistral (model: mistral-vibe-cli-latest).",
+      errorMessage: "Rate limit exceeded.",
     });
-    assert.equal(acpRegistryPromptFailure("other-agent", limit).class, "provider_error");
+    assert.equal(acpRegistryPromptFailure(limit).class, "provider_error");
     assert.equal(
-      acpRegistryPromptFailure("other-agent", new Error("private defect")).message,
+      acpRegistryPromptFailure(new Error("private defect")).message,
       "Provider turn failed.",
     );
     const rejected = acpRegistryPromptFailure(
-      "any-agent",
       new EffectAcpErrors.AcpRequestError({
         code: -32603,
         errorMessage: "Request rejected. api_key=private-key https://example.test/?token=secret",
@@ -612,5 +626,4 @@ describe("AcpRegistryAdapterV2", () => {
       });
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
-
 });

@@ -371,24 +371,55 @@ const isLegacySshRecord = (value: unknown) =>
   "_tag" in value &&
   (value._tag === "SshConnectionTarget" || value._tag === "SshConnectionProfile");
 
-// Catalogs saved before SSH hosts were removed can still hold their records.
+const legacySshConnectionId = (value: unknown) =>
+  typeof value === "object" &&
+  value !== null &&
+  isLegacySshRecord(value) &&
+  "connectionId" in value &&
+  typeof value.connectionId === "string"
+    ? value.connectionId
+    : null;
+
+// Catalogs saved before SSH hosts were removed can still hold their records and credentials.
 function dropLegacySshRecords(document: unknown): unknown {
   if (typeof document !== "object" || document === null) return document;
   const record = document as Record<string, unknown>;
+  const sshConnectionIds = new Set(
+    [record.targets, record.profiles].flatMap((value) =>
+      Array.isArray(value) ? value.map(legacySshConnectionId).filter((id) => id !== null) : [],
+    ),
+  );
   const filter = (value: unknown) =>
     Array.isArray(value) ? value.filter((entry) => !isLegacySshRecord(entry)) : value;
-  return { ...record, targets: filter(record.targets), profiles: filter(record.profiles) };
+  const credentials = Array.isArray(record.credentials)
+    ? record.credentials.filter(
+        (entry: unknown) =>
+          !(
+            typeof entry === "object" &&
+            entry !== null &&
+            "connectionId" in entry &&
+            typeof entry.connectionId === "string" &&
+            sshConnectionIds.has(entry.connectionId)
+          ),
+      )
+    : record.credentials;
+  return {
+    ...record,
+    targets: filter(record.targets),
+    profiles: filter(record.profiles),
+    credentials,
+  };
 }
 
-const decodeCatalog = Effect.fn("web.connectionStorage.decodeCatalog")(function* (raw: string) {
-  const parsed = yield* Effect.try({
-    try: (): unknown => JSON.parse(raw),
-    catch: (cause) => catalogError("decode", cause),
-  });
-  return yield* decodeConnectionCatalogDocument(dropLegacySshRecords(parsed)).pipe(
-    Effect.mapError((cause) => catalogError("decode", cause)),
-  );
-});
+const decodeCatalogJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown));
+
+const decodeCatalog = Effect.fn("web.connectionStorage.decodeCatalog")(
+  function* (raw: string) {
+    const parsed = yield* decodeCatalogJson(raw);
+    return yield* decodeConnectionCatalogDocument(dropLegacySshRecords(parsed));
+  },
+  Effect.mapError((cause) => catalogError("decode", cause)),
+);
 
 const encodeCatalog = Effect.fn("web.connectionStorage.encodeCatalog")(function* (
   catalog: ConnectionCatalogDocumentType,

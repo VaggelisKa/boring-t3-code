@@ -144,7 +144,7 @@ export const makeCommandGate = Effect.gen(function* () {
 });
 
 const getAutoBootstrapThreadModelSelection = (): ModelSelection => ({
-  instanceId: ProviderInstanceId.make("codex"),
+  instanceId: ProviderInstanceId.make("antigravity"),
   model: ANTIGRAVITY_DEFAULT_MODEL,
 });
 

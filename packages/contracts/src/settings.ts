@@ -1167,6 +1167,12 @@ const DEFAULT_ENABLED_DEFAULT_INSTANCES: ReadonlySet<ProviderInstanceId> = new S
 export const isUnconfiguredDefaultInstanceEnabled = (instanceId: ProviderInstanceId): boolean =>
   DEFAULT_ENABLED_DEFAULT_INSTANCES.has(instanceId);
 
+// Saved instances of retired drivers stay off unless the user enabled them explicitly.
+const DEFAULT_ENABLED_PROVIDER_DRIVERS: ReadonlySet<string> = new Set([
+  "antigravity",
+  "acpRegistry",
+]);
+
 export const resolveProviderInstanceEnabled = (
   instance: Pick<ProviderInstanceConfig, "driver" | "enabled" | "config">,
 ): boolean => {
@@ -1174,7 +1180,7 @@ export const resolveProviderInstanceEnabled = (
   if (instance.enabled === false || configEnabled === false) {
     return false;
   }
-  return instance.enabled ?? configEnabled ?? true;
+  return instance.enabled ?? configEnabled ?? DEFAULT_ENABLED_PROVIDER_DRIVERS.has(instance.driver);
 };
 
 export const resolveProjectProviderInstanceEnabled = (
