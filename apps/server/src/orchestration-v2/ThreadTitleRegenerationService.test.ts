@@ -31,13 +31,13 @@ import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAda
 
 const projectId = ProjectId.make("project:title-regeneration");
 const modelSelection = {
-  instanceId: ProviderInstanceId.make("codex"),
-  model: "gpt-5.1-codex",
+  instanceId: ProviderInstanceId.make("antigravity"),
+  model: "antigravity-default",
 } as const;
 
 const adapter = {
   instanceId: modelSelection.instanceId,
-  driver: ProviderDriverKind.make("codex"),
+  driver: ProviderDriverKind.make("antigravity"),
   getCapabilities: () => Effect.succeed(FullProviderCapabilitiesV2),
   planSelectionTransition: () => Effect.succeed({ type: "apply_on_next_turn" as const }),
   openSession: () => Effect.die("provider execution is disabled in title regeneration tests"),

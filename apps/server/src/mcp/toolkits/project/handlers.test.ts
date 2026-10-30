@@ -51,8 +51,8 @@ const clientLaunchHarness = (input: {
 }) => {
   const projectId = ProjectId.make("project:client-target");
   const modelSelection = {
-    instanceId: ProviderInstanceId.make("claudeAgent"),
-    model: "claude-opus",
+    instanceId: ProviderInstanceId.make("antigravity"),
+    model: "antigravity-default",
   };
   // The project's own default model, which a test can clear between launches.
   const projectDefaults: { model: ModelSelection | null } = {
@@ -63,6 +63,9 @@ const clientLaunchHarness = (input: {
       getProviders: Effect.succeed(input.providers ?? []),
     }),
     ServerSettings.layerTest({
+      providerInstances: {
+        [ProviderInstanceId.make("codex")]: { driver: ProviderDriverKind.make("codex") },
+      },
       fallbackModelSelection: input.fallbackModel ?? null,
       ...(input.defaultRuntimeMode === undefined
         ? {}
@@ -487,7 +490,7 @@ it.effect("a client launches with the fallback for an exhausted default", () =>
   Effect.gen(function* () {
     const launched: ThreadLaunch.ThreadLaunchInput[] = [];
     const fallbackModel = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6.1-sol" };
-    const providers: ServerProvider[] = ["claudeAgent", "codex"].map((driver) => ({
+    const providers: ServerProvider[] = ["antigravity", "codex"].map((driver) => ({
       instanceId: ProviderInstanceId.make(driver),
       driver: ProviderDriverKind.make(driver),
       enabled: true,
@@ -499,7 +502,7 @@ it.effect("a client launches with the fallback for an exhausted default", () =>
       models: [],
       slashCommands: [],
       skills: [],
-      ...(driver === "claudeAgent"
+      ...(driver === "antigravity"
         ? {
             usageLimits: {
               checkedAt: "2026-01-01T00:00:00Z",
