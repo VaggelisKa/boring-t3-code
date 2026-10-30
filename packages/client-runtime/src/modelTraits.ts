@@ -112,7 +112,7 @@ export function buildTraitsTriggerDisplay(input: {
   reportedModelSelection?: ModelSelection | null | undefined;
 }): {
   label: string;
-  /** "Fast" or "Ultrafast" when a speed option is on. */
+  /** "Fast" when fast mode is on. */
   speedLabel: string | null;
   /** Labels other than reasoning and speed, such as context window or thinking. */
   otherLabels: ReadonlyArray<string>;
@@ -126,30 +126,6 @@ export function buildTraitsTriggerDisplay(input: {
       speedLabel = descriptor.currentValue === true ? "Fast" : null;
       fastModeFallbackLabel = speedLabel ?? "Normal";
       continue;
-    }
-    if (
-      input.provider === "codex" &&
-      descriptor.id === "serviceTier" &&
-      descriptor.type === "select"
-    ) {
-      const currentValue = getProviderOptionCurrentValue(descriptor);
-      const fastTier = descriptor.options.find(({ label }) => label === "Fast");
-      const ultrafastTier = descriptor.options.find(({ label }) => label === "Ultrafast");
-      if (
-        ((fastTier || ultrafastTier) && currentValue === "default") ||
-        (fastTier && currentValue === fastTier.id) ||
-        (ultrafastTier && currentValue === ultrafastTier.id)
-      ) {
-        speedLabel =
-          ultrafastTier && currentValue === ultrafastTier.id
-            ? "Ultrafast"
-            : fastTier && currentValue === fastTier.id
-              ? "Fast"
-              : null;
-        fastModeFallbackLabel =
-          descriptor.options.find(({ id }) => id === currentValue)?.label ?? "Normal";
-        continue;
-      }
     }
     const label =
       input.ultrathinkPromptControlled && descriptor.id === input.primarySelectDescriptorId

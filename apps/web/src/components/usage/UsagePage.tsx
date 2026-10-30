@@ -1,5 +1,3 @@
-import { ChatGptUsageButton } from "../settings/ChatGptUsageButton";
-import { usesChatGptSharing } from "@t3tools/shared/usageLimits";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
@@ -94,7 +92,7 @@ import {
   resolveUsageShortcut,
   type UsageMetric,
 } from "./usageShortcuts";
-import { PROVIDER_ORDER, PROVIDER_PRESENTATION, providersWithUsage } from "./usageProviders";
+import { PROVIDER_ORDER, providerPresentation, providersWithUsage } from "./usageProviders";
 import {
   readUsagePagePreferences,
   saveUsagePagePreferences,
@@ -109,7 +107,7 @@ function isUsageWindowDays(value: number): value is UsagePagePreferences["window
   return WINDOW_OPTIONS.some((option) => option.days === value);
 }
 
-const providerLabel = (provider: UsageProviderKind) => PROVIDER_PRESENTATION[provider].label;
+const providerLabel = (provider: UsageProviderKind) => providerPresentation(provider).label;
 
 function usageLoading(
   showingKept: boolean,
@@ -339,13 +337,6 @@ export function UsagePage() {
     shownWindow.sinceTime === undefined || shownWindow.untilTime === undefined
       ? []
       : enumerateHourStarts(shownWindow.sinceTime, shownWindow.untilTime);
-  const showChatGptSharing =
-    !hiddenProviders.has("codex") &&
-    [...presentationsWithProviders].some(
-      ([id, presentation]) =>
-        (selectedEnvironmentIds === null || selectedEnvironmentIds.has(id)) &&
-        (presentation.serverConfig?.providers ?? []).some(usesChatGptSharing),
-    );
 
   const windowLabel =
     shownHourly && shownWindow.sinceTime !== undefined && shownWindow.untilTime !== undefined
@@ -540,7 +531,6 @@ export function UsagePage() {
                 selectedEnvironments={selectedEnvironments}
                 hiddenProviders={hiddenProviders}
                 refreshingUsage={refreshingUsage}
-                showChatGptSharing={showChatGptSharing}
                 onSelectModel={selectUsageModel}
               />
             )}
@@ -588,7 +578,6 @@ function UsageOverview({
   selectedEnvironments,
   hiddenProviders,
   refreshingUsage,
-  showChatGptSharing,
   onSelectModel,
 }: {
   readonly merged: MergedUsage;
@@ -601,7 +590,6 @@ function UsageOverview({
   readonly selectedEnvironments: readonly EnvironmentUsageStatus[];
   readonly hiddenProviders: ReadonlySet<UsageProviderKind>;
   readonly refreshingUsage: boolean;
-  readonly showChatGptSharing: boolean;
   readonly onSelectModel: (key: string) => void;
 }) {
   const [breakdown, setBreakdown] = useState<"model" | "time">("model");
@@ -630,9 +618,7 @@ function UsageOverview({
             source.message &&
             !source.action &&
             !hiddenProviders.has(source.fingerprint.provider) &&
-            (source.status === "partial" ||
-              source.status === "failed" ||
-              source.fingerprint.provider === "cursor")
+            (source.status === "partial" || source.status === "failed")
               ? [source.message]
               : [],
           ) ?? [],
@@ -694,13 +680,6 @@ function UsageOverview({
             </span>
           </div>
 
-          {showChatGptSharing ? (
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>ChatGPT shared usage</span>
-              <ChatGptUsageButton size="xs" />
-            </div>
-          ) : null}
-
           {activeProviders.map((provider) => {
             const totals = merged.providers.find((entry) => entry.provider === provider);
             const share = metric === "cost" ? (totals?.costShare ?? 0) : (totals?.tokenShare ?? 0);
@@ -718,12 +697,12 @@ function UsageOverview({
                       aria-hidden
                       className="size-2 shrink-0 rounded-full"
                       style={{
-                        backgroundColor: PROVIDER_PRESENTATION[provider].color,
+                        backgroundColor: providerPresentation(provider).color,
                       }}
                     />
                     <ProviderMark provider={provider} className="size-4" />
                     <span className="flex min-w-0 items-baseline gap-1.5">
-                      <span className="truncate">{PROVIDER_PRESENTATION[provider].label}</span>
+                      <span className="truncate">{providerPresentation(provider).label}</span>
                       <span
                         className={cn(
                           "shrink-0 whitespace-nowrap text-2xs text-muted-foreground tabular-nums",
@@ -919,7 +898,7 @@ function UsageOverview({
                               className="h-full rounded-full"
                               style={{
                                 width: `max(0.5rem, ${(value / breakdownPeak) * 100}%)`,
-                                backgroundColor: PROVIDER_PRESENTATION[model.provider].color,
+                                backgroundColor: providerPresentation(model.provider).color,
                               }}
                             />
                           </div>
@@ -960,7 +939,7 @@ function UsageOverview({
                   <th className="py-2 font-normal">{shownHourly ? "Hour" : "Day"}</th>
                   {activeProviders.map((provider) => (
                     <th key={provider} className="py-2 pl-4 text-right font-normal">
-                      {PROVIDER_PRESENTATION[provider].label}
+                      {providerPresentation(provider).label}
                     </th>
                   ))}
                   <th className="py-2 pl-4 text-right font-normal">Total</th>
@@ -1034,7 +1013,7 @@ function ProviderMark({
   readonly provider: UsageProviderKind;
   readonly className: string;
 }) {
-  const presentation = PROVIDER_PRESENTATION[provider];
+  const presentation = providerPresentation(provider);
   return (
     <ProviderInstanceIcon
       driverKind={presentation.driverKind}
@@ -1262,7 +1241,7 @@ function UsageProviderFilter({
       : visible.length === 0
         ? "No providers"
         : visible.length === 1
-          ? PROVIDER_PRESENTATION[visible[0]!].label
+          ? providerPresentation(visible[0]!).label
           : `${visible.length} providers`;
 
   return (
@@ -1298,7 +1277,7 @@ function UsageProviderFilter({
           >
             <span className="flex min-w-0 items-center gap-2">
               <ProviderMark provider={provider} className="size-3.5" />
-              <span className="truncate">{PROVIDER_PRESENTATION[provider].label}</span>
+              <span className="truncate">{providerPresentation(provider).label}</span>
             </span>
           </MenuCheckboxItem>
         ))}

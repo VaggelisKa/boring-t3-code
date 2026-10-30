@@ -8,46 +8,26 @@ type UsageProviderPresentation = {
   readonly driverKind: ProviderDriverKind;
 };
 
-export const PROVIDER_PRESENTATION = {
-  codex: {
-    label: "Codex",
-    color: "var(--contrast-foreground)",
-    driverKind: ProviderDriverKind.make("codex"),
-  },
-  claude: {
-    label: "Claude Code",
-    color: "#d97757",
-    driverKind: ProviderDriverKind.make("claudeAgent"),
-  },
-  grok: {
-    label: "Grok Build",
-    color: "color-mix(in oklab, var(--contrast-foreground) 72%, var(--background))",
-    driverKind: ProviderDriverKind.make("grok"),
-  },
-  cursor: { label: "Cursor", color: "#8b8b8b", driverKind: ProviderDriverKind.make("cursor") },
-  opencode: {
-    label: "OpenCode",
-    color: "#5b9bbd",
-    driverKind: ProviderDriverKind.make("opencode"),
-  },
+// The contract still names upstream's usage sources; this build only reads Antigravity transcripts.
+const PROVIDER_PRESENTATION: Partial<Record<UsageProviderKind, UsageProviderPresentation>> = {
   antigravity: {
     label: "Antigravity",
     color: "#8c7bd1",
     driverKind: ProviderDriverKind.make("antigravity"),
   },
-  pi: {
-    label: "Pi",
-    color: "#4d9f8a",
-    driverKind: ProviderDriverKind.make("pi"),
-  },
-  muse: {
-    label: "Muse Code",
-    color: "#0866ff",
-    driverKind: ProviderDriverKind.make("muse"),
-  },
-} satisfies Record<UsageProviderKind, UsageProviderPresentation>;
+};
 
 export const PROVIDER_ORDER = Object.keys(PROVIDER_PRESENTATION) as UsageProviderKind[];
+
+export function providerPresentation(provider: UsageProviderKind): UsageProviderPresentation {
+  return (
+    PROVIDER_PRESENTATION[provider] ?? {
+      label: provider,
+      color: "var(--muted-foreground)",
+      driverKind: ProviderDriverKind.make(provider),
+    }
+  );
+}
 
 export function providersWithUsage(
   totals: readonly {

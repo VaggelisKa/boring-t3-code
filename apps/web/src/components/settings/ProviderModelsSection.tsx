@@ -1,7 +1,7 @@
 import { ArrowDownIcon, ArrowUpIcon, PencilIcon, PlusIcon, StarIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
-  ProviderDriverKind,
+  type ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProviderModel,
 } from "@t3tools/contracts";
@@ -16,14 +16,6 @@ import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { CustomModelEditor } from "./CustomModelEditor";
-
-const CUSTOM_MODEL_PLACEHOLDER_BY_KIND: Partial<Record<ProviderDriverKind, string>> = {
-  [ProviderDriverKind.make("codex")]: "gpt-6.7-codex-ultra-preview",
-  [ProviderDriverKind.make("claudeAgent")]: "claude-sonnet-5",
-  [ProviderDriverKind.make("cursor")]: "claude-sonnet-4-6",
-  [ProviderDriverKind.make("opencode")]: "openai/gpt-5",
-  [ProviderDriverKind.make("pi")]: "anthropic/claude-sonnet-5",
-};
 
 const FILTER_THRESHOLD = 8;
 
@@ -376,7 +368,6 @@ export function ProviderModelsSection({
                 <CustomModelEditor
                   key={`${instanceId}:${model.slug}:editor`}
                   instanceId={instanceId}
-                  driverKind={driverKind}
                   entry={editingEntry}
                   builtInModels={builtInModels}
                   onSave={handleSaveEdit}
@@ -409,7 +400,7 @@ export function ProviderModelsSection({
               event.preventDefault();
               handleAdd();
             }}
-            placeholder={driverKind ? CUSTOM_MODEL_PLACEHOLDER_BY_KIND[driverKind] : "model-slug"}
+            placeholder="model-slug"
             spellCheck={false}
           />
           <div className="flex shrink-0 gap-2">

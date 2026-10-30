@@ -1,8 +1,4 @@
-import {
-  type ModelCapabilities,
-  ProviderDriverKind,
-  type ProviderOptionDescriptor,
-} from "@t3tools/contracts";
+import type { ModelCapabilities, ProviderOptionDescriptor } from "@t3tools/contracts";
 import { type CustomModelDefinition, createModelCapabilities } from "@t3tools/shared/model";
 
 export interface EditorChoice {
@@ -29,111 +25,10 @@ export interface CustomModelDraft {
   readonly descriptors: ReadonlyArray<EditorDescriptor>;
 }
 
-export interface DescriptorPreset {
-  readonly id: string;
-  readonly label: string;
-  readonly type: "select" | "boolean";
-  readonly choices?: ReadonlyArray<{ id: string; label: string; isDefault?: boolean }>;
-}
-
-const EFFORT_CHOICES = [
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium", isDefault: true },
-  { id: "high", label: "High" },
-  { id: "xhigh", label: "Extra High" },
-] as const;
-
-export const DESCRIPTOR_PRESETS_BY_KIND: Partial<
-  Record<ProviderDriverKind, ReadonlyArray<DescriptorPreset>>
-> = {
-  [ProviderDriverKind.make("codex")]: [
-    { id: "reasoningEffort", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
-    {
-      id: "serviceTier",
-      label: "Speed",
-      type: "select",
-      choices: [
-        { id: "default", label: "Standard", isDefault: true },
-        { id: "fast", label: "Fast" },
-      ],
-    },
-  ],
-  [ProviderDriverKind.make("claudeAgent")]: [
-    {
-      id: "effort",
-      label: "Reasoning",
-      type: "select",
-      choices: [
-        { id: "low", label: "Low" },
-        { id: "medium", label: "Medium" },
-        { id: "high", label: "High", isDefault: true },
-        { id: "xhigh", label: "Extra High" },
-        { id: "max", label: "Max" },
-      ],
-    },
-    { id: "fastMode", label: "Fast Mode", type: "boolean" },
-    { id: "thinking", label: "Thinking", type: "boolean" },
-  ],
-  [ProviderDriverKind.make("cursor")]: [
-    { id: "reasoning", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
-    { id: "fastMode", label: "Fast Mode", type: "boolean" },
-    { id: "thinking", label: "Thinking", type: "boolean" },
-  ],
-  [ProviderDriverKind.make("grok")]: [
-    { id: "reasoningEffort", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
-  ],
-  [ProviderDriverKind.make("pi")]: [
-    {
-      id: "thinking",
-      label: "Thinking",
-      type: "select",
-      choices: [
-        { id: "off", label: "Off" },
-        { id: "minimal", label: "Minimal" },
-        { id: "low", label: "Low" },
-        { id: "medium", label: "Medium", isDefault: true },
-        { id: "high", label: "High" },
-        { id: "xhigh", label: "Extra High" },
-        { id: "max", label: "Max" },
-      ],
-    },
-  ],
-  [ProviderDriverKind.make("opencode")]: [
-    { id: "variant", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
-    {
-      id: "agent",
-      label: "Agent",
-      type: "select",
-      choices: [
-        { id: "build", label: "Build", isDefault: true },
-        { id: "plan", label: "Plan" },
-      ],
-    },
-  ],
-};
-
 let nextKey = 0;
 function newEditorKey(): string {
   nextKey += 1;
   return `k${nextKey}`;
-}
-
-export function choiceFromPreset(choice: {
-  id: string;
-  label: string;
-  isDefault?: boolean;
-}): EditorChoice {
-  return { key: newEditorKey(), id: choice.id, label: choice.label, isDefault: !!choice.isDefault };
-}
-
-export function descriptorFromPreset(preset: DescriptorPreset): EditorDescriptor {
-  return {
-    key: newEditorKey(),
-    type: preset.type,
-    id: preset.id,
-    label: preset.label,
-    choices: (preset.choices ?? []).map(choiceFromPreset),
-  };
 }
 
 export function emptyEditorDescriptor(): EditorDescriptor {
@@ -184,14 +79,10 @@ export function draftFromDefinition(entry: CustomModelDefinition): CustomModelDr
   };
 }
 
-/** Claude context choices require runtime suffix mappings that custom entries do not carry. */
 export function descriptorsFromCapabilities(
   capabilities: ModelCapabilities | null | undefined,
-  driverKind: ProviderDriverKind | null,
 ): EditorDescriptor[] {
-  return (capabilities?.optionDescriptors ?? [])
-    .filter((descriptor) => driverKind !== "claudeAgent" || descriptor.id !== "contextWindow")
-    .map(descriptorToEditor);
+  return (capabilities?.optionDescriptors ?? []).map(descriptorToEditor);
 }
 
 export function validateDraft(draft: CustomModelDraft): string | null {

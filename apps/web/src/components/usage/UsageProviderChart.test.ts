@@ -12,10 +12,7 @@ describe("buildPeriodColumns", () => {
         costUsd: 42,
         totalTokens: 420,
         byProvider: new Map([
-          ["codex" as const, { costUsd: 10, totalTokens: 100 }],
-          ["claude" as const, { costUsd: 20, totalTokens: 200 }],
-          ["pi" as const, { costUsd: 5, totalTokens: 50 }],
-          ["muse" as const, { costUsd: 7, totalTokens: 70 }],
+          ["antigravity" as const, { costUsd: 10, totalTokens: 100 }],
         ]),
       },
     ],
@@ -25,7 +22,7 @@ describe("buildPeriodColumns", () => {
         day: "2026-08-03",
         costUsd: 5,
         totalTokens: 50,
-        byProvider: new Map([["claude" as const, { costUsd: 5, totalTokens: 50 }]]),
+        byProvider: new Map([["antigravity" as const, { costUsd: 5, totalTokens: 50 }]]),
       },
     ],
   ]);
@@ -33,15 +30,6 @@ describe("buildPeriodColumns", () => {
   it("keeps band values absolute rather than cumulative", () => {
     const [first] = buildPeriodColumns(days, byDay, "cost");
 
-    expect(first?.bands).toEqual([
-      { provider: "codex", value: 10 },
-      { provider: "claude", value: 20 },
-      { provider: "grok", value: 0 },
-      { provider: "cursor", value: 0 },
-      { provider: "opencode", value: 0 },
-      { provider: "antigravity", value: 0 },
-      { provider: "pi", value: 5 },
-      { provider: "muse", value: 7 },
-    ]);
+    expect(first?.bands).toEqual([{ provider: "antigravity", value: 10 }]);
   });
 });

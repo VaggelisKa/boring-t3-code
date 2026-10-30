@@ -11,7 +11,7 @@ import {
   formatUsd,
 } from "@t3tools/shared/usageFormat";
 import { cn } from "~/lib/utils";
-import { PROVIDER_ORDER, PROVIDER_PRESENTATION } from "./usageProviders";
+import { PROVIDER_ORDER, providerPresentation } from "./usageProviders";
 import { observeResize } from "~/lib/observeResize";
 
 const VIEW_WIDTH = 960;
@@ -248,7 +248,7 @@ function UsageChartTooltip({
     >
       <div className="mb-1 text-muted-foreground">{label}</div>
       {providers.map((provider) => {
-        const { label: providerLabel, driverKind } = PROVIDER_PRESENTATION[provider];
+        const { label: providerLabel, driverKind } = providerPresentation(provider);
         return (
           <div key={provider} className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -491,7 +491,7 @@ export function UsageProviderChart({
               key={provider}
               d={area}
               className={seriesClassName(loading)}
-              fill={PROVIDER_PRESENTATION[provider].color}
+              fill={providerPresentation(provider).color}
               fillOpacity={0.12}
             />
           ))}
@@ -501,7 +501,7 @@ export function UsageProviderChart({
               d={line}
               className={seriesClassName(loading)}
               fill="none"
-              stroke={PROVIDER_PRESENTATION[provider].color}
+              stroke={providerPresentation(provider).color}
               strokeWidth={2}
               vectorEffect="non-scaling-stroke"
             />
