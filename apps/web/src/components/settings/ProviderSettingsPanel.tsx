@@ -102,7 +102,6 @@ import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetup
 import { ProviderAuthenticationSection } from "./ProviderAuthenticationSection";
 import { providerClients } from "./providerDriverMeta";
 import { searchableSetting } from "./settingsSearch";
-import { CompactIdleThreadsRow } from "./SettingsPanels";
 import {
   backgroundActivityOverrideSettings,
   buildProviderInstanceUpdatePatch,
@@ -1112,7 +1111,6 @@ export function EnvironmentProviderSettings({
             </div>
           }
         />
-        <CompactIdleThreadsRow />
       </SettingsSection>
 
       {isAddInstanceDialogOpen && !readOnly ? (

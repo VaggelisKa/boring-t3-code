@@ -1058,7 +1058,7 @@ function OpenCommandPaletteDialog(props: {
 
   const openConnectionSettings = () => {
     setOpen(false);
-    void navigate({ to: "/settings/connections" });
+    void navigate({ to: "/settings/access" });
   };
   const addProjectEntry = resolveAddProjectEntry(
     addProjectEnvironmentOptions,

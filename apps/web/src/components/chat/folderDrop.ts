@@ -1,15 +1,10 @@
 import type { EnvironmentId } from "@t3tools/contracts";
 
 export function folderDropTarget(input: {
-  localEnvironmentDisabled: boolean;
   environmentId: EnvironmentId;
   primaryEnvironmentId: EnvironmentId | null;
 }): "local" | "remote" {
-  if (
-    input.localEnvironmentDisabled ||
-    input.primaryEnvironmentId === null ||
-    input.environmentId !== input.primaryEnvironmentId
-  ) {
+  if (input.primaryEnvironmentId === null || input.environmentId !== input.primaryEnvironmentId) {
     return "remote";
   }
   return "local";

@@ -3,8 +3,6 @@ import { CheckIcon } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
-  IDLE_COMPACTION_MODES,
-  globalIdleCompaction,
   ProviderDriverKind,
   type ProviderInstanceId,
   type SidebarProjectGroupingMode,
@@ -39,8 +37,7 @@ import {
   useUpdateScopedSettings,
 } from "./useScopedSettings";
 import { useScopedModelDisabledReason } from "./useScopedModelAvailability";
-import { useOptionalSettingsScope, useSettingsScope } from "./SettingsScopeContext";
-import { scopedIdleCompaction } from "./scopedSettings";
+import { useSettingsScope } from "./SettingsScopeContext";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
 import { ThreadTitleInstructionsSettings } from "./ThreadTitleInstructionsSettings";
 import { SnoozePresetsRow } from "./SnoozePresetsSettings";
@@ -1146,70 +1143,6 @@ export function DiffsSettingsPanel() {
         <PullRequestLinksOpenInAppSetting />
       </SettingsSection>
     </SettingsPageContainer>
-  );
-}
-
-/** The Providers panel can render without a settings scope, as its tests do; this row needs one. */
-export function CompactIdleThreadsRow() {
-  return useOptionalSettingsScope() === null ? null : <ScopedCompactIdleThreadsRow />;
-}
-
-function ScopedCompactIdleThreadsRow() {
-  const settings = useScopedSettings();
-  const updateSettings = useUpdateScopedSettings();
-  const { targets } = useSettingsScope();
-  const idleCompaction = scopedIdleCompaction(targets.length > 0 ? targets : [{ settings }]);
-
-  return (
-    <SettingsRow
-      serverScoped
-      settingKeys={["idleCompaction", "compactIdleThreads"]}
-      mixed={idleCompaction.mixed}
-      {...searchableSetting("compact-idle-threads")}
-      description="When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this."
-      resetAction={
-        globalIdleCompaction(settings) !== globalIdleCompaction(DEFAULT_UNIFIED_SETTINGS) ? (
-          <SettingResetButton
-            label="compact idle threads"
-            onClick={() =>
-              updateSettings({ idleCompaction: globalIdleCompaction(DEFAULT_UNIFIED_SETTINGS) })
-            }
-          />
-        ) : null
-      }
-      control={
-        <Select
-          value={idleCompaction.mixed ? null : globalIdleCompaction(settings)}
-          onValueChange={(value) => {
-            const mode = IDLE_COMPACTION_MODES.find((candidate) => candidate.value === value);
-            if (mode) updateSettings({ idleCompaction: mode.value });
-          }}
-        >
-          <SelectTrigger size="sm" className="w-full sm:w-56" aria-label="Compact idle threads">
-            <SelectValue>
-              {(value: string | null) =>
-                value === null
-                  ? "Mixed"
-                  : IDLE_COMPACTION_MODES.find((mode) => mode.value === value)?.label
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPopup align="end" alignItemWithTrigger={false}>
-            {IDLE_COMPACTION_MODES.map((mode) => (
-              <SelectItem
-                hideIndicator
-                key={mode.value}
-                value={mode.value}
-                // A server from before modes has only the on/off switch, so it cannot store "Never".
-                disabled={mode.value === "off" && !idleCompaction.neverAvailable}
-              >
-                {mode.label}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-      }
-    />
   );
 }
 

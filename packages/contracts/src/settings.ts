@@ -530,7 +530,7 @@ export function makeProviderSettingsSchema<const Fields extends Schema.Struct.Fi
   );
 }
 
-export const IDLE_COMPACTION_MODES = [
+const IDLE_COMPACTION_MODES = [
   { value: "onReturn", label: "When you return" },
   { value: "beforeCacheExpires", label: "Before the cache expires (beta)" },
   { value: "off", label: "Never" },
@@ -1221,7 +1221,7 @@ export const withIdleCompaction = <S extends IdleCompactionSettings>(
 ): S => ({ ...settings, idleCompaction: mode, compactIdleThreads: mode === "beforeCacheExpires" });
 
 /** Whether a server reads modes, rather than only the boolean switch from before them. */
-export const readsIdleCompactionModes = (settings: IdleCompactionSettings) =>
+const readsIdleCompactionModes = (settings: IdleCompactionSettings) =>
   settings.idleCompaction !== undefined || typeof settings.compactIdleThreads === "string";
 
 /**

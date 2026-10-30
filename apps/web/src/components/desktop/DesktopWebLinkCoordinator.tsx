@@ -7,11 +7,10 @@ import { useRouter } from "@tanstack/react-router";
 import * as Effect from "effect/Effect";
 import { AtomRegistry } from "effect/reactivity";
 import * as Stream from "effect/Stream";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 import { openFileInPreview, openUrlInPreview } from "../../browser/openFileInPreview";
 import { isPreviewAvailableFor } from "../../browser/previewRuntime";
-import { isLocalEnvironmentDisabled } from "../../localEnvironment";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { useScratchProject } from "../../hooks/useScratchProject";
@@ -86,15 +85,10 @@ export function DesktopWebLinkCoordinator() {
   const httpBaseUrl = useEnvironmentHttpBaseUrl(primaryEnvironment?.environmentId ?? null);
   const queueRef = useRef(Promise.resolve());
   const webLinks = window.desktopBridge?.webLinks;
-  // A sync IPC read; the setting only changes across a relaunch.
-  const [localEnvironmentDisabled] = useState(isLocalEnvironmentDisabled);
-  // With Local environment disabled there is no primary to wait for, so links run against the
-  // saved remote environments instead of waiting forever.
   const ready =
     webLinks !== undefined &&
-    (localEnvironmentDisabled ||
-      (primaryEnvironment?.connection.phase === "connected" &&
-        primaryEnvironment.serverConfig !== null));
+    primaryEnvironment?.connection.phase === "connected" &&
+    primaryEnvironment.serverConfig !== null;
 
   const reportFailure = (url: string, description = url) =>
     toastManager.add(
@@ -165,11 +159,8 @@ export function DesktopWebLinkCoordinator() {
     // A connected server publishes its config before its project snapshot, so a PR link
     // delivered at launch would miss its project and fall through to the browser. Hold PR
     // links, and only those, until discovery settles; an ordinary link never waits for it.
-    // Discovery never settles without the local environment, so those links do not wait.
     const hold =
-      openPullRequestsInApp &&
-      !localEnvironmentDisabled &&
-      sourceControlClients.parseChangeRequestUrl(url) !== null
+      openPullRequestsInApp && sourceControlClients.parseChangeRequestUrl(url) !== null
         ? projectsSettled()
         : Promise.resolve();
     void hold.then(() => {

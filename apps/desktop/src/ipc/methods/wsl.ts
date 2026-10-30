@@ -21,7 +21,7 @@ const readWslState: Effect.Effect<
   const wslEnvironment = yield* DesktopWslEnvironment.DesktopWslEnvironment;
   const wslBackend = yield* DesktopWslBackend.DesktopWslBackend;
   const settings = yield* appSettings.get;
-  const available = settings.localEnvironmentEnabled && (yield* wslEnvironment.isAvailable);
+  const available = yield* wslEnvironment.isAvailable;
   // Listing distros on non-WSL hosts spawns wsl.exe only to time out.
   const distros = available ? yield* wslEnvironment.listDistros : [];
   const preflightError = yield* wslBackend.lastPreflightError;

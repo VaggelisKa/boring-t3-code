@@ -6,7 +6,6 @@ import {
   runtimeModeConfig,
   runtimeModeOptions as runtimeModes,
 } from "./runtimeModeConfig";
-import { isLocalEnvironmentDisabled } from "../../localEnvironment";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useRightPanelStore } from "~/rightPanelStore";
 import { importPastedComposerText, readPastedComposerContext } from "../composerInlineTokenPaste";
@@ -2432,7 +2431,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const addComposerFolders = (folders: File[]) => {
     const target = folderDropTarget({
-      localEnvironmentDisabled: isLocalEnvironmentDisabled(),
       environmentId,
       primaryEnvironmentId,
     });

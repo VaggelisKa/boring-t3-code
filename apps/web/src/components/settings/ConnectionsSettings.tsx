@@ -13,15 +13,11 @@ import {
 import { settlePromise } from "@t3tools/client-runtime/state/runtime";
 import * as Cause from "effect/Cause";
 
-import { isLocalEnvironmentDisabled } from "../../localEnvironment";
 import { applyWslEnableSelection, isWslSettingsRowVisible } from "./ConnectionsSettings.logic";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
-import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
 import { searchableSetting } from "./settingsSearch";
 import { EnvironmentIconMenu } from "./EnvironmentIconPicker";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
-import { LoadBalancingSettings } from "./LoadBalancingSettings";
-import { PullRequestRoutingSettings } from "./PullRequestRoutingSettings";
 import { ScrollArea } from "../ui/scroll-area";
 import {
   AlertDialog,
@@ -65,19 +61,12 @@ import { ITEM_ROW_CLASSNAME } from "./itemRows";
 const BACKEND_VALUE_DEFAULT_WSL = "backend:default-wsl";
 const BACKEND_VALUE_WSL_OFF = "backend:wsl-off";
 
-/** Environments lists the machines this app connects to; access covers who may reach this one. */
-export function ConnectionsSettings({ view }: { readonly view: "environments" | "access" }) {
+/** Who may reach this machine, and how its local backend runs. */
+export function ConnectionsSettings() {
   const desktopBridge = window.desktopBridge;
   const { environments } = useEnvironments();
   const primaryEnvironment = usePrimaryEnvironment();
   const primaryEnvironmentId = primaryEnvironment?.environmentId ?? null;
-  const savedEnvironments = environments.filter(
-    (environment) => environment.entry.target._tag !== "PrimaryConnectionTarget",
-  );
-  const loadBalancingEnvironments = [
-    ...(primaryEnvironment ? [primaryEnvironment] : []),
-    ...savedEnvironments.filter((environment) => environment.entry.enabled),
-  ].filter((environment) => environment.connection.phase !== "unsupported");
   const [desktopAccessManagementMutationError, setDesktopAccessManagementMutationError] = useState<
     string | null
   >(null);
@@ -100,11 +89,12 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
   const primaryServerConfig = primaryEnvironment?.serverConfig ?? null;
   const canReadAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessReadScope);
   const canWriteAccess = useEnvironmentScope(primaryEnvironmentId, AuthAccessWriteScope);
-  const canMaintain = useEnvironmentScope(primaryEnvironmentId, AuthEnvironmentMaintainScope);
-  const canManageLocalBackend = !isLocalEnvironmentDisabled() && canMaintain;
-  const showsAccess = view === "access";
+  const canManageLocalBackend = useEnvironmentScope(
+    primaryEnvironmentId,
+    AuthEnvironmentMaintainScope,
+  );
   const authAccessChanges = useEnvironmentQuery(
-    showsAccess && canReadAccess && primaryEnvironmentId !== null
+    canReadAccess && primaryEnvironmentId !== null
       ? authEnvironment.accessChanges({
           environmentId: primaryEnvironmentId,
           input: null,
@@ -112,7 +102,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
       : null,
   );
   const desktopWsl = useEnvironmentQuery(
-    showsAccess && canManageLocalBackend && desktopBridge ? desktopWslStateAtom : null,
+    canManageLocalBackend && desktopBridge ? desktopWslStateAtom : null,
   );
   const desktopWslState = desktopWsl.data;
   const desktopWslError = desktopWslMutationError ?? desktopWsl.error;
@@ -718,17 +708,5 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     </>
   );
 
-  if (showsAccess) return <SettingsPageContainer>{primarySettings}</SettingsPageContainer>;
-
-  return (
-    <SettingsPageContainer>
-      {desktopBridge ? (
-        <SettingsSection id="this-app" title="This app">
-          <LocalEnvironmentSetting />
-        </SettingsSection>
-      ) : null}
-      <LoadBalancingSettings environments={loadBalancingEnvironments} />
-      <PullRequestRoutingSettings environments={loadBalancingEnvironments} />
-    </SettingsPageContainer>
-  );
+  return <SettingsPageContainer>{primarySettings}</SettingsPageContainer>;
 }

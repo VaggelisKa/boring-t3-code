@@ -116,24 +116,6 @@ describe("DesktopSettings", () => {
     }),
   );
 
-  it.effect(
-    "persists disabling and re-enabling local execution without clearing backend settings",
-    () =>
-      withSettings(
-        Effect.gen(function* () {
-          const settings = yield* DesktopAppSettings.DesktopAppSettings;
-          yield* settings.setWslBackendEnabled(true);
-          yield* settings.setWslDistro("Ubuntu");
-          const before = yield* settings.get;
-          assert.isTrue((yield* settings.setLocalEnvironmentEnabled(false)).changed);
-          assert.deepEqual(yield* settings.load, { ...before, localEnvironmentEnabled: false });
-          assert.isFalse((yield* settings.setLocalEnvironmentEnabled(false)).changed);
-          yield* settings.setLocalEnvironmentEnabled(true);
-          assert.deepEqual(yield* settings.load, before);
-        }),
-      ),
-  );
-
   it.effect("falls back to defaults when the settings file is malformed", () =>
     withSettings(
       Effect.gen(function* () {
@@ -168,7 +150,6 @@ describe("DesktopSettings", () => {
 
         assert.deepEqual(yield* settings.load, {
           linuxPasswordStore: "auto",
-          localEnvironmentEnabled: true,
           mainWindowBounds: { x: 120, y: 80, width: 1280, height: 900 },
           mainWindowMaximized: false,
           wslBackendEnabled: false,
