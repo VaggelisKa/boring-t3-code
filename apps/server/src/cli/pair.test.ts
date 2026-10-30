@@ -19,16 +19,9 @@ import { Command, CliError } from "effect/cli";
 
 import { cli } from "../binCli.ts";
 import {
-  SERVICE_LAUNCHER_CONTEXT_ENV,
-  SERVICE_LAUNCHER_PROTOCOL,
-} from "../service/serviceProtocol.ts";
-import * as ServiceLauncherClient from "../service/serviceLauncherClient.ts";
-import {
   makePersistedServerRuntimeState,
   persistServerRuntimeState,
 } from "../serverRuntimeState.ts";
-
-import packageJson from "../../package.json" with { type: "json" };
 
 const layerCliRuntime = Layer.mergeAll(NodeServices.layer, NetService.layer);
 
@@ -120,22 +113,7 @@ describe("t3 pair", () => {
         assert.equal(credentials[0]?.label, "t3 pair");
         assert.deepEqual(credentials[0]?.scopes, AuthStandardClientScopes);
       }),
-    ).pipe(
-      Effect.provide(NodeServices.layer),
-      Effect.provideService(HostProcess.Environment, {
-        ...process.env,
-        [SERVICE_LAUNCHER_CONTEXT_ENV]: JSON.stringify({
-          protocol: SERVICE_LAUNCHER_PROTOCOL,
-          childVersion: packageJson.version,
-        }),
-      }),
-      Effect.provideService(ServiceLauncherClient.ServiceLauncherHostProcess, {
-        connected: false,
-        send: () => false,
-        on: () => undefined,
-        off: () => undefined,
-      }),
-    ),
+    ).pipe(Effect.provide(NodeServices.layer)),
   );
 
   it.effect("pairs through the recorded dev web URL for dev servers", () =>

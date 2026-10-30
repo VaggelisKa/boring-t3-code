@@ -180,7 +180,6 @@ describe("t3 server command safety", () => {
           port: 3773,
           origin: "http://127.0.0.1:3773",
           startedAt: "2026-10-01T00:00:00.000Z",
-          serviceManaged: true,
         });
         yield* Effect.promise(() => NodeFSP.mkdir(stateDir, { recursive: true }));
         yield* Effect.promise(() => NodeFSP.writeFile(statePath, record));

@@ -87,10 +87,8 @@ export T3CODE_BITBUCKET_EMAIL="you@example.com"
 export T3CODE_BITBUCKET_API_TOKEN="your-token"
 ```
 
-For a background service, put these `KEY=VALUE` entries in
-[`service.env`](./background-service.md#configure-the-service-environment)
-under T3 home, then run `t3 service restart`. Service installation and updates
-preserve that file.
+Set them in the environment that starts `t3 serve`, for example in your process manager's
+unit file.
 
 ### Azure DevOps
 

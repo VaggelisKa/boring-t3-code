@@ -519,9 +519,6 @@ importers:
       '@legendapp/list':
         specifier: 3.3.5
         version: 3.3.5(patch_hash=6cbdacd8c380d9a5afb9f73d4198dc2cc44be6ef28a955b1183c781469307896)(react-dom@19.3.0(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(bufferutil@4.1.0)(supports-color@7.2.0)(utf-8-validate@6.0.6))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.0)(supports-color@7.2.0)(utf-8-validate@6.0.6))(react@19.3.0)
-      '@noble/hashes':
-        specifier: 'catalog:'
-        version: 1.8.0
       '@pierre/diffs':
         specifier: 1.6.1
         version: 1.6.1(patch_hash=4645364ddf113e48e8827f3b4966b3b1ff745317011e5a3d904e2d8672dee7dc)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -612,9 +609,6 @@ importers:
       heic-to:
         specifier: ^1.5.2
         version: 1.5.2
-      jsonc-parser:
-        specifier: 3.3.1
-        version: 3.3.1
       jszip:
         specifier: 3.10.1
         version: 3.10.1

@@ -60,7 +60,6 @@ const devServerInput = {
   browser: undefined,
   autoBootstrapProjectFromCwd: undefined,
   logWebSocketEvents: undefined,
-  host: undefined,
   port: 13_773,
   devUrl: undefined,
   dryRun: false,
@@ -79,7 +78,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
-          host: undefined,
           port: undefined,
           devUrl: undefined,
         } as const;
@@ -101,7 +99,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
-          host: undefined,
           port: undefined,
           devUrl: undefined,
         } as const;
@@ -113,30 +110,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
 
         assert.equal(byDefault.T3CODE_TELEMETRY_ENABLED, "false");
         assert.equal(optedIn.T3CODE_TELEMETRY_ENABLED, "true");
-      }),
-    );
-
-    it.effect("strips inherited service-launcher context", () =>
-      Effect.gen(function* () {
-        const env = yield* createDevRunnerEnv({
-          mode: "dev",
-          baseEnv: {
-            T3_SERVICE_LAUNCHER_CONTEXT: '{"childVersion":"9.9.9"}',
-            T3_BOOT_SERVICE_UNIT: "t3code.service",
-          },
-          serverOffset: 0,
-          webOffset: 0,
-          t3Home: undefined,
-          browser: undefined,
-          autoBootstrapProjectFromCwd: undefined,
-          logWebSocketEvents: undefined,
-          host: undefined,
-          port: undefined,
-          devUrl: undefined,
-        });
-
-        assert.equal(env.T3_SERVICE_LAUNCHER_CONTEXT, undefined);
-        assert.equal(env.T3_BOOT_SERVICE_UNIT, undefined);
       }),
     );
 
@@ -156,7 +129,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             browser: undefined,
             autoBootstrapProjectFromCwd: undefined,
             logWebSocketEvents: undefined,
-            host: undefined,
             port: undefined,
             devUrl: undefined,
           });
@@ -179,7 +151,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
-          host: undefined,
           port: undefined,
           devUrl: undefined,
         });
@@ -270,7 +241,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
     );
   });
 
-  describe("devPortProbeHosts", () => {
+  describe("port roles", () => {
     it.effect("passes the port role so only the server port sees the bind host", () =>
       Effect.gen(function* () {
         const probed: Array<{ port: number; role: string | undefined }> = [];
@@ -401,7 +372,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
-          host: undefined,
           port: undefined,
           devUrl: undefined,
         });
@@ -423,7 +393,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             browser: undefined,
             autoBootstrapProjectFromCwd: undefined,
             logWebSocketEvents: undefined,
-            host: undefined,
             port: undefined,
             devUrl: undefined,
           }).pipe(
@@ -440,33 +409,6 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
         assert.equal(yield* homeFor("/tmp/t3-dev"), path.resolve("/tmp/t3-dev"));
       }),
     );
-
-    it.effect("rejects a specific non-loopback --host for browser dev modes", () => {
-      const spawnerLayer = Layer.succeed(
-        ChildProcessSpawner.ChildProcessSpawner,
-        ChildProcessSpawner.make(() => Effect.succeed(mockProcess(0))),
-      );
-
-      return Effect.gen(function* () {
-        const error = yield* runDevRunnerWithInput({
-          ...devServerInput,
-          mode: "dev",
-          port: undefined,
-          host: "192.168.1.10",
-        }).pipe(
-          Effect.provide(Layer.mergeAll(emptyConfigLayer, netServiceLayer, spawnerLayer)),
-          Effect.provideService(HostProcess.Platform, "linux"),
-          Effect.flip,
-        );
-
-        if (error._tag !== "DevRunnerHostNotProxiableError") {
-          assert.fail(`Unexpected error: ${error._tag}`);
-        }
-        assert.equal(error.mode, "dev");
-        assert.equal(error.host, "192.168.1.10");
-        assert.include(error.message, "0.0.0.0");
-      });
-    });
 
     it.effect("reports non-zero exits without manufacturing a cause", () => {
       const spawnerLayer = Layer.succeed(

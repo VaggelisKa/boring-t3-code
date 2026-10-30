@@ -246,7 +246,6 @@ export const make = Effect.gen(function* () {
       environmentIcon: true,
       projectCloneTracking: true,
       ignoredFileListing: true,
-      triage: true,
       serverBrowser: true,
       mcpModeLimitHeader: true,
       linkFence: true,

@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { AcpRegistryUrlAuthAction } from "./acpRegistry.ts";
 import { type EnvironmentMachineKind, ExecutionEnvironmentDescriptor } from "./environment.ts";
-import { AuthClientPresentationMetadata, ServerAuthDescriptor } from "./auth.ts";
+import { ServerAuthDescriptor } from "./auth.ts";
 import {
   ForwardCompatibleArray,
   IsoDateTime,
@@ -308,33 +308,6 @@ export const OtlpEndpointCheckResult = Schema.Union([
   Schema.TaggedStruct("Unreachable", { timedOut: Schema.Boolean }),
 ]);
 export type OtlpEndpointCheckResult = typeof OtlpEndpointCheckResult.Type;
-
-/** The client tells the server what it is, so the triage context can name it. */
-export const ServerPrepareTriageInput = Schema.Struct({
-  client: AuthClientPresentationMetadata,
-});
-export type ServerPrepareTriageInput = typeof ServerPrepareTriageInput.Type;
-
-export const ServerPrepareTriageResult = Schema.Struct({
-  /** Composer text that links the session's prompt file. */
-  prompt: Schema.String,
-});
-export type ServerPrepareTriageResult = typeof ServerPrepareTriageResult.Type;
-
-/**
- * The prompt file links as a chip in the user's message; clients spot a triage
- * draft by it.
- */
-export const TRIAGE_PROMPT_FILE_NAME = "triage-playbook.md";
-
-export class ServerPrepareTriageError extends Schema.TaggedError<ServerPrepareTriageError>()(
-  "ServerPrepareTriageError",
-  { cause: Schema.optional(Schema.Defect()) },
-) {
-  override get message(): string {
-    return "Could not write the triage session files.";
-  }
-}
 
 export const ServerTraceDiagnosticsErrorKind = Schema.Literals([
   "trace-file-not-found",

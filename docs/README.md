@@ -16,8 +16,6 @@
 - [Usage and limits](./user/usage.md)
 - [Product usage data](./user/telemetry.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
-- [Running in the background](./user/background-service.md)
-- [Triage an issue](./user/triage.md)
 - Provider guides: [Antigravity](./user/providers-antigravity.md) · [ACP providers (GitHub Copilot)](./user/providers-acp.md)
 
 ---

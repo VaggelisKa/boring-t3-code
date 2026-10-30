@@ -27,7 +27,6 @@ import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
 import * as ServerConfig from "./config.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
-import * as ServiceLauncherClient from "./service/serviceLauncherClient.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as EffectWorker from "./orchestration-v2/EffectWorker.ts";
@@ -194,11 +193,6 @@ it.effect.each([
                   }),
                 );
           },
-        }),
-        Layer.mock(ServiceLauncherClient.ServiceLauncherClient)({
-          managed: false,
-          // @effect-diagnostics-next-line effectSucceedWithVoid:off - This optional result requires undefined, not the wider void type.
-          prepareTrial: Effect.succeed(undefined),
         }),
         Layer.mock(GitVcsDriver.GitVcsDriver)({}),
         Layer.mock(AnalyticsService.AnalyticsService)({}),

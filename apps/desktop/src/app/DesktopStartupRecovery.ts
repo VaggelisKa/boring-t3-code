@@ -1,5 +1,4 @@
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import type * as Scope from "effect/Scope";
@@ -16,8 +15,6 @@ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import * as DesktopObservability from "./DesktopObservability.ts";
 import * as DesktopState from "./DesktopState.ts";
 
-const RELEASES_URL = "https://github.com/pingdotgg/t3code/releases";
-const LAST_STARTED_VERSION_FILE = "desktop-last-started-version";
 // Buttons are plain links to this host; will-navigate cancels them and runs the action.
 const ACTION_ORIGIN = "https://startup-recovery.invalid";
 
@@ -25,23 +22,8 @@ const { logInfo, logWarning } = DesktopObservability.makeComponentLogger(
   "desktop-startup-recovery",
 );
 
-type StartupRecoveryOffer =
-  | { readonly _tag: "Reinstall"; readonly version: string }
-  | { readonly _tag: "Releases" };
-
-const STARTUP_RECOVERY_ACTIONS = ["reinstall", "releases", "copy", "quit"] as const;
+const STARTUP_RECOVERY_ACTIONS = ["copy", "quit"] as const;
 type StartupRecoveryAction = (typeof STARTUP_RECOVERY_ACTIONS)[number];
-
-/** Prefer the last build that started on this machine, then the releases page. */
-function resolveStartupRecoveryOffer(
-  currentVersion: string,
-  lastStartedVersion: string | null,
-): StartupRecoveryOffer {
-  if (lastStartedVersion !== null && lastStartedVersion !== currentVersion) {
-    return { _tag: "Reinstall", version: lastStartedVersion };
-  }
-  return { _tag: "Releases" };
-}
 
 const escapeHtml = (value: string) =>
   value.replace(
@@ -53,28 +35,11 @@ const escapeHtml = (value: string) =>
 const actionLink = (action: StartupRecoveryAction, label: string, primary = false) =>
   `<a class="button${primary ? " primary" : ""}" href="${ACTION_ORIGIN}/${action}">${escapeHtml(label)}</a>`;
 
-function describeOffer(offer: StartupRecoveryOffer): { text: string; action: string } {
-  switch (offer._tag) {
-    case "Reinstall":
-      return {
-        text: `Version ${offer.version} started correctly on this computer. Download it and install it to go back.`,
-        action: actionLink("reinstall", `Download ${offer.version}`, true),
-      };
-    case "Releases":
-      return {
-        text: "Get a different version from the releases page.",
-        action: actionLink("releases", "Open releases", true),
-      };
-  }
-}
-
 function buildStartupRecoveryHtml(input: {
   readonly appVersion: string;
   readonly failure: BackendStartupFailure;
-  readonly offer: StartupRecoveryOffer;
   readonly logDir: string;
 }): string {
-  const offer = describeOffer(input.offer);
   const output = input.failure.output.trim();
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>T3 Code could not start</title><style>
 :root{color-scheme:light dark;--bg:#fff;--fg:#111;--muted:#666;--line:#ddd;--code:#f4f4f4}
@@ -89,8 +54,8 @@ pre{flex:1;min-height:60px;margin:0;overflow:auto;background:var(--code);border:
 </style></head><body>
 <h1>T3 Code could not start</h1>
 <p>${escapeHtml(input.failure.reason)}</p>
-<p>${escapeHtml(offer.text)}</p>
-<div class="actions">${offer.action}${actionLink("copy", "Copy details")}${actionLink("quit", "Quit")}</div>
+<p>Rebuild and reinstall T3 Code from your checkout if it keeps failing.</p>
+<div class="actions">${actionLink("copy", "Copy details", true)}${actionLink("quit", "Quit")}</div>
 <pre>${escapeHtml(output.length > 0 ? output : "The server wrote no output.")}</pre>
 <p class="muted">Version ${escapeHtml(input.appVersion)}. T3 Code tries again in the background. Logs: ${escapeHtml(input.logDir)}</p>
 </body></html>`;
@@ -106,7 +71,6 @@ export const listen: Effect.Effect<
   | ElectronShell.ElectronShell
   | ElectronTheme.ElectronTheme
   | ElectronWindow.ElectronWindow
-  | FileSystem.FileSystem
   | Scope.Scope
 > = Effect.gen(function* () {
   const { primaryBackendStartup, quitting } = yield* DesktopState.DesktopState;
@@ -115,23 +79,12 @@ export const listen: Effect.Effect<
   const electronShell = yield* ElectronShell.ElectronShell;
   const electronTheme = yield* ElectronTheme.ElectronTheme;
   const electronWindow = yield* ElectronWindow.ElectronWindow;
-  const fileSystem = yield* FileSystem.FileSystem;
   const runFork = Effect.runForkWith(yield* Effect.context<never>());
-
-  const lastStartedVersionPath = environment.path.join(
-    environment.stateDir,
-    LAST_STARTED_VERSION_FILE,
-  );
-  const lastStartedVersion = yield* fileSystem.readFileString(lastStartedVersionPath).pipe(
-    Effect.map((text) => text.trim() || null),
-    Effect.orElseSucceed(() => null),
-  );
 
   const windowRef = yield* Ref.make(Option.none<Electron.BrowserWindow>());
   // The failure that opened the window; later restarts do not reload its details.
   const failureRef = yield* Ref.make(Option.none<BackendStartupFailure>());
   const renderedHtmlRef = yield* Ref.make("");
-  const offer = resolveStartupRecoveryOffer(environment.appVersion, lastStartedVersion);
 
   const render = Effect.gen(function* () {
     const window = yield* Ref.get(windowRef);
@@ -140,7 +93,6 @@ export const listen: Effect.Effect<
     const html = buildStartupRecoveryHtml({
       appVersion: environment.appVersion,
       failure: failure.value,
-      offer,
       logDir: environment.logDir,
     });
     if ((yield* Ref.getAndSet(renderedHtmlRef, html)) === html) return;
@@ -152,14 +104,6 @@ export const listen: Effect.Effect<
   ) {
     yield* logInfo("startup recovery action", { action });
     switch (action) {
-      case "reinstall":
-        if (offer._tag === "Reinstall") {
-          yield* electronShell.openExternal(`${RELEASES_URL}/tag/v${offer.version}`);
-        }
-        return;
-      case "releases":
-        yield* electronShell.openExternal(RELEASES_URL);
-        return;
       case "copy": {
         const failure = yield* Ref.get(failureRef);
         if (Option.isNone(failure)) return;
@@ -232,22 +176,12 @@ export const listen: Effect.Effect<
     if (Option.isSome(window) && !window.value.isDestroyed()) window.value.close();
   });
 
-  const rememberStartedVersion = Effect.gen(function* () {
-    if (lastStartedVersion === environment.appVersion) return;
-    yield* fileSystem.writeFileString(lastStartedVersionPath, environment.appVersion);
-  }).pipe(
-    Effect.catch((error) =>
-      logWarning("could not record the started version", { errorTag: error._tag }),
-    ),
-  );
-
   yield* SubscriptionRef.changes(primaryBackendStartup).pipe(
     Stream.runForEach(
       Effect.fn("desktop.startupRecovery.onStartupChange")(function* (startup) {
         if (startup._tag === "Ready") {
           yield* Ref.set(failureRef, Option.none());
           yield* close;
-          yield* rememberStartedVersion;
           return;
         }
         if (startup._tag !== "Failing") return;

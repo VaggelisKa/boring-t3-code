@@ -115,12 +115,10 @@ import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
 import * as McpOAuth from "./auth/McpOAuth.ts";
 import * as McpOAuthHttp from "./auth/mcpOAuthHttp.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
-import * as ServiceLauncherClient from "./service/serviceLauncherClient.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
-import * as TriageService from "./triage/TriageService.ts";
 import * as DesktopTelemetryReceiver from "./resourceTelemetry/DesktopTelemetryReceiver.ts";
 import * as NativeTelemetryClient from "./resourceTelemetry/NativeTelemetryClient.ts";
 import * as ResourceAttribution from "./resourceTelemetry/ResourceAttribution.ts";
@@ -536,7 +534,6 @@ const layerRuntimeDependencies = layerRuntimeCoreDependencies.pipe(
   Layer.provideMerge(layerBackground),
   Layer.provideMerge(layerResourceDiagnostics),
   Layer.provideMerge(TraceDiagnostics.layer),
-  Layer.provideMerge(TriageService.layer.pipe(Layer.provide(GitVcsDriver.layer))),
   Layer.provideMerge(AnalyticsService.layer),
   Layer.provideMerge(ExternalLauncher.layer),
   Layer.provideMerge(ServerLifecycleEvents.layer),
@@ -602,7 +599,6 @@ const layerMakeServer = Layer.unwrap(
     const layerActivation = Layer.succeed(ServerActivation.ServerActivation, awaitActivation);
     const runtimeStateParked = yield* Deferred.make<void>();
     const routesReady = yield* Deferred.make<void>();
-    const layerLauncher = ServiceLauncherClient.layer;
 
     yield* fixPath({ shellEnvironmentPrepared: config.shellEnvironmentPrepared });
 
@@ -623,11 +619,9 @@ const layerMakeServer = Layer.unwrap(
           return;
         }
 
-        const launcher = yield* ServiceLauncherClient.ServiceLauncherClient;
         const state = yield* makePersistedServerRuntimeState({
           config,
           port: address.port,
-          serviceManaged: launcher.managed,
         });
         yield* ownership
           .publish(state)
@@ -645,9 +639,9 @@ const layerMakeServer = Layer.unwrap(
         [Deferred.await(runtimeStateParked), Deferred.await(routesReady)],
         { concurrency: "unbounded" },
       ).pipe(Effect.asVoid),
-    }).pipe(Layer.provideMerge(layerRuntimeDependencies), Layer.provide(layerLauncher));
+    }).pipe(Layer.provideMerge(layerRuntimeDependencies));
 
-    const layerRoutes = HttpRouter.serve(layerMakeRoutes.pipe(Layer.provide(layerLauncher)), {
+    const layerRoutes = HttpRouter.serve(layerMakeRoutes, {
       disableLogger: !config.logWebSocketEvents,
       routerConfig: HTTP_ROUTER_CONFIG,
     }).pipe(
@@ -657,7 +651,7 @@ const layerMakeServer = Layer.unwrap(
     const layerServerApplication = Layer.mergeAll(
       layerRoutes,
       layerHttpListening,
-      layerRuntimeState.pipe(Layer.provide(layerLauncher)),
+      layerRuntimeState,
       HeapSnapshot.layer,
     );
 

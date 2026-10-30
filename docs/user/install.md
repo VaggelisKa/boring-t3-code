@@ -14,13 +14,15 @@ launch T3 Code and configure providers afterwards.
 After a build, the server lives at `apps/server/dist/bin.mjs`. Run it with
 `node apps/server/dist/bin.mjs`, or link it onto your `PATH` as `t3`.
 
-| Task                                             | Command                                                                 |
-| ------------------------------------------------ | ----------------------------------------------------------------------- |
-| Start the server and open the web app            | `t3`                                                                    |
-| Start the server without a browser               | `t3 serve`                                                              |
-| Keep it running in the background (macOS, Linux) | `t3 service install` ([details](./background-service.md))               |
-| Reclaim database space                           | `t3 doctor` ([details](./background-service.md#reclaim-database-space)) |
-| Remove it again                                  | `t3 uninstall`                                                          |
+| Task                                  | Command     |
+| ------------------------------------- | ----------- |
+| Start the server and open the web app | `t3`        |
+| Start the server without a browser    | `t3 serve`  |
+| Reclaim database space                | `t3 doctor` |
+
+`t3 doctor` inspects the data directory and reclaims space. Stop the server before running it
+with `--fix`; `--dry-run` only reports. To keep the server running in the background, use your own
+process manager such as systemd or launchd and run `t3 serve`.
 
 Run `t3 help` or `t3 --help` for the full reference. To start in a new working
 directory, use an explicit path such as `t3 ./my-project`. A bare directory name
@@ -105,4 +107,3 @@ For provider-specific setup, see [Antigravity](./providers-antigravity.md) and
 
 - [Working with threads](./thread-sidebar.md): start tasks and organize parallel work.
 - [Permission modes](./permission-modes.md): choose when agents ask before acting.
-- [Running in the background](./background-service.md): keep a Linux or macOS host available.

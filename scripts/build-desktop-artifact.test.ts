@@ -492,54 +492,23 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     }),
   );
 
-  it.effect("omits update feeds for pull request preview builds", () =>
+  it.effect("never emits an update feed", () =>
     Effect.gen(function* () {
-      const preview = yield* createBuildConfig(
-        "mac",
-        "dmg",
-        "0.0.33-pr.8182.1",
-        false,
-        false,
-        undefined,
-        undefined,
-      );
-      const release = yield* createBuildConfig(
-        "mac",
-        "dmg",
-        "0.0.33",
-        false,
-        false,
-        undefined,
-        undefined,
-      );
+      const preview = yield* createBuildConfig("mac", "dmg", "0.0.33-pr.8182.1", false, undefined);
+      const release = yield* createBuildConfig("mac", "dmg", "0.0.33", false, undefined);
 
       const previewChannel = yield* createBuildConfig(
         "mac",
         "dmg",
         "0.0.41-preview.20260912.1589",
         false,
-        false,
-        undefined,
         undefined,
       );
 
       assert.isNull(preview.publish);
       assert.isNull(previewChannel.publish);
-      assert.deepStrictEqual(release.publish, [
-        {
-          provider: "github",
-          owner: "pingdotgg",
-          repo: "t3code",
-          releaseType: "release",
-        },
-      ]);
-    }).pipe(
-      Effect.provide(
-        ConfigProvider.layer(
-          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
-        ),
-      ),
-    ),
+      assert.isNull(release.publish);
+    }),
   );
 
   // pnpm writes "set this to true or false" placeholders into allowBuilds when a
@@ -1514,7 +1483,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   it.effect("signs Windows builds with signtool on Windows and the jsign hook elsewhere", () =>
     Effect.gen(function* () {
       const signedWinConfig = (hostPlatform: string) =>
-        createBuildConfig("win", "nsis", "1.2.3", true, false, undefined, undefined).pipe(
+        createBuildConfig("win", "nsis", "1.2.3", true, undefined).pipe(
           Effect.map((config) => config.win as Record<string, unknown>),
           Effect.provideService(HostProcess.Platform, hostPlatform),
         );
@@ -1593,8 +1562,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
             keepStage: Option.none(),
             signed: Option.none(),
             verbose: Option.none(),
-            mockUpdates: Option.none(),
-            mockUpdateServerPort: Option.none(),
             wslRuntime: Option.none(),
           }),
         );
@@ -1617,8 +1584,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         keepStage: Option.some(false),
         signed: Option.some(false),
         verbose: Option.some(false),
-        mockUpdates: Option.some(false),
-        mockUpdateServerPort: Option.none(),
         wslRuntime: Option.none(),
       }).pipe(
         Effect.provide(
@@ -1629,7 +1594,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
                 T3CODE_DESKTOP_KEEP_STAGE: "true",
                 T3CODE_DESKTOP_SIGNED: "true",
                 T3CODE_DESKTOP_VERBOSE: "true",
-                T3CODE_DESKTOP_MOCK_UPDATES: "true",
               },
             }),
           ),
@@ -1640,7 +1604,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(resolved.keepStage, false);
       assert.equal(resolved.signed, false);
       assert.equal(resolved.verbose, false);
-      assert.equal(resolved.mockUpdates, false);
     }),
   );
 });
