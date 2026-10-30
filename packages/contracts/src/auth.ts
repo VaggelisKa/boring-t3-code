@@ -247,7 +247,8 @@ export const AuthWebSocketTicketResult = Schema.Struct({
 export type AuthWebSocketTicketResult = typeof AuthWebSocketTicketResult.Type;
 
 /**
- * Media routes share a ticket across requests; RPC uses a separate ticket.
+ * Media routes repeat one ticket in `<img>` and `EventSource` URLs, so a ticket captured there
+ * must not open the RPC socket; RPC uses a separate ticket.
  * Older clients mint at the bare path and receive tickets valid for either use.
  */
 export const AuthWebSocketTicketUse = Schema.Literals(["rpc", "media"]);

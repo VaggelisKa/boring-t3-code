@@ -170,6 +170,18 @@ export const make = Effect.gen(function* () {
 
   const resolveSecretPath = (name: string) => path.join(serverConfig.secretsDir, `${name}.bin`);
 
+  // Servers before DPoP removal left one `dpop-proof-*.bin` replay marker per verified proof here.
+  yield* fileSystem.readDirectory(serverConfig.secretsDir).pipe(
+    Effect.flatMap((names) =>
+      Effect.forEach(
+        names.filter((name) => name.startsWith("dpop-proof-") && name.endsWith(".bin")),
+        (name) => fileSystem.remove(path.join(serverConfig.secretsDir, name)),
+        { discard: true },
+      ),
+    ),
+    Effect.catchCause((cause) => Effect.logWarning("Failed to remove legacy DPoP markers", cause)),
+  );
+
   const get: ServerSecretStore["Service"]["get"] = (name) =>
     fileSystem.readFile(resolveSecretPath(name)).pipe(
       Effect.map((bytes) => Option.some(Uint8Array.from(bytes))),
