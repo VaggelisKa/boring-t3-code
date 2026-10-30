@@ -1105,7 +1105,6 @@ export * from "./threadHistoryMerge.ts";
 export * from "./threadSnapshotHttp.ts";
 export * from "./composerPathSearch.ts";
 export * from "./threadCommands.ts";
-export * from "./threadFeedback.ts";
 export * from "./threadDetail.ts";
 export * from "./threadFamilies.ts";
 export * from "./olderSettledThreads.ts";

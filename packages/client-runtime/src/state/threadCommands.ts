@@ -3,20 +3,12 @@ import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
-import {
-  WS_METHODS,
-  type EnvironmentId,
-  type OrchestrationV2ShellSnapshot,
-} from "@t3tools/contracts";
+import { type EnvironmentId, type OrchestrationV2ShellSnapshot } from "@t3tools/contracts";
 
 import { createOptimisticThreadLifecycle } from "./threadLifecycle.ts";
 import * as DateTime from "effect/DateTime";
 
-import {
-  createAtomCommandScheduler,
-  createEnvironmentCommand,
-  createEnvironmentRpcCommand,
-} from "./runtime.ts";
+import { createAtomCommandScheduler, createEnvironmentCommand } from "./runtime.ts";
 import {
   type InterruptThreadTurnInput,
   archiveThread,
@@ -356,12 +348,6 @@ export function createThreadEnvironmentAtoms<R, E>(
         key: ({ environmentId, input }) =>
           `history:${JSON.stringify([environmentId, input.threadId])}`,
       },
-    }),
-    uploadFeedback: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:commands:thread:upload-feedback",
-      tag: WS_METHODS.providerUploadFeedback,
-      scheduler,
-      concurrency,
     }),
   };
   const optimistic = createOptimisticThreadLifecycle(snapshotAtom);

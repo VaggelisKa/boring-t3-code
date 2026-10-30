@@ -34,11 +34,6 @@ export function exhaustedUsageWindow(
   );
   if (model === undefined) return exhausted[0];
   switch (provider?.driver) {
-    case "cursor": {
-      const api = exhausted.find((window) => window.id === "apiPercentUsed");
-      const auto = exhausted.find((window) => window.id === "autoPercentUsed");
-      return /^(auto|default|grok|composer)/.test(model) ? auto && api : api;
-    }
     case "antigravity": {
       const family = model.match(/^(gemini|claude|gpt)-/)?.[1];
       return exhausted.find((window) => {
@@ -51,10 +46,6 @@ export function exhaustedUsageWindow(
         );
       });
     }
-    case "opencode":
-      return exhausted.find(
-        (window) => !window.id.startsWith("go_") || model.startsWith("opencode-go/"),
-      );
     default:
       return exhausted[0];
   }
@@ -97,46 +88,6 @@ export function resolveNewThreadModelSelection(input: {
     selection: input.fallbackSelection,
     fallback: { provider, resetsAt: window.resetsAt ?? null },
   };
-}
-
-export const CHATGPT_USAGE_URL = "https://chatgpt.com/#settings/Usage";
-export const CHATGPT_USAGE_LIMIT_CODE = "subscription_sharing_usage_limit_exceeded";
-/** A ChatGPT Business admin caps plan use in other apps; only the admin can raise it. */
-export const CHATGPT_WORKSPACE_USAGE_LIMIT_CODE =
-  "subscription_sharing_workplace_individual_usage_limit_exceeded";
-/** OpenAI's partner guidelines fix this wording; the user sends it to their admin themselves. */
-export const CHATGPT_WORKSPACE_ADMIN_REQUEST =
-  "I've reached the limit for using my ChatGPT plan in T3 Code. Could you increase our workspace's usage limits so I can continue?\n\nGo to admin.openai.com → Workspace → Usage limits. Thank you!";
-
-export function usesChatGptSharing(provider: ServerProvider | null | undefined): boolean {
-  return provider?.auth.status === "authenticated" && provider.auth.subscriptionSharing === true;
-}
-
-const CURSOR_USAGE_WINDOWS = [
-  {
-    id: "totalPercentUsed",
-    label: "Overall",
-    description: "Combined usage across both allowances, not a third quota.",
-  },
-  {
-    id: "autoPercentUsed",
-    label: "Cursor Models",
-    description: "Grok and Composer use this first. Auto can use either pool.",
-  },
-  {
-    id: "apiPercentUsed",
-    label: "Other Models",
-    description: "Claude, GPT, and Gemini use this pool. Grok and Composer fall back here.",
-  },
-] as const;
-
-export function cursorUsageWindowDetails(id: string) {
-  return CURSOR_USAGE_WINDOWS.find((window) => window.id === id);
-}
-
-function cursorUsageWindowRank(id: string): number {
-  const rank = CURSOR_USAGE_WINDOWS.findIndex((window) => window.id === id);
-  return rank < 0 ? CURSOR_USAGE_WINDOWS.length : rank;
 }
 
 function providersWithLimits(providers: readonly ServerProvider[]): readonly ServerProvider[] {
@@ -389,13 +340,7 @@ export function displayLimitWindows(pool: LimitPool) {
         WINDOW_KIND_ORDER[left.kind] - WINDOW_KIND_ORDER[right.kind],
     );
   }
-  if (pool.driver !== "cursor") return pool.windows;
-  const hasAuto = pool.windows.some((window) => window.id === "autoPercentUsed");
-  const hasApi = pool.windows.some((window) => window.id === "apiPercentUsed");
-  const hasBothPools = hasAuto && hasApi;
-  return pool.windows
-    .filter((window) => !hasBothPools || window.id !== "totalPercentUsed")
-    .sort((left, right) => cursorUsageWindowRank(left.id) - cursorUsageWindowRank(right.id));
+  return pool.windows;
 }
 
 const WINDOW_KIND_ORDER: Record<ServerProviderUsageWindow["kind"], number> = {
@@ -421,12 +366,9 @@ export function collectLimitPools(
       .sort((left, right) => WINDOW_KIND_ORDER[left.kind] - WINDOW_KIND_ORDER[right.kind])[0];
     const orderReset = (account: LimitAccount) => {
       const window = account.limits.windows.find(
-        (window) => orderWindow && poolKey(driver, window) === poolKey(driver, orderWindow),
+        (window) => orderWindow && poolKey(window) === poolKey(orderWindow),
       );
-      return (
-        (window ? resetMillis(poolMember(account, window, now).window) : null) ??
-        Number.POSITIVE_INFINITY
-      );
+      return (window ? resetMillis(window) : null) ?? Number.POSITIVE_INFINITY;
     };
     const sorted = [...members].sort(
       (left, right) =>
@@ -442,74 +384,28 @@ function accountSortName(account: LimitAccount): string {
   return (account.displayName ?? account.email ?? account.key).toLowerCase();
 }
 
-// Codex ids name slots, so pool by kind; other drivers' ids identify distinct allowances.
-function poolKey(driver: ServerProvider["driver"], window: ServerProviderUsageWindow): string {
-  return driver === "codex" ? window.kind : `${window.kind}:${window.id}`;
+function poolKey(window: ServerProviderUsageWindow): string {
+  return `${window.kind}:${window.id}`;
 }
 
-function poolMember(account: LimitAccount, reported: ServerProviderUsageWindow, now: number) {
-  const spentWeekly =
-    reported.kind === "session"
-      ? account.limits.windows.find(
-          (window) =>
-            window.usedPercent >= 100 &&
-            (account.driver === "claudeAgent"
-              ? window.id === "seven_day"
-              : account.driver === "codex" && window.kind === "weekly"),
-        )
-      : undefined;
-  if (!spentWeekly) return { account, window: reported, refillPercent: reported.usedPercent };
-
-  const weeklyReset = resetMillis(spentWeekly);
-  const sessionReset = resetMillis(reported);
-  const cutoff = Math.max(now, Date.parse(account.limits.checkedAt));
-  let resetsAt: string | undefined;
-  let refillPercent = 0;
-  // A stale or missing clock cannot tell us when blocked quota becomes usable.
-  if (
-    weeklyReset !== null &&
-    sessionReset !== null &&
-    weeklyReset > cutoff &&
-    sessionReset > cutoff
-  ) {
-    if (sessionReset <= weeklyReset) {
-      resetsAt = spentWeekly.resetsAt;
-      refillPercent = 100;
-    } else if (reported.usedPercent >= 100) {
-      resetsAt = reported.resetsAt;
-      refillPercent = 100;
-    } else {
-      resetsAt = spentWeekly.resetsAt;
-      refillPercent = 100 - Math.max(0, Math.min(100, reported.usedPercent));
-    }
-  }
-  return {
-    account,
-    // Suppression is not session spending, so it has no session pace clock.
-    window: { ...reported, usedPercent: 100, resetsAt, windowDurationMins: undefined },
-    refillPercent,
-  };
+function poolMember(account: LimitAccount, reported: ServerProviderUsageWindow) {
+  return { account, window: reported, refillPercent: reported.usedPercent };
 }
 
 function poolWindows(accounts: readonly LimitAccount[], now: number): readonly LimitPoolWindow[] {
   const byKey = new Map<string, LimitPoolMember[]>();
   for (const account of accounts) {
     for (const reported of account.limits.windows) {
-      const member = poolMember(account, reported, now);
-      const { window } = member;
-      const pooled = poolKey(account.driver, window);
-      const key = byKey.get(pooled)?.some((member) => member.account === account)
-        ? `${window.kind}:${window.id}`
-        : pooled;
+      const member = poolMember(account, reported);
+      const key = poolKey(reported);
       const list = byKey.get(key);
       if (list) list.push(member);
       else byKey.set(key, [member]);
     }
   }
-  const pools = [...byKey].map(([key, members]): LimitPoolWindow => {
+  const pools = [...byKey.values()].map((members): LimitPoolWindow => {
     const memberByAccount = new Map(members.map((member) => [member.account.key, member]));
     const first = members[0]!.window;
-    const id = members[0]!.account.driver === "codex" ? key : first.id;
     const usedPercent = members.reduce((sum, m) => sum + m.window.usedPercent, 0) / members.length;
     // Judge pace only for windows with reset clocks; others add spend without elapsed time.
     const timed = members.flatMap((m) => {
@@ -534,7 +430,7 @@ function poolWindows(accounts: readonly LimitAccount[], now: number): readonly L
       })
       .sort((left, right) => left.at - right.at);
     return {
-      id,
+      id: first.id,
       kind: first.kind,
       label: first.label,
       members,

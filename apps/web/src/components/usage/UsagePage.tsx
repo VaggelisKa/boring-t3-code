@@ -1,5 +1,3 @@
-import { ChatGptUsageButton } from "../settings/ChatGptUsageButton";
-import { usesChatGptSharing } from "@t3tools/shared/usageLimits";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
@@ -94,7 +92,7 @@ import {
   resolveUsageShortcut,
   type UsageMetric,
 } from "./usageShortcuts";
-import { PROVIDER_ORDER, PROVIDER_PRESENTATION, providersWithUsage } from "./usageProviders";
+import { PROVIDER_ORDER, providerPresentation, providersWithUsage } from "./usageProviders";
 import {
   readUsagePagePreferences,
   saveUsagePagePreferences,
@@ -109,7 +107,7 @@ function isUsageWindowDays(value: number): value is UsagePagePreferences["window
   return WINDOW_OPTIONS.some((option) => option.days === value);
 }
 
-const providerLabel = (provider: UsageProviderKind) => PROVIDER_PRESENTATION[provider].label;
+const providerLabel = (provider: UsageProviderKind) => providerPresentation(provider).label;
 
 function usageLoading(
   showingKept: boolean,
@@ -208,14 +206,18 @@ export function UsagePage() {
     refresh,
   } = useUsage(window, selectedEnvironmentIds, hiddenProviders);
   const merged = shown?.merged ?? answeredUsage;
+  const reportedProviders = new Set(providersWithUsage(merged.providers));
+  const filterableProviders = PROVIDER_ORDER.filter(
+    (provider) =>
+      provider === "antigravity" ||
+      reportedProviders.has(provider) ||
+      hiddenProviders.has(provider),
+  );
   const shownWindow = shown?.window ?? window;
   const shownHourly = shownWindow.resolution === "hour";
   const refreshingUsage = isRefreshing && !showingLimits;
   const showingKept = shown !== null && shown.window !== window;
   const presentations = useAtomValue(environmentPresentations.presentationsAtom);
-  const presentationsWithProviders = useAtomValue(
-    environmentPresentations.presentationsWithProvidersAtom,
-  );
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
     reportFailure: false,
   });
@@ -339,13 +341,6 @@ export function UsagePage() {
     shownWindow.sinceTime === undefined || shownWindow.untilTime === undefined
       ? []
       : enumerateHourStarts(shownWindow.sinceTime, shownWindow.untilTime);
-  const showChatGptSharing =
-    !hiddenProviders.has("codex") &&
-    [...presentationsWithProviders].some(
-      ([id, presentation]) =>
-        (selectedEnvironmentIds === null || selectedEnvironmentIds.has(id)) &&
-        (presentation.serverConfig?.providers ?? []).some(usesChatGptSharing),
-    );
 
   const windowLabel =
     shownHourly && shownWindow.sinceTime !== undefined && shownWindow.untilTime !== undefined
@@ -375,6 +370,7 @@ export function UsagePage() {
         <WorkspaceBreadcrumbSeparator />
         <WorkspaceBreadcrumbItem current className="min-w-10">
           <UsageProviderFilter
+            providers={filterableProviders}
             hiddenProviders={hiddenProviders}
             onChange={(next) => updatePreferences({ hiddenProviders: next })}
           />
@@ -540,7 +536,6 @@ export function UsagePage() {
                 selectedEnvironments={selectedEnvironments}
                 hiddenProviders={hiddenProviders}
                 refreshingUsage={refreshingUsage}
-                showChatGptSharing={showChatGptSharing}
                 onSelectModel={selectUsageModel}
               />
             )}
@@ -588,7 +583,6 @@ function UsageOverview({
   selectedEnvironments,
   hiddenProviders,
   refreshingUsage,
-  showChatGptSharing,
   onSelectModel,
 }: {
   readonly merged: MergedUsage;
@@ -601,7 +595,6 @@ function UsageOverview({
   readonly selectedEnvironments: readonly EnvironmentUsageStatus[];
   readonly hiddenProviders: ReadonlySet<UsageProviderKind>;
   readonly refreshingUsage: boolean;
-  readonly showChatGptSharing: boolean;
   readonly onSelectModel: (key: string) => void;
 }) {
   const [breakdown, setBreakdown] = useState<"model" | "time">("model");
@@ -630,9 +623,7 @@ function UsageOverview({
             source.message &&
             !source.action &&
             !hiddenProviders.has(source.fingerprint.provider) &&
-            (source.status === "partial" ||
-              source.status === "failed" ||
-              source.fingerprint.provider === "cursor")
+            (source.status === "partial" || source.status === "failed")
               ? [source.message]
               : [],
           ) ?? [],
@@ -694,13 +685,6 @@ function UsageOverview({
             </span>
           </div>
 
-          {showChatGptSharing ? (
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>ChatGPT shared usage</span>
-              <ChatGptUsageButton size="xs" />
-            </div>
-          ) : null}
-
           {activeProviders.map((provider) => {
             const totals = merged.providers.find((entry) => entry.provider === provider);
             const share = metric === "cost" ? (totals?.costShare ?? 0) : (totals?.tokenShare ?? 0);
@@ -718,12 +702,12 @@ function UsageOverview({
                       aria-hidden
                       className="size-2 shrink-0 rounded-full"
                       style={{
-                        backgroundColor: PROVIDER_PRESENTATION[provider].color,
+                        backgroundColor: providerPresentation(provider).color,
                       }}
                     />
                     <ProviderMark provider={provider} className="size-4" />
                     <span className="flex min-w-0 items-baseline gap-1.5">
-                      <span className="truncate">{PROVIDER_PRESENTATION[provider].label}</span>
+                      <span className="truncate">{providerPresentation(provider).label}</span>
                       <span
                         className={cn(
                           "shrink-0 whitespace-nowrap text-2xs text-muted-foreground tabular-nums",
@@ -919,7 +903,7 @@ function UsageOverview({
                               className="h-full rounded-full"
                               style={{
                                 width: `max(0.5rem, ${(value / breakdownPeak) * 100}%)`,
-                                backgroundColor: PROVIDER_PRESENTATION[model.provider].color,
+                                backgroundColor: providerPresentation(model.provider).color,
                               }}
                             />
                           </div>
@@ -960,7 +944,7 @@ function UsageOverview({
                   <th className="py-2 font-normal">{shownHourly ? "Hour" : "Day"}</th>
                   {activeProviders.map((provider) => (
                     <th key={provider} className="py-2 pl-4 text-right font-normal">
-                      {PROVIDER_PRESENTATION[provider].label}
+                      {providerPresentation(provider).label}
                     </th>
                   ))}
                   <th className="py-2 pl-4 text-right font-normal">Total</th>
@@ -1034,7 +1018,7 @@ function ProviderMark({
   readonly provider: UsageProviderKind;
   readonly className: string;
 }) {
-  const presentation = PROVIDER_PRESENTATION[provider];
+  const presentation = providerPresentation(provider);
   return (
     <ProviderInstanceIcon
       driverKind={presentation.driverKind}
@@ -1249,20 +1233,22 @@ function UsageEnvironmentFilter({
 }
 
 function UsageProviderFilter({
+  providers,
   hiddenProviders,
   onChange,
 }: {
+  readonly providers: readonly UsageProviderKind[];
   readonly hiddenProviders: ReadonlySet<UsageProviderKind>;
   readonly onChange: (hiddenProviders: readonly UsageProviderKind[]) => void;
 }) {
-  const visible = PROVIDER_ORDER.filter((provider) => !hiddenProviders.has(provider));
+  const visible = providers.filter((provider) => !hiddenProviders.has(provider));
   const label =
-    visible.length === PROVIDER_ORDER.length
+    visible.length === providers.length
       ? "All providers"
       : visible.length === 0
         ? "No providers"
         : visible.length === 1
-          ? PROVIDER_PRESENTATION[visible[0]!].label
+          ? providerPresentation(visible[0]!).label
           : `${visible.length} providers`;
 
   return (
@@ -1278,12 +1264,12 @@ function UsageProviderFilter({
         <MenuCheckboxItem
           checked={hiddenProviders.size === 0}
           closeOnClick={false}
-          onCheckedChange={(checked) => onChange(checked ? [] : PROVIDER_ORDER)}
+          onCheckedChange={(checked) => onChange(checked ? [] : providers)}
         >
           All providers
         </MenuCheckboxItem>
         <MenuSeparator />
-        {PROVIDER_ORDER.map((provider) => (
+        {providers.map((provider) => (
           <MenuCheckboxItem
             key={provider}
             checked={!hiddenProviders.has(provider)}
@@ -1298,7 +1284,7 @@ function UsageProviderFilter({
           >
             <span className="flex min-w-0 items-center gap-2">
               <ProviderMark provider={provider} className="size-3.5" />
-              <span className="truncate">{PROVIDER_PRESENTATION[provider].label}</span>
+              <span className="truncate">{providerPresentation(provider).label}</span>
             </span>
           </MenuCheckboxItem>
         ))}
@@ -1316,7 +1302,7 @@ function UsageSkeleton() {
             <Skeleton className="h-10 w-36" />
             <Skeleton className="h-4 w-32" />
           </div>
-          {PROVIDER_ORDER.map((provider) => (
+          {PROVIDER_ORDER.slice(0, 1).map((provider) => (
             <div key={provider} className="flex flex-col gap-1">
               <div className="flex min-h-5 items-center justify-between gap-4">
                 <span className="flex items-center gap-2">

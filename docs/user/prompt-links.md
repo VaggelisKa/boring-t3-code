@@ -1,7 +1,7 @@
 # Prompt links
 
-A prompt link opens T3 Code with a prompt ready to send. Use one to share a prompt on social
-media, or to put a one-click fix in a pull request comment.
+A prompt link opens T3 Code with a prompt ready to send. Use one to keep a prompt you reuse, or
+to put a one-click fix in a pull request comment for people who run T3 Code on the same address.
 
 A link never runs anything. It opens a draft. You read the prompt, then press Send. A link cannot
 change your permission mode, branch, or worktree. Your own defaults apply.
@@ -15,16 +15,16 @@ and the model you picked. Sent messages have a **Copy prompt link** button too.
 You can also write a link by hand:
 
 ```
-https://app.t3.codes/new?prompt=Rate%20my%20swearing
-https://app.t3.codes/new?prompt=Fix%20the%20build&repo=owner/name&provider=codex&model=gpt-5.5
-https://app.t3.codes/new?pr=owner/name/123&prompt=Fix%20the%20failing%20check
+http://localhost:3773/new?prompt=Rate%20my%20swearing
+http://localhost:3773/new?prompt=Fix%20the%20build&repo=owner/name&provider=antigravity
+http://localhost:3773/new?pr=owner/name/123&prompt=Fix%20the%20failing%20check
 ```
 
 | Parameter  | Meaning                                                                       |
 | ---------- | ----------------------------------------------------------------------------- |
 | `prompt`   | The prompt. Required, except on pull request links. At most 8,000 characters. |
 | `repo`     | A GitHub repository, as `owner/name` or its URL.                              |
-| `provider` | A provider such as `codex` or `claude`.                                       |
+| `provider` | A provider such as `antigravity`.                                             |
 | `model`    | A model of that provider, by its id or name.                                  |
 | `pr`       | A GitHub pull request, as `owner/name/123` or its URL.                        |
 
@@ -32,9 +32,8 @@ Encode the prompt for a URL. In JavaScript, use `encodeURIComponent`.
 
 ## Open a link
 
-On app.t3.codes, the link first asks where to open it: the desktop or mobile app, this browser
-when it is connected to a machine, or the download page. Select **Remember my choice** to skip
-this step next time.
+Links copied in the browser point at the server you copied them from. Links copied in the desktop
+app are `t3code://` links, which open the desktop app on macOS.
 
 - **No `repo`**: the draft opens without a project, on the machine you used last.
 - **`repo`**: the draft opens in your most recently used project for that repository. A fork
@@ -47,7 +46,7 @@ this step next time.
   worktree. T3 Code checks the code out only after you confirm, because the checkout runs your
   setup script on it.
 
-A thread link with a prompt, such as `https://app.t3.codes/<environment>/<thread>?prompt=…`,
+A thread link with a prompt, such as `http://localhost:3773/<environment>/<thread>?prompt=…`,
 puts the prompt in that thread's composer. If you already typed a draft there, T3 Code asks
 before it replaces it.
 

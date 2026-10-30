@@ -50,7 +50,6 @@ import {
 import { AddProviderInstanceWizardSteps } from "./AddProviderInstanceWizardSteps";
 import { AcpRegistrySearchStep, useAcpRegistrySearch } from "./AcpRegistrySearchStep";
 import { ProviderWizardAuthenticationStep } from "./ProviderWizardAuthenticationStep";
-import { MultipleAccountsNote } from "./MultipleAccountsNote";
 import { ProviderEnvironmentSection } from "./ProviderInstanceCard";
 
 /** Limit the slug to 48 chars so the composed ProviderInstanceId fits its 64-char cap. */
@@ -445,7 +444,6 @@ export function AddProviderInstanceDialog({
                   onValueChange={selectDriver}
                   aria-labelledby="add-instance-driver-label"
                 />
-                <MultipleAccountsNote environmentId={environmentId} driver={driver} />
               </div>
 
               {wizardStep === 0 ? (

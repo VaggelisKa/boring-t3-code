@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { ProviderDriverKind, type ModelCapabilities } from "@t3tools/contracts";
 
 import {
-  DESCRIPTOR_PRESETS_BY_KIND,
-  descriptorFromPreset,
   definitionFromDraft,
   descriptorsFromCapabilities,
   draftFromDefinition,
@@ -72,23 +69,20 @@ describe("customModelEditor.logic", () => {
   });
 
   it("preserves the current choice when it differs from the built-in default", () => {
-    const descriptors = descriptorsFromCapabilities(
-      {
-        optionDescriptors: [
-          {
-            id: "effort",
-            label: "Reasoning",
-            type: "select",
-            currentValue: "high",
-            options: [
-              { id: "low", label: "Low", isDefault: true },
-              { id: "high", label: "High" },
-            ],
-          },
-        ],
-      },
-      ProviderDriverKind.make("claudeAgent"),
-    );
+    const descriptors = descriptorsFromCapabilities({
+      optionDescriptors: [
+        {
+          id: "effort",
+          label: "Reasoning",
+          type: "select",
+          currentValue: "high",
+          options: [
+            { id: "low", label: "Low", isDefault: true },
+            { id: "high", label: "High" },
+          ],
+        },
+      ],
+    });
     expect(descriptors[0]!.choices.map((choice) => choice.isDefault)).toEqual([false, true]);
     expect(
       definitionFromDraft(draft({ descriptors })).capabilities?.optionDescriptors?.[0],
@@ -96,57 +90,21 @@ describe("customModelEditor.logic", () => {
   });
 
   it("drops prompt-injected choices when copying a built-in's descriptors", () => {
-    const [copied] = descriptorsFromCapabilities(
-      {
-        optionDescriptors: [
-          {
-            id: "effort",
-            label: "Reasoning",
-            type: "select",
-            options: [
-              { id: "high", label: "High", isDefault: true },
-              { id: "ultrathink", label: "Ultrathink" },
-            ],
-            promptInjectedValues: ["ultrathink"],
-          },
-        ],
-      },
-      ProviderDriverKind.make("claudeAgent"),
-    );
-    expect(copied!.choices.map((choice) => choice.id)).toEqual(["high"]);
-  });
-
-  it("excludes Claude context choices from presets and copies without changing other providers or authored entries", () => {
-    const capabilities: ModelCapabilities = {
+    const [copied] = descriptorsFromCapabilities({
       optionDescriptors: [
         {
-          id: "contextWindow",
-          label: "Context",
+          id: "effort",
+          label: "Reasoning",
           type: "select",
-          options: [{ id: "1m", label: "1M", isDefault: true }],
+          options: [
+            { id: "high", label: "High", isDefault: true },
+            { id: "ultrathink", label: "Ultrathink" },
+          ],
+          promptInjectedValues: ["ultrathink"],
         },
-        { id: "thinking", label: "Thinking", type: "boolean", currentValue: true },
       ],
-    };
-    const claude = ProviderDriverKind.make("claudeAgent");
-    const copied = definitionFromDraft(
-      draft({ descriptors: descriptorsFromCapabilities(capabilities, claude) }),
-    );
-    expect(copied.capabilities?.optionDescriptors).toEqual([capabilities.optionDescriptors![1]]);
-    const presets = definitionFromDraft(
-      draft({
-        descriptors: (DESCRIPTOR_PRESETS_BY_KIND[claude] ?? []).map(descriptorFromPreset),
-      }),
-    );
-    expect(
-      presets.capabilities?.optionDescriptors?.some((option) => option.id === "contextWindow"),
-    ).toBe(false);
-    const cursorCopy = descriptorsFromCapabilities(capabilities, ProviderDriverKind.make("cursor"));
-    expect(cursorCopy.map((option) => option.id)).toEqual(["contextWindow", "thinking"]);
-    const authored = { slug: "custom", name: "Custom", capabilities };
-    expect(
-      definitionFromDraft(draftFromDefinition(authored)).capabilities?.optionDescriptors?.[0],
-    ).toMatchObject(capabilities.optionDescriptors![0]!);
+    });
+    expect(copied!.choices.map((choice) => choice.id)).toEqual(["high"]);
   });
 
   it("rejects duplicate ids, blank ids, and selects without choices", () => {

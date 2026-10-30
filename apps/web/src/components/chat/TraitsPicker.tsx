@@ -22,7 +22,6 @@ import {
   getProviderOptionCurrentLabel,
   getProviderOptionDescriptors,
   isClaudeUltrathinkPrompt,
-  normalizeModelSlug,
 } from "@t3tools/shared/model";
 import { memo, type ReactNode, useRef } from "react";
 import { GaugeIcon, ZapIcon } from "lucide-react";
@@ -58,41 +57,6 @@ export function readPromptUltrathink(prompt: string): PromptUltrathink {
   return isClaudeUltrathinkPrompt(prompt.replace(/^Ultrathink:\s*/i, "")) ? "body" : "prefix";
 }
 
-const SAVED_OPTION_LABELS: Readonly<Record<string, string>> = {
-  agent: "Agent",
-  effort: "Effort",
-  reasoningEffort: "Reasoning effort",
-  variant: "Reasoning",
-};
-
-function savedOptionLabel(id: string): string {
-  return (
-    SAVED_OPTION_LABELS[id] ??
-    id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (character) => character.toUpperCase())
-  );
-}
-
-function buildUnavailableModelOptionDescriptors(
-  selections: ProviderOptions | null | undefined,
-): ReadonlyArray<ProviderOptionDescriptor> {
-  return (selections ?? []).map((selection) =>
-    typeof selection.value === "boolean"
-      ? {
-          id: selection.id,
-          label: savedOptionLabel(selection.id),
-          type: "boolean" as const,
-          currentValue: selection.value,
-        }
-      : {
-          id: selection.id,
-          label: savedOptionLabel(selection.id),
-          type: "select" as const,
-          options: [{ id: selection.value, label: selection.value }],
-          currentValue: selection.value,
-        },
-  );
-}
-
 type TraitsPersistence =
   | {
       threadRef?: ScopedThreadRef;
@@ -122,19 +86,10 @@ function getSelectedTraits(
   planModeEnabled: boolean,
 ) {
   const caps = getProviderModelCapabilities(models, model, provider, planModeEnabled);
-  const modelIsUnavailable =
-    provider === "opencode" &&
-    !models.some((candidate) => candidate.slug === normalizeModelSlug(model, provider));
-  const descriptors = modelIsUnavailable
-    ? buildUnavailableModelOptionDescriptors(
-        planModeEnabled
-          ? modelOptions
-          : modelOptions?.filter((option) => option.id !== "agent" || option.value !== "plan"),
-      )
-    : getProviderOptionDescriptors({
-        caps,
-        selections: modelOptions,
-      });
+  const descriptors = getProviderOptionDescriptors({
+    caps,
+    selections: modelOptions,
+  });
   const selectDescriptors = descriptors.filter(
     (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "select" }> =>
       descriptor.type === "select",
@@ -186,7 +141,6 @@ function getSelectedTraits(
     ultrathinkInBodyText,
     selectedAgent,
     selectedAgentLabel,
-    modelIsUnavailable,
   };
 }
 
@@ -222,13 +176,7 @@ function getTraitsSectionVisibility(input: {
     showFastMode,
     showContextWindow,
     showAgent,
-    hasAnyControls:
-      showEffort ||
-      showThinking ||
-      showFastMode ||
-      showContextWindow ||
-      showAgent ||
-      (selected.modelIsUnavailable && selected.descriptors.length > 0),
+    hasAnyControls: showEffort || showThinking || showFastMode || showContextWindow || showAgent,
   };
 }
 
@@ -257,7 +205,7 @@ export function getReasoningTraitStep(input: {
     true,
     input.planModeEnabled,
   );
-  if (selected.modelIsUnavailable || selected.ultrathinkInBodyText) return null;
+  if (selected.ultrathinkInBodyText) return null;
   const descriptor = selected.selectDescriptors.find((entry) =>
     REASONING_SELECT_DESCRIPTOR_IDS.has(entry.id),
   );
@@ -377,7 +325,6 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     ultrathinkPromptControlled,
     ultrathinkInBodyText,
     hasAnyControls,
-    modelIsUnavailable,
   } = selected;
   const updateDescriptors = (nextDescriptors: ReadonlyArray<ProviderOptionDescriptor>) => {
     updateModelOptions(buildProviderOptionSelectionsFromDescriptors(nextDescriptors));
@@ -398,32 +345,6 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
 
   if (!hasAnyControls) {
     return null;
-  }
-
-  if (modelIsUnavailable) {
-    return (
-      <>
-        {descriptors.map((descriptor, index) => {
-          const value = getProviderOptionCurrentLabel(
-            descriptor,
-            modelSelection,
-            reportedModelSelection,
-          );
-          if (!value) return null;
-          return (
-            <div key={descriptor.id}>
-              {index > 0 ? <MenuDivider /> : null}
-              <MenuGroup>
-                <div className="px-2 pt-1.5 pb-1 font-medium text-muted-foreground text-xs">
-                  {descriptor.label}
-                </div>
-                <div className="px-2 pb-1.5 text-muted-foreground/80 text-xs">{value}</div>
-              </MenuGroup>
-            </div>
-          );
-        })}
-      </>
-    );
   }
 
   return (
@@ -588,14 +509,12 @@ export const TraitsPicker = memo(function TraitsPicker({
     speedLabel,
     otherLabels,
   } = buildTraitsTriggerDisplay({
-    provider,
     descriptors,
     primarySelectDescriptorId: primarySelectDescriptor?.id ?? null,
     ultrathinkPromptControlled,
     modelSelection: instanceId && model ? { instanceId, model, options: modelOptions ?? [] } : null,
     reportedModelSelection,
   });
-  const isCodexStyle = provider === "codex";
   // In the composer the glyph has no word, so the tooltip and label name the control.
   const triggerDescription = isComposerOwned
     ? [`Effort: ${triggerLabel}`, speedLabel, extraMenuHint].filter(Boolean).join(" · ")
@@ -649,9 +568,7 @@ export const TraitsPicker = memo(function TraitsPicker({
                   }
                   size={size}
                   className={cn(
-                    isCodexStyle
-                      ? "min-w-0 max-w-40 shrink justify-start overflow-hidden whitespace-nowrap sm:max-w-48"
-                      : "shrink-0 whitespace-nowrap",
+                    "shrink-0 whitespace-nowrap",
                     triggerClassName,
                     // Effort reads on from the model name, "Opus 5.5 High", at about the space
                     // inside the name: this cancels the model chip's end padding and the row gap.
@@ -709,18 +626,6 @@ export const TraitsPicker = memo(function TraitsPicker({
                 className="invisible absolute size-3.5"
               />
             </>
-          ) : isCodexStyle ? (
-            <span
-              className={cn(
-                "flex min-w-0 w-full items-center",
-                size === "xs" ? "gap-1" : "gap-1.5",
-              )}
-            >
-              <ComposerControlIcon icon={GaugeIcon} size={size} />
-              <span data-composer-control-label className="min-w-0 truncate">
-                {triggerLabel}
-              </span>
-            </span>
           ) : (
             <>
               <ComposerControlIcon icon={GaugeIcon} size={size} />

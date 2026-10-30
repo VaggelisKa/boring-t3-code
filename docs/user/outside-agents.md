@@ -2,9 +2,9 @@
 
 Agents that T3 Code did not start can work with an environment through its MCP
 server. They can read projects and threads, start and message threads, and
-check which providers and models are available. This covers Claude Code or
-Codex in your own terminal, ChatGPT, and bots that support MCP. Each agent signs
-in once, and you choose what it may do.
+check which providers and models are available. This covers command-line agents
+on the same computer, such as Claude Code or Codex in your own terminal. Each agent
+signs in once, and you choose what it may do.
 
 ## Get the MCP URL
 
@@ -13,32 +13,17 @@ In **Settings → Environments**, open a saved environment's menu and choose
 example:
 
 ```text
-https://<environment-address>/mcp
+http://localhost:3773/mcp
 ```
 
-The copied URL uses the route this device is connected over, so an agent on the
-same device can reach it.
-
-- **An agent on your own computers** can use `localhost` on the host, T3
-  Connect, or any `https` address, such as
-  Tailscale HTTPS. Signing in sends the
-  agent's credentials to the environment, and agents only do that over `https`
-  or to `localhost`. A plain-`http` LAN or Tailscale address, like
-  `http://100.x.y.z:3773`, lets an agent find the environment but not finish
-  signing in.
-- **A hosted agent**, such as ChatGPT or a bot running in the cloud, must reach
-  the environment from the internet. Use the T3 Connect address. A Tailscale
-  address only works from your own tailnet.
+The server listens on `localhost` only, so only agents on the same computer can
+reach it.
 
 ## Approve a sign-in
 
 The first time an agent connects, it opens a sign-in page on the environment.
-The page names the agent and where its access goes:
-
-- For an agent on your computer, approval returns to a `localhost` address on
-  the computer that opened the page.
-- For a hosted agent, approval goes to that service, such as `chatgpt.com`.
-  Anyone who runs that service gets the access.
+The page names the agent, and approval returns to a `localhost` address on the
+computer that opened the page.
 
 Only approve a sign-in you just started. To approve, enter a pairing code from
 **Settings → Sharing & access** or from `t3 auth pairing create` on the host. A
@@ -56,7 +41,7 @@ Then choose what the agent may do:
 ## Claude Code
 
 ```sh
-claude mcp add --transport http t3 https://<environment-address>/mcp
+claude mcp add --transport http t3 http://localhost:3773/mcp
 claude mcp login t3
 ```
 
@@ -68,27 +53,16 @@ once you approve.
 ## Codex
 
 ```sh
-codex mcp add t3 --url https://<environment-address>/mcp
+codex mcp add t3 --url http://localhost:3773/mcp
 codex mcp login t3
 ```
 
 `codex mcp login --no-browser` prints the sign-in URL instead of opening it.
 `codex mcp list` shows `t3` with OAuth once you approve.
 
-## ChatGPT
+## Other agents
 
-Add the environment as a custom MCP app in ChatGPT's apps settings:
-
-1. Create a new app or plugin with a custom MCP server.
-2. Set the server URL to `https://<environment-address>/mcp`, using the T3
-   Connect address.
-3. Choose **OAuth** for authentication. ChatGPT discovers the rest; you do not
-   need a client ID or secret.
-4. Create the app, then approve the sign-in page that opens.
-
-## Other agents and bots
-
-Any agent that supports remote MCP servers over HTTP with OAuth can connect. Give
+Any agent on the same computer that supports MCP servers over HTTP with OAuth can connect. Give
 it the MCP URL and choose OAuth, and the agent finds the sign-in settings itself.
 Agents without OAuth support cannot connect.
 

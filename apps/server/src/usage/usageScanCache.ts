@@ -233,10 +233,6 @@ export function decodeScanCache(
         return null;
       }
 
-      // Unchanged and deleted transcripts may only exist in the cache, so the
-      // parser cannot remove their previously saved local placeholders.
-      if (provider === "claude" && model === "<synthetic>") continue;
-
       records.push({
         provider,
         timestampMs,
@@ -290,13 +286,7 @@ export function decodeScanCache(
       continue;
     }
     // Keep history for deleted rollouts, but re-parse incompatible reducer state.
-    // v9 repairs skipped initial Codex requests; clean v8 entries can still resume.
-    // v10 adds Claude advisor calls, which no older Claude entry holds.
-    const legacy =
-      (entry.p === "claude" && version < 10) ||
-      (format.state !== undefined &&
-        (version < 6 ||
-          (entry.p === "codex" && (version < 8 || (version < 9 && malformedRecords > 0)))));
+    const legacy = format.state !== undefined && version < 6;
     // A corrupt state disqualifies the entry: resuming with it would attach
     // appended usage to the wrong model or replay fork-copied history.
     if (!legacy && !isValidState.get(entry.p)?.(entry.cs)) continue;

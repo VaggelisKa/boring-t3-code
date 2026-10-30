@@ -46,7 +46,6 @@ import {
   latestExecutedRun,
   latestRootProviderFailure,
 } from "@t3tools/shared/orchestrationV2ThreadError";
-import { feedbackBannerItem } from "./chat/ComposerFeedback";
 import { useUsageLimitsPanel } from "./chat/useUsageLimitsPanel";
 import { useWorktreeSetup } from "./chat/useWorktreeSetup";
 import { useChatShortcuts } from "./chat/useChatShortcuts";
@@ -92,10 +91,8 @@ import {
 import { resolvePendingHandoff } from "@t3tools/client-runtime/handoff";
 import { HandoffRow } from "./chat/V2LifecycleRow";
 import {
-  codexFeedbackMessage,
   isCompleteTurnItemRow,
   shouldShowLoadEarlierControl,
-  type CodexFeedbackSubmission,
 } from "@t3tools/client-runtime/state/threads";
 import {
   parseScopedThreadKey,
@@ -369,7 +366,6 @@ const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PROVIDER_MODELS: ServerProvider["models"] = [];
 import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplates";
 
-const EMPTY_FEEDBACK_SUBMISSIONS: ReadonlyArray<CodexFeedbackSubmission> = [];
 const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
 const EMPTY_TURN_ITEMS: ThreadStructure["turnItems"] = [];
 
@@ -647,14 +643,6 @@ export default function ChatView(props: ChatViewProps) {
     );
   // Draft ids survive promotion and expire on navigation, keeping the pending resend scoped correctly.
   const [workLocallyResendDraftId, setWorkLocallyResendDraftId] = useState<DraftId | null>(null);
-  const [feedbackSubmissionsByThreadKey, setFeedbackSubmissionsByThreadKey] = useState<
-    Record<string, ReadonlyArray<CodexFeedbackSubmission>>
-  >({});
-  const feedbackSubmissions =
-    feedbackSubmissionsByThreadKey[routeThreadKey] ?? EMPTY_FEEDBACK_SUBMISSIONS;
-  const feedbackUploading = feedbackSubmissions.some(
-    (submission) => submission.status === "uploading",
-  );
   const [localDraftErrorsByDraftId, setLocalDraftErrorsByDraftId] = useState<
     Record<string, LocalThreadErrorEntry>
   >({});
@@ -719,7 +707,6 @@ export default function ChatView(props: ChatViewProps) {
     );
   };
   const setMultipleModelSelectionsStable = useStableCallback(setMultipleModelSelections);
-  const feedbackUploadsInFlightRef = useRef(new Set<string>());
 
   const terminalUiState = useTerminalUiStateStore((state) =>
     selectThreadTerminalUiState(state.terminalUiStateByThreadKey, routeThreadRef),
@@ -1464,17 +1451,8 @@ export default function ChatView(props: ChatViewProps) {
     blobPreviews: optimisticBlobPreviews,
     setOptimisticUserMessages: setHeldOptimisticUserMessages,
   });
-  const anchoredTimelineMessages = feedbackSubmissions.flatMap((submission) =>
-    submission.status === "interrupted"
-      ? []
-      : [
-          { ...codexFeedbackMessage(submission), runId: null },
-          { ...codexFeedbackMessage(submission, "assistant"), runId: null },
-        ],
-  );
   const timelineEntriesInput = {
     optimisticMessages: optimisticUserMessages,
-    anchoredMessages: anchoredTimelineMessages,
     attachmentUrlById: timelineAttachmentUrlById,
     ...(serverProjection === null
       ? {}
@@ -2395,7 +2373,6 @@ export default function ChatView(props: ChatViewProps) {
     threadDetailLoading ||
     isPreparingWorktree ||
     activeEnvironmentUnavailable ||
-    feedbackUploading ||
     pendingApprovals.length > 0 ||
     pendingUserInputs.length > 0 ||
     showPlanFollowUpPrompt;
@@ -2453,17 +2430,6 @@ export default function ChatView(props: ChatViewProps) {
     void handleSwitchCheckoutToThread();
   };
   const handleRestoreThreadBranchStable = useStableCallback(handleRestoreThreadBranch);
-  const feedbackBannerItems = feedbackSubmissions.flatMap((submission) => {
-    const item = feedbackBannerItem(submission, () => {
-      setFeedbackSubmissionsByThreadKey((current) => ({
-        ...current,
-        [routeThreadKey]: (current[routeThreadKey] ?? []).filter(
-          (entry) => entry.id !== submission.id,
-        ),
-      }));
-    });
-    return item ? [item] : [];
-  });
   const limitRecoveryBanner =
     serverRuntime?.status === "failed" &&
     serverRuntime.lastErrorClass === "usage_limit" &&
@@ -2535,7 +2501,6 @@ export default function ChatView(props: ChatViewProps) {
     const projectCloneItems = projectCloneBannerItem === null ? [] : [projectCloneBannerItem];
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
       return [
-        ...feedbackBannerItems,
         ...fallbackItems,
         ...limitRecoveryItems,
         ...usageLimitsItems,
@@ -2544,7 +2509,6 @@ export default function ChatView(props: ChatViewProps) {
       ];
     }
     return [
-      ...feedbackBannerItems,
       ...fallbackItems,
       ...limitRecoveryItems,
       ...usageLimitsItems,
@@ -2795,7 +2759,6 @@ export default function ChatView(props: ChatViewProps) {
     composerImagesRef,
     composerFilesRef,
     composerTerminalContextsRef,
-    feedbackUploadsInFlightRef,
     queuedRunEdit,
     isRevertingCheckpoint,
     threadDetailLoading,
@@ -2831,7 +2794,6 @@ export default function ChatView(props: ChatViewProps) {
       track: (message) => optimisticBlobPreviews.track(threadId, message),
       release: (message) => optimisticBlobPreviews.release(threadId, message),
     },
-    setFeedbackSubmissionsByThreadKey,
     setThreadError,
     setKeepFullHistory,
     anchorNewTurn,
@@ -2901,15 +2863,10 @@ export default function ChatView(props: ChatViewProps) {
     clientSettingsHydrated &&
     !needsLoadBalancing &&
     !activeEnvironmentUnavailable &&
-    !activePendingProgress &&
-    !feedbackUploading;
+    !activePendingProgress;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- switches the draft to local mode, then resends the waiting message once sending is idle
   useEffect(() => {
-    if (
-      !workLocallyResendReady ||
-      sendInFlightRef.current ||
-      feedbackUploadsInFlightRef.current.has(routeThreadKey)
-    ) {
+    if (!workLocallyResendReady || sendInFlightRef.current) {
       return;
     }
     if (sendEnvMode !== "local") {
@@ -2919,10 +2876,8 @@ export default function ChatView(props: ChatViewProps) {
     resendAfterWorkLocallyStable();
   }, [
     composerDraftTarget,
-    feedbackUploadsInFlightRef,
     resendAfterWorkLocallyStable,
     sendInFlightRef,
-    routeThreadKey,
     sendEnvMode,
     setDraftThreadContext,
     workLocallyResendReady,
@@ -3206,9 +3161,6 @@ export default function ChatView(props: ChatViewProps) {
               threadErrorClass={
                 threadErrorIsServerRuntimeError ? (serverRuntime?.lastErrorClass ?? null) : null
               }
-              threadErrorCode={
-                threadErrorIsServerRuntimeError ? (serverRuntime?.lastErrorCode ?? null) : null
-              }
               threadErrorBannerKey={threadErrorBannerKey}
               setThreadError={setThreadError}
               setThreadErrorBannerDismissTick={setThreadErrorBannerDismissTick}
@@ -3438,13 +3390,11 @@ export default function ChatView(props: ChatViewProps) {
                                     ? "Preparing machine"
                                     : isRevertingCheckpoint
                                       ? "Rewinding conversation"
-                                      : feedbackUploading
-                                        ? "Sending feedback"
-                                        : threadDetailLoading
-                                          ? "Messages loading"
-                                          : worktreeSetupBlocksSend
-                                            ? "Preparing worktree"
-                                            : projectCloneSendBlockReason
+                                      : threadDetailLoading
+                                        ? "Messages loading"
+                                        : worktreeSetupBlocksSend
+                                          ? "Preparing worktree"
+                                          : projectCloneSendBlockReason
                               }
                               isPreparingWorktree={isPreparingWorktree && !sendQueuesBehindSetup}
                               bannerItems={isDraftHeroState ? [] : composerBannerItems}

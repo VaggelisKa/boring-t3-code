@@ -1,6 +1,6 @@
 # Connection runtime
 
-Web, the desktop renderer, and mobile share one connection owner per environment
+Web and the desktop renderer share one connection owner per environment
 in `packages/client-runtime`. Platform code supplies storage, credentials, network
 signals, and application lifecycle events. React views consume the runtime.
 Keeping retries and session lifetime here prevents competing reconnect loops when
@@ -110,7 +110,7 @@ thread then needs no replay. The shell and detail streams are independent, so
 the shell can report a stop before the detail loads or catches up. A stopped
 thread stays mounted until its own stream is live and shows the stop, and the
 stream then closes and saves the settled state.
-Web and mobile do not keep threads alive.
+Web and desktop do not keep threads alive.
 
 Retain state and cursor together only after an update finishes. Cancellation must
 not advance the cached cursor beyond the applied data, and an old scope must not

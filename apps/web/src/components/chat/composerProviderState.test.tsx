@@ -155,27 +155,6 @@ describe("getComposerProviderState", () => {
     expect(state.modelOptionsForDispatch).toEqual(selections(["agent", "build"]));
   });
 
-  it("preserves explicit options when the selected model is absent from the catalog", () => {
-    const state = getComposerProviderState({
-      provider: ProviderDriverKind.make("opencode"),
-      model: "opencode/kimi-k3",
-      models: [
-        {
-          slug: "opencode/big-pickle",
-          name: "Big Pickle",
-          isCustom: false,
-          capabilities: {},
-        },
-      ],
-      modelOptions: selections(["variant", "max"], ["agent", "build"]),
-      planModeEnabled: false,
-    });
-
-    expect(state.modelOptionsForDispatch).toEqual(
-      selections(["variant", "max"], ["agent", "build"]),
-    );
-  });
-
   it("validates options for a known model selected through a legacy alias", () => {
     const state = getComposerProviderState({
       provider: ProviderDriverKind.make("claudeAgent"),
