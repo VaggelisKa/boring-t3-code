@@ -20,7 +20,6 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Scheduler from "effect/Scheduler";
-import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
@@ -68,12 +67,6 @@ const layerService = (input: {
   readonly prefix: string;
   readonly home: string;
   readonly settings: Parameters<typeof ServerSettings.layerTest>[0];
-  readonly onRatesFetch?: (request: HttpClientRequest.HttpClientRequest) => void;
-  readonly ratesDocument?: unknown;
-  readonly ratesStatus?: () => number;
-  readonly ratesResponse?: (
-    request: HttpClientRequest.HttpClientRequest,
-  ) => Effect.Effect<Response, HttpClientError.HttpClientError>;
   readonly environment?: NodeJS.ProcessEnv;
   readonly platform?: NodeJS.Platform;
   readonly hostname?: string;
@@ -89,26 +82,6 @@ const layerService = (input: {
     Layer.provideMerge(Layer.succeed(HostProcess.Platform, input.platform ?? "linux")),
     Layer.provideMerge(Layer.succeed(HostProcess.Hostname, input.hostname ?? "usage-test-host")),
     Layer.provideMerge(ServerSettings.layerTest(input.settings)),
-    Layer.provideMerge(
-      Layer.succeed(
-        HttpClient.HttpClient,
-        HttpClient.make((request) =>
-          Effect.suspend(() => {
-            input.onRatesFetch?.(request);
-            const response = input.ratesResponse
-              ? input.ratesResponse(request)
-              : Effect.succeed(
-                  Response.json(input.ratesDocument ?? {}, {
-                    status: input.ratesStatus?.() ?? 200,
-                  }),
-                );
-            return response.pipe(
-              Effect.map((response) => HttpClientResponse.fromWeb(request, response)),
-            );
-          }),
-        ),
-      ),
-    ),
     Layer.provideMerge(
       Layer.succeed(HostProcess.Environment, {
         HOME: input.home,

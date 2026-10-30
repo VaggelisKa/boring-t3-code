@@ -25,7 +25,6 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
-import { HttpClient, HttpClientResponse } from "effect/http";
 
 import { writeFileStringAtomically } from "@t3tools/shared/atomicWrite";
 import * as ServerConfig from "../config.ts";
@@ -56,14 +55,12 @@ import {
   type ScanCache,
 } from "./usageScanCache.ts";
 
-const LITELLM_RATES_URL =
-  "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
-const LITELLM_RATES_API_URL =
-  "https://api.github.com/repos/BerriAI/litellm/contents/model_prices_and_context_window.json?ref=main";
-
-const RATES_TTL_MS = 24 * 60 * 60 * 1000;
-
-const RATES_REFRESH_FLOOR_MS = 60 * 1000;
+/**
+ * Model rates are never downloaded. The user may place a LiteLLM
+ * `model_prices_and_context_window.json` (or an older `{fetchedAtMs, document}`
+ * cache of one) at this path in the state directory; otherwise models stay unpriced.
+ */
+const RATES_FILE_NAME = "usage-model-rates.json";
 
 // mtime slack includes writes just before local midnight on the window's first day.
 const MTIME_SLACK_MS = 36 * 60 * 60 * 1000;
@@ -93,12 +90,11 @@ interface TranscriptSource {
   readonly fileName?: string;
 }
 
-const RatesCacheFile = Schema.Struct({
-  fetchedAtMs: Schema.Number,
-  document: Schema.Unknown,
-});
-const decodeRatesCache = Schema.decodeUnknownEffect(Schema.fromJsonString(RatesCacheFile));
-const encodeRatesCache = Schema.encodeEffect(Schema.fromJsonString(RatesCacheFile));
+const RatesFile = Schema.Union([
+  Schema.Struct({ fetchedAtMs: Schema.Number, document: Schema.Unknown }),
+  Schema.Unknown,
+]);
+const decodeRatesFile = Schema.decodeUnknownEffect(Schema.fromJsonString(RatesFile));
 
 const ScanCacheJson = Schema.fromJsonString(Schema.Unknown);
 const decodeScanCacheFile = Schema.decodeUnknownEffect(ScanCacheJson);
@@ -151,7 +147,6 @@ export const make = Effect.gen(function* () {
   const path = yield* Path.Path;
   const config = yield* ServerConfig.ServerConfig;
   const settingsService = yield* ServerSettings.ServerSettingsService;
-  const httpClient = yield* HttpClient.HttpClient;
   const hostEnvironment = yield* HostProcess.Environment;
   const hostname = yield* HostProcess.Hostname;
   const readerContext = yield* Effect.context<BuiltInUsageReadersEnv>();
@@ -169,7 +164,7 @@ export const make = Effect.gen(function* () {
     return relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
   };
 
-  const ratesCachePath = path.join(config.stateDir, "usage-model-rates.json");
+  const ratesPath = path.join(config.stateDir, RATES_FILE_NAME);
   const scanCachePath = path.join(config.stateDir, SCAN_CACHE_FILE_NAME);
   const writeCacheFile = (filePath: string, contents: string) =>
     writeFileStringAtomically({ filePath, contents }).pipe(
@@ -208,73 +203,34 @@ export const make = Effect.gen(function* () {
       Effect.orElseSucceed(() => hostname),
     ));
   let rates: RateTable = new Map();
-  let ratesFetchedAtMs: number | null = null;
-  let ratesLastFailedAtMs: number | null = null;
-  let ratesStatus: UsagePricing["status"] = "unavailable";
+  let ratesReadAtMs: number | null = null;
+  let ratesLoaded = false;
   const ratesLock = yield* Semaphore.make(1);
 
   const pricing = (): UsagePricing => ({
-    status: ratesStatus,
-    source: LITELLM_RATES_URL,
+    status: rates.size > 0 ? "cached" : "unavailable",
+    source: ratesPath,
     fetchedAt:
-      ratesFetchedAtMs === null ? null : DateTime.formatIso(DateTime.makeUnsafe(ratesFetchedAtMs)),
+      ratesReadAtMs === null ? null : DateTime.formatIso(DateTime.makeUnsafe(ratesReadAtMs)),
     knownModels: rates.size,
   });
 
-  const fetchRates = (url: string, accept = "application/json") =>
-    httpClient.get(url, { headers: { accept } }).pipe(
-      Effect.flatMap(HttpClientResponse.filterStatusOk),
-      Effect.flatMap((response) => response.json),
-      Effect.map((document) => {
-        const parsed = parseRateTable(document);
-        return parsed.size > 0 ? { document, parsed } : null;
-      }),
-      Effect.timeout(10_000),
+  const loadRates = Effect.fn("UsageService.loadRates")(function* (force: boolean) {
+    if (ratesLoaded && !force) return;
+    ratesLoaded = true;
+    const fromDisk = yield* fileSystem.readFileString(ratesPath).pipe(
+      Effect.flatMap((raw) => decodeRatesFile(raw)),
       Effect.catchCause(() => Effect.succeed(null)),
     );
-
-  const loadRates = Effect.fn("UsageService.loadRates")(function* (force: boolean) {
-    const now = yield* Clock.currentTimeMillis;
-    const maxAgeMs = force ? RATES_REFRESH_FLOOR_MS : RATES_TTL_MS;
-    if (ratesFetchedAtMs !== null && now - ratesFetchedAtMs < maxAgeMs) return;
-
-    if (ratesFetchedAtMs === null) {
-      const fromDisk = yield* fileSystem.readFileString(ratesCachePath).pipe(
-        Effect.flatMap((raw) => decodeRatesCache(raw)),
-        Effect.catchCause(() => Effect.succeed(null)),
-      );
-      if (fromDisk !== null) {
-        const parsed = parseRateTable(fromDisk.document);
-        if (parsed.size > 0) {
-          rates = parsed;
-          ratesFetchedAtMs = fromDisk.fetchedAtMs;
-          ratesStatus = "cached";
-          if (now - fromDisk.fetchedAtMs < maxAgeMs) return;
-        }
-      }
-    }
-
-    if (ratesLastFailedAtMs !== null && now - ratesLastFailedAtMs < RATES_REFRESH_FLOOR_MS) return;
-
-    let fetched = yield* fetchRates(LITELLM_RATES_URL);
-    if (fetched === null) {
-      fetched = yield* fetchRates(LITELLM_RATES_API_URL, "application/vnd.github.raw+json");
-    }
-    if (fetched === null) {
-      ratesLastFailedAtMs = yield* Clock.currentTimeMillis;
-      if (rates.size > 0) ratesStatus = "cached";
-      return;
-    }
-
-    rates = fetched.parsed;
-    ratesFetchedAtMs = now;
-    ratesLastFailedAtMs = null;
-    ratesStatus = "fresh";
-
-    yield* encodeRatesCache({ fetchedAtMs: now, document: fetched.document }).pipe(
-      Effect.flatMap((contents) => writeCacheFile(ratesCachePath, contents)),
-      Effect.ignoreCause,
-    );
+    if (fromDisk === null) return;
+    const wrapped =
+      typeof fromDisk === "object" && fromDisk !== null && "document" in fromDisk
+        ? (fromDisk as { fetchedAtMs: number; document: unknown })
+        : null;
+    const parsed = parseRateTable(wrapped ? wrapped.document : fromDisk);
+    if (parsed.size === 0) return;
+    rates = parsed;
+    ratesReadAtMs = wrapped ? wrapped.fetchedAtMs : yield* Clock.currentTimeMillis;
   });
 
   const ensureRates = (force: boolean) => ratesLock.withPermit(loadRates(force));

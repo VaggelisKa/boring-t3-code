@@ -521,23 +521,13 @@ export const layer = Layer.effect(
       return providers;
     });
 
-    const compatibilityRefreshRunning = yield* Ref.make(false);
     const syncProvider = Effect.fn("syncProvider")(function* (
       provider: ServerProvider,
       options?: {
         readonly publish?: boolean;
       },
     ) {
-      const providers = yield* upsertProviders([provider], options);
-      // Reclassify the current model after fetch; republishing the old probe could overwrite newer health results.
-      if (!(yield* Ref.getAndSet(compatibilityRefreshRunning, true))) {
-        yield* manifestService.refresh.pipe(
-          Effect.andThen(upsertProviders([], { persist: false })),
-          Effect.ensuring(Ref.set(compatibilityRefreshRunning, false)),
-          Effect.forkIn(serviceScope),
-        );
-      }
-      return providers;
+      return yield* upsertProviders([provider], options);
     });
 
     const setProviderMaintenanceActionState = Effect.fn("setProviderMaintenanceActionState")(
@@ -663,7 +653,6 @@ export const layer = Layer.effect(
       provider: ProviderDriverKind,
       selectedInstanceId: ProviderInstanceId,
     ) {
-      yield* manifestService.forceRefresh;
       const instances = (yield* instanceRegistry.listInstances).filter(
         (instance) =>
           instance.driverKind === provider &&

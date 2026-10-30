@@ -33,7 +33,6 @@ export class ModelCatalog extends Context.Service<
       driverKind: ProviderDriverKind,
     ) => Effect.Effect<ProviderCatalog | undefined>;
     readonly bundled: (driverKind: ProviderDriverKind) => ProviderCatalog | undefined;
-    readonly refreshInBackground: Effect.Effect<void>;
   }
 >()("@t3tools/provider-core/server/ModelCatalog") {}
 

@@ -28,8 +28,11 @@ On web and desktop, use the environment dropdown to filter costs, tokens, and li
 environments are selected by default. The dropdown shows which environments are still scanning;
 results appear as each one responds, and figures still updating are dimmed.
 
-If recent work is missing or a new model shows no cost, refresh to rescan session history and
-update model pricing.
+If recent work is missing, refresh to rescan session history.
+
+Model prices are never downloaded. Models you use show as unpriced until you set a custom
+price (below) or place a LiteLLM `model_prices_and_context_window.json` at
+`<T3 home>/userdata/usage-model-rates.json` on the server; refresh afterwards to reload it.
 
 ## Set custom model prices
 

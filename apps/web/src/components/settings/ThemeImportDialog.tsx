@@ -22,7 +22,6 @@ import {
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "../ui/dialog";
-import { ThemeSearchSection } from "./ThemeSearchSection";
 
 /**
  * The guard runs on the size before the bytes are ever read: a large file
@@ -422,22 +421,6 @@ function ThemeImportBody({
 
   return (
     <DialogPanel>
-      <ThemeSearchSection
-        onInstalled={(themes, context) => {
-          onImportedMany(themes, context);
-          onClose();
-        }}
-        signal={signal}
-      />
-
-      <div className="flex items-center gap-3" aria-hidden>
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-muted-foreground text-2xs uppercase tracking-wider">
-          or import a file
-        </span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
       {(() => {
         const dropHandlers = {
           onDragEnter: (event: DragEvent<HTMLDivElement>) => {

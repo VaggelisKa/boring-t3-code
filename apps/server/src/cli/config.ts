@@ -35,10 +35,6 @@ const portFlag = Flag.Int("port").pipe(
   Flag.withDescription("Port for the HTTP/WebSocket server."),
   Flag.optional,
 );
-const hostFlag = Flag.String("host").pipe(
-  Flag.withDescription("Host/interface to bind (for example 127.0.0.1, 0.0.0.0, or a Tailnet IP)."),
-  Flag.optional,
-);
 export const baseDirFlag = Flag.String("base-dir").pipe(
   Flag.withDescription(
     "Explicit T3 Code data directory; runtime state is stored under userdata (equivalent to T3CODE_HOME).",
@@ -116,7 +112,6 @@ const EnvServerConfig = Config.all({
     Config.map(Option.getOrUndefined),
   ),
   port: Config.Port("T3CODE_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  host: Config.String("T3CODE_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
   t3Home: Config.String("T3CODE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devUrl: Config.URL("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devAllowedOrigins: Config.String("T3CODE_DEV_ALLOWED_ORIGINS").pipe(
@@ -169,7 +164,6 @@ const DevAuthTokenConfig = Config.Redacted("T3CODE_DEV_AUTH_TOKEN").pipe(
 export interface CliServerFlags {
   readonly mode: Option.Option<ServerConfig.RuntimeMode>;
   readonly port: Option.Option<number>;
-  readonly host: Option.Option<string>;
   readonly baseDir: Option.Option<string>;
   readonly cwd: Option.Option<string>;
   readonly devUrl: Option.Option<URL>;
@@ -196,7 +190,6 @@ export const projectLocationFlags = {
 export const sharedServerCommandFlags = {
   mode: modeFlag,
   port: portFlag,
-  host: hostFlag,
   baseDir: baseDirFlag,
   cwd: Argument.String("cwd").pipe(
     Argument.withDescription(
@@ -242,7 +235,6 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
   const normalizedFlags = {
     mode: flags.mode ?? Option.none(),
     port: flags.port ?? Option.none(),
-    host: flags.host ?? Option.none(),
     baseDir: flags.baseDir ?? Option.none(),
     cwd: flags.cwd ?? Option.none(),
     devUrl: flags.devUrl ?? Option.none(),
@@ -362,13 +354,8 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
     () => Boolean(devUrl),
   );
   const staticDir = devUrl ? undefined : yield* ServerConfig.resolveStaticDir();
-  const explicitHost = resolveOptionPrecedence(
-    normalizedFlags.host,
-    Option.fromUndefinedOr(env.host),
-    Option.fromUndefinedOr(bootstrap?.host),
-  );
-  // Loopback only unless a host is set explicitly, including under the service launcher.
-  const host = Option.getOrElse(explicitHost, () => "127.0.0.1");
+  // Loopback only. The desktop bootstrap is the single exception, for WSL backends.
+  const host = bootstrap?.host ?? "127.0.0.1";
   const logLevel = Option.getOrElse(cliLogLevel, () => env.logLevel);
 
   const otel = yield* OtelEnvironment.load;
@@ -462,7 +449,6 @@ export const resolveCliAuthConfig = (
     {
       mode: Option.none(),
       port: Option.none(),
-      host: Option.none(),
       baseDir: flags.baseDir,
       cwd: Option.none(),
       devUrl: flags.devUrl ?? Option.none(),

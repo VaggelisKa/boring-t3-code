@@ -43,21 +43,6 @@ const DEV_PORT_PROBE_HOSTS = ["127.0.0.1", "::1"] as const;
 // Migration prunes after copying, so large sources also need an automatic-seeding limit.
 const LARGE_DEV_DATABASE_BYTES = 500 * 1024 * 1024;
 
-/** Only loopback and wildcard binds keep the loopback proxy target reachable. */
-export function isProxiableBindHost(host: string): boolean {
-  const normalized = host.trim();
-  return (
-    normalized === "" ||
-    normalized === "localhost" ||
-    normalized === "127.0.0.1" ||
-    normalized === "::1" ||
-    normalized === "[::1]" ||
-    normalized === "0.0.0.0" ||
-    normalized === "::" ||
-    normalized === "[::]"
-  );
-}
-
 export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
   path.join(NodeOS.homedir(), ".t3"),
 );
@@ -77,7 +62,6 @@ const MODE_ARGS = {
 } as const satisfies Record<string, ReadonlyArray<string>>;
 
 type DevMode = keyof typeof MODE_ARGS;
-// Only backend ports honor --host/T3CODE_HOST; web ports stay loopback.
 type PortAvailabilityCheck<R = never> = (
   port: number,
   role?: "server" | "web",
@@ -158,18 +142,6 @@ export class DevRunnerProcessExitError extends Schema.TaggedError<DevRunnerProce
 ) {
   override get message(): string {
     return `Dev-runner process exited with code ${this.exitCode} in mode "${this.mode}".`;
-  }
-}
-
-export class DevRunnerHostNotProxiableError extends Schema.TaggedError<DevRunnerHostNotProxiableError>()(
-  "DevRunnerHostNotProxiableError",
-  {
-    mode: Schema.Literals(["dev", "dev:web"]),
-    host: Schema.String,
-  },
-) {
-  override get message(): string {
-    return `--host ${this.host} cannot be combined with ${this.mode}: single-origin browser dev proxies the backend at localhost, and a backend bound only to ${this.host} leaves localhost unanswered, so every proxied request fails. Use a wildcard (0.0.0.0 or ::) to serve that interface and loopback together.`;
   }
 }
 
@@ -272,7 +244,6 @@ interface CreateDevRunnerEnvInput {
   readonly browser: boolean | undefined;
   readonly autoBootstrapProjectFromCwd: boolean | undefined;
   readonly logWebSocketEvents: boolean | undefined;
-  readonly host: string | undefined;
   readonly port: number | undefined;
   readonly devUrl: URL | undefined;
 }
@@ -286,7 +257,6 @@ export const createDevRunnerEnv = Effect.fn("dev-runner.createDevRunnerEnv")(fun
   browser,
   autoBootstrapProjectFromCwd,
   logWebSocketEvents,
-  host,
   port,
   devUrl,
 }: CreateDevRunnerEnvInput): Effect.fn.Return<NodeJS.ProcessEnv, never, Path.Path> {
@@ -309,11 +279,6 @@ export const createDevRunnerEnv = Effect.fn("dev-runner.createDevRunnerEnv")(fun
   } else {
     delete output.T3CODE_HOME;
   }
-
-  // Managed T3 service shells leak launcher variables that make dev servers fail version checks.
-  // Dev-runner servers are never launcher-managed (serviceLauncherClient.ts resolveStartup).
-  delete output.T3_SERVICE_LAUNCHER_CONTEXT;
-  delete output.T3_BOOT_SERVICE_UNIT;
 
   // Each worktree has its own state, so a dev server would count as a new
   // install of the developer's real accounts. Set it explicitly to opt in.
@@ -351,10 +316,6 @@ export const createDevRunnerEnv = Effect.fn("dev-runner.createDevRunnerEnv")(fun
     delete output.T3CODE_NO_BROWSER;
     delete output.T3CODE_HOST;
     delete output.T3CODE_DEV_AUTH_TOKEN;
-  }
-
-  if (!isDesktopMode && host !== undefined) {
-    output.T3CODE_HOST = host;
   }
 
   if (!isDesktopMode) {
@@ -417,26 +378,14 @@ export const checkPortAvailabilityOnHosts = Effect.fn("dev-runner.checkPortAvail
   },
 );
 
-export function devPortProbeHosts(configuredHost: string | undefined): ReadonlyArray<string> {
-  const host = configuredHost?.trim();
-  if (!host || DEV_PORT_PROBE_HOSTS.includes(host as (typeof DEV_PORT_PROBE_HOSTS)[number])) {
-    return DEV_PORT_PROBE_HOSTS;
-  }
-  return [...DEV_PORT_PROBE_HOSTS, host];
-}
-
-const makeDefaultCheckPortAvailability =
-  (configuredHost: string | undefined): PortAvailabilityCheck<NetService.NetService> =>
-  (port, role) =>
-    Effect.gen(function* () {
-      const net = yield* NetService.NetService;
-      const hosts = role === "web" ? DEV_PORT_PROBE_HOSTS : devPortProbeHosts(configuredHost);
-      return yield* checkPortAvailabilityOnHosts(port, hosts, (candidatePort, host) =>
-        net.canListenOnHost(candidatePort, host),
-      );
-    });
-
-const defaultCheckPortAvailability = makeDefaultCheckPortAvailability(undefined);
+const defaultCheckPortAvailability: PortAvailabilityCheck<NetService.NetService> = Effect.fn(
+  "dev-runner.defaultCheckPortAvailability",
+)(function* (port) {
+  const net = yield* NetService.NetService;
+  return yield* checkPortAvailabilityOnHosts(port, DEV_PORT_PROBE_HOSTS, (candidatePort, host) =>
+    net.canListenOnHost(candidatePort, host),
+  );
+});
 
 interface FindFirstAvailableOffsetInput<R = NetService.NetService> {
   readonly startOffset: number;
@@ -654,7 +603,6 @@ interface DevRunnerCliInput {
   readonly browser: boolean | undefined;
   readonly autoBootstrapProjectFromCwd: boolean | undefined;
   readonly logWebSocketEvents: boolean | undefined;
-  readonly host: string | undefined;
   readonly port: number | undefined;
   readonly devUrl: URL | undefined;
   readonly dryRun: boolean;
@@ -675,14 +623,6 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
     ),
   );
 
-  if (
-    (input.mode === "dev" || input.mode === "dev:web") &&
-    input.host !== undefined &&
-    !isProxiableBindHost(input.host)
-  ) {
-    return yield* new DevRunnerHostNotProxiableError({ mode: input.mode, host: input.host });
-  }
-
   const worktreePath = yield* resolveGitWorktreePath(yield* HostProcess.WorkingDirectory);
 
   const { offset, source } = yield* resolveOffset({
@@ -696,7 +636,7 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
     startOffset: offset,
     hasExplicitServerPort: input.port !== undefined,
     hasExplicitDevUrl: input.devUrl !== undefined,
-    checkPortAvailability: makeDefaultCheckPortAvailability(input.host),
+    checkPortAvailability: defaultCheckPortAvailability,
   });
 
   const hostEnvironment = yield* HostProcess.Environment;
@@ -720,7 +660,6 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
     browser: input.browser,
     autoBootstrapProjectFromCwd: input.autoBootstrapProjectFromCwd,
     logWebSocketEvents: input.logWebSocketEvents,
-    host: input.host,
     port: input.port,
     devUrl: input.devUrl,
   });
@@ -820,10 +759,6 @@ const devRunnerCli = Command.make("dev-runner", {
     Flag.withDescription("WebSocket event logging toggle (equivalent to T3CODE_LOG_WS_EVENTS)."),
     Flag.withAlias("log-ws-events"),
     Flag.withFallbackConfig(optionalBooleanConfig("T3CODE_LOG_WS_EVENTS")),
-  ),
-  host: Flag.String("host").pipe(
-    Flag.withDescription("Server host/interface override (forwards to T3CODE_HOST)."),
-    Flag.withFallbackConfig(optionalStringConfig("T3CODE_HOST")),
   ),
   port: Flag.Int("port").pipe(
     Flag.withSchema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 }))),

@@ -14,7 +14,8 @@ own git host. There is no telemetry, no cloud relay, no hosted web app, and no m
 
 ## Can I use it from another device?
 
-No. The server listens on `localhost` only, so open it on the computer it runs on.
+No. The server listens on `localhost` only and has no option to bind another interface, so open
+it on the computer it runs on.
 
 ## Can I use an API key instead of a subscription?
 

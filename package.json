@@ -5,7 +5,6 @@
   "scripts": {
     "prepare": "vp config --no-agent",
     "dev": "node scripts/dev-runner.ts dev",
-    "dev:share": "node scripts/dev-runner.ts dev --share",
     "dev:server": "node scripts/dev-runner.ts dev:server",
     "dev:web": "node scripts/dev-runner.ts dev:web",
     "dev:desktop": "node scripts/dev-runner.ts dev:desktop",

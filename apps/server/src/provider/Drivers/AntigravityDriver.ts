@@ -354,7 +354,6 @@ export const AntigravityDriver: ProviderDriver<
     // that unpacks about 1 GB per launch, and the health check runs every
     // minute.
     const probe = Effect.gen(function* () {
-      yield* modelCatalog.refreshInBackground;
       if (authConfigIssue !== null) {
         return yield* new ProviderSetupError({
           instanceId,

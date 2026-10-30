@@ -23,13 +23,6 @@ import * as NetService from "@t3tools/shared/Net";
 import { DEFAULT_SIGNAL_EXPORT } from "@t3tools/shared/observability";
 import * as OtelEnvironment from "@t3tools/shared/otelEnvironment";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as HostProcess from "@t3tools/shared/HostProcess";
-import packageJson from "../../package.json" with { type: "json" };
-import { ServiceLauncherHostProcess } from "../service/serviceLauncherClient.ts";
-import {
-  SERVICE_LAUNCHER_CONTEXT_ENV,
-  SERVICE_LAUNCHER_PROTOCOL,
-} from "../service/serviceProtocol.ts";
 import { deriveServerPaths } from "../config.ts";
 import { resolveServerConfig } from "./config.ts";
 
@@ -39,7 +32,6 @@ const deriveExplicitServerPaths = (baseDir: string, devUrl: URL | undefined) =>
 const minimalDesktopFlags = (baseDir: string) => ({
   mode: Option.some("desktop" as const),
   port: Option.some(4888),
-  host: Option.none<string>(),
   baseDir: Option.some(baseDir),
   cwd: Option.none<string>(),
   devUrl: Option.none<URL>(),
@@ -217,7 +209,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       const flags = {
         mode: Option.some("web" as const),
         port: Option.some(8788),
-        host: Option.none<string>(),
         baseDir: Option.some(baseDir),
         cwd: Option.none<string>(),
         devUrl: Option.some(new URL("http://127.0.0.1:5173")),
@@ -259,7 +250,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       const flags = {
         mode: Option.some("web" as const),
         port: Option.some(8788),
-        host: Option.none<string>(),
         baseDir: Option.some(baseDir),
         cwd: Option.none<string>(),
         devUrl: Option.some(new URL("http://127.0.0.1:5173")),
@@ -310,7 +300,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         {
           mode: Option.some("web"),
           port: Option.some(8788),
-          host: Option.some("127.0.0.1"),
           baseDir: Option.some(baseDir),
           cwd: Option.none(),
           devUrl: Option.some(new URL("http://127.0.0.1:4173")),
@@ -380,7 +369,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         {
           mode: Option.none(),
           port: Option.some(8788),
-          host: Option.some("127.0.0.1"),
           baseDir: Option.none(),
           cwd: Option.none(),
           devUrl: Option.some(new URL("http://127.0.0.1:4173")),
@@ -418,7 +406,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         cwd: process.cwd(),
         baseDir,
         ...derivedPaths,
-        host: "127.0.0.1",
+        host: "127.0.0.2",
         staticDir: undefined,
         devUrl: new URL("http://127.0.0.1:4173"),
         noBrowser: true,
@@ -523,7 +511,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         {
           mode: Option.some("desktop"),
           port: Option.some(4888),
-          host: Option.none(),
           baseDir: Option.some(baseDir),
           cwd: Option.none(),
           devUrl: Option.none(),
@@ -569,7 +556,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         {
           mode: Option.some("desktop"),
           port: Option.some(4888),
-          host: Option.none(),
           baseDir: Option.some(baseDir),
           cwd: Option.none(),
           devUrl: Option.none(),
@@ -607,7 +593,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         {
           mode: Option.some("web"),
           port: Option.some(3773),
-          host: Option.none(),
           baseDir: Option.some(baseDir),
           cwd: Option.none(),
           devUrl: Option.none(),
@@ -665,7 +650,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         {
           mode: Option.some("web"),
           port: Option.some(3773),
-          host: Option.none(),
           baseDir: Option.some(baseDir),
           cwd: Option.none(),
           devUrl: Option.none(),
@@ -702,7 +686,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
   const minimalWebFlags = (baseDir: string) => ({
     mode: Option.some("web" as const),
     port: Option.some(3773),
-    host: Option.none<string>(),
     baseDir: Option.some(baseDir),
     cwd: Option.none<string>(),
     devUrl: Option.none<URL>(),
@@ -829,46 +812,5 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         expect(resolved.otlpMetricsUrl).toBeUndefined();
         expect(resolved.otlpLogsUrl).toBeUndefined();
       }),
-  );
-
-  it.effect("listens on loopback unless a host is set, even under the service launcher", () =>
-    Effect.gen(function* () {
-      const { join } = yield* Path.Path;
-      const baseDir = join(NodeOS.tmpdir(), "t3-cli-config-service-host");
-      const resolveHost = (input: {
-        readonly connected: boolean;
-        readonly env?: Record<string, string>;
-      }) =>
-        resolveServerConfig(minimalWebFlags(baseDir), Option.none()).pipe(
-          Effect.map(({ host }) => host),
-          Effect.provide(
-            Layer.mergeAll(
-              ConfigProvider.layer(ConfigProvider.fromEnv({ env: input.env ?? {} })),
-              NetService.layer,
-            ),
-          ),
-          Effect.provideService(HostProcess.Environment, {
-            [SERVICE_LAUNCHER_CONTEXT_ENV]: JSON.stringify({
-              protocol: SERVICE_LAUNCHER_PROTOCOL,
-              childVersion: packageJson.version,
-            }),
-          }),
-          Effect.provideService(ServiceLauncherHostProcess, {
-            connected: input.connected,
-            send: () => false,
-            on: () => undefined,
-            off: () => undefined,
-          }),
-        );
-
-      expect(yield* resolveHost({ connected: true })).toBe("127.0.0.1");
-      // `service.env` reaches the server as its environment.
-      expect(yield* resolveHost({ connected: true, env: { T3CODE_HOST: "127.0.0.1" } })).toBe(
-        "127.0.0.1",
-      );
-      // Without the launcher's IPC channel the context was inherited, e.g. by
-      // `t3 serve` started from an agent inside the service.
-      expect(yield* resolveHost({ connected: false })).toBe("127.0.0.1");
-    }),
   );
 });

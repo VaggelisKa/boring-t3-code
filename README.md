@@ -54,8 +54,8 @@ node apps/server/dist/bin.mjs ~/code/my-project
 ```
 
 `node apps/server/dist/bin.mjs --help` lists the other commands, such as `serve` to start without
-opening a browser and `service install` to keep the server running in the background on macOS
-and Linux ([details](./docs/user/background-service.md)).
+opening a browser. There is no background service; keep the server running with your own
+process manager if you need one.
 
 App data lives in `~/.t3` by default. Pass `--base-dir <path>` to keep a separate copy.
 

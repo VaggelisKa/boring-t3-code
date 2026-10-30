@@ -32,7 +32,7 @@
       "ignore": ["npm-launcher/**", ".knip-test-*/**"],
     },
     "apps/server": {
-      // Vite+ pack entries and the launcher used by installed background services.
+      // Vite+ pack entries.
       "entry": [
         "src/bin.ts!",
         "scripts/cli.ts",
