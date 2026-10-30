@@ -1180,7 +1180,7 @@ export const resolveProviderInstanceEnabled = (
   if (instance.enabled === false || configEnabled === false) {
     return false;
   }
-  return instance.enabled ?? configEnabled ?? DEFAULT_ENABLED_PROVIDER_DRIVERS.has(instance.driver);
+  return instance.enabled ?? configEnabled ?? true;
 };
 
 export const resolveProjectProviderInstanceEnabled = (

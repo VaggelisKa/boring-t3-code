@@ -262,11 +262,9 @@ describe("provider enabled defaults", () => {
   it("resolves instance enabled state with explicit false winning", () => {
     const antigravity = ProviderDriverKind.make("antigravity");
     expect(resolveProviderInstanceEnabled({ driver: antigravity, config: {} })).toBe(true);
-    const retired = ProviderDriverKind.make("cursor");
-    expect(resolveProviderInstanceEnabled({ driver: retired, config: {} })).toBe(false);
-    expect(resolveProviderInstanceEnabled({ driver: retired, enabled: true, config: {} })).toBe(
-      true,
-    );
+    expect(
+      resolveProviderInstanceEnabled({ driver: ProviderDriverKind.make("ollama"), config: {} }),
+    ).toBe(true);
     expect(
       resolveProviderInstanceEnabled({ driver: antigravity, enabled: false, config: {} }),
     ).toBe(false);

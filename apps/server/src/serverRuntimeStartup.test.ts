@@ -56,7 +56,7 @@ it.effect.each([
     Effect.gen(function* () {
       const projectId = ProjectId.make("bootstrap-project");
       const instanceId = ProviderInstanceId.make(
-        scenario === "disabled-default" ? "custom" : "codex",
+        scenario === "disabled-default" ? "custom" : "antigravity",
       );
       const events: ServerLifecycleStreamEvent[] = [];
       const recovery = {
