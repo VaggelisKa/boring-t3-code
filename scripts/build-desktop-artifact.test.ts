@@ -1404,6 +1404,19 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     assert.match(entitlements, /<key>com\.apple\.security\.device\.audio-input<\/key>\s*<true\/>/u);
     assert.notInclude(entitlements, "keychain-access-groups");
     assert.notInclude(entitlements, "com.apple.developer.web-browser.public-key-credential");
+
+    const withoutDomains = resolveMacPasskeySigningConfiguration({
+      T3CODE_APPLE_TEAM_ID: "ABC1234567",
+      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+    });
+    assert.deepStrictEqual(withoutDomains.rpDomains, []);
+    assert.notInclude(
+      renderMacPasskeyEntitlements(withoutDomains, {
+        touchIdKeychainAccessGroup: undefined,
+        browserPasskeys: false,
+      }),
+      "com.apple.developer.associated-domains",
+    );
   });
 
   it("grants in-app browser passkey entitlements only when the provisioning profile does", () => {

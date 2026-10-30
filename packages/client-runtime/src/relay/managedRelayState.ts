@@ -195,8 +195,6 @@ export const deregisterManagedRelayEnvironment = Effect.fn(
   yield* relay.unlinkEnvironment({ clerkToken, environmentId: input.environmentId });
 });
 
-/** Returns the T3 Chat page URL where the signed-in user confirms the link. */
-
 function requireClerkToken(
   get: Atom.AtomContext,
   accountId: string,

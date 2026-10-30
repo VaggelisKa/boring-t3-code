@@ -1145,30 +1145,10 @@ export class MissingMacPasskeyProvisioningProfileError extends Schema.TaggedErro
   }
 }
 
-export class MissingMacPasskeyDomainConfigurationError extends Schema.TaggedError<MissingMacPasskeyDomainConfigurationError>()(
-  "MissingMacPasskeyDomainConfigurationError",
-  {},
-) {
-  override get message(): string {
-    return "T3CODE_CLERK_PASSKEY_RP_DOMAINS is required for signed macOS passkey builds.";
-  }
-}
-
-export class MissingMacPasskeyRpDomainError extends Schema.TaggedError<MissingMacPasskeyRpDomainError>()(
-  "MissingMacPasskeyRpDomainError",
-  {},
-) {
-  override get message(): string {
-    return "At least one Clerk passkey RP domain is required.";
-  }
-}
-
 export const MacPasskeySigningConfigurationError = Schema.Union([
   InvalidMacPasskeyRpDomainError,
   InvalidAppleTeamIdError,
   MissingMacPasskeyProvisioningProfileError,
-  MissingMacPasskeyDomainConfigurationError,
-  MissingMacPasskeyRpDomainError,
 ]);
 export type MacPasskeySigningConfigurationError = typeof MacPasskeySigningConfigurationError.Type;
 export const isMacPasskeySigningConfigurationError = Schema.is(MacPasskeySigningConfigurationError);
@@ -1228,20 +1208,14 @@ export function resolveMacPasskeySigningConfiguration(
   }
 
   const configuredRpDomains = env.T3CODE_CLERK_PASSKEY_RP_DOMAINS?.trim();
-  if (!configuredRpDomains) {
-    throw new MissingMacPasskeyDomainConfigurationError();
-  }
-  const rpDomains = configuredRpDomains.split(",").map(normalizePasskeyRpDomain);
-
-  const uniqueRpDomains = [...new Set(rpDomains)];
-  if (uniqueRpDomains.length === 0) {
-    throw new MissingMacPasskeyRpDomainError();
-  }
+  const rpDomains = configuredRpDomains
+    ? configuredRpDomains.split(",").map(normalizePasskeyRpDomain)
+    : [];
 
   return {
     appId: DESKTOP_APP_ID,
     teamId,
-    rpDomains: uniqueRpDomains,
+    rpDomains: [...new Set(rpDomains)],
     provisioningProfilePath,
   };
 }
@@ -1304,9 +1278,16 @@ export function renderMacPasskeyEntitlements(
   configuration: MacPasskeySigningConfiguration,
   webAuthn: MacWebAuthnEntitlements,
 ): string {
-  const associatedDomains = configuration.rpDomains
-    .map((domain) => `      <string>webcredentials:${escapeXml(domain)}</string>`)
-    .join("\n");
+  const associatedDomains =
+    configuration.rpDomains.length === 0
+      ? ""
+      : `
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+${configuration.rpDomains
+  .map((domain) => `      <string>webcredentials:${escapeXml(domain)}</string>`)
+  .join("\n")}
+    </array>`;
   const keychainAccessGroups = webAuthn.touchIdKeychainAccessGroup
     ? `
     <key>keychain-access-groups</key>
@@ -1327,11 +1308,7 @@ export function renderMacPasskeyEntitlements(
     <key>com.apple.application-identifier</key>
     <string>${escapeXml(`${configuration.teamId}.${configuration.appId}`)}</string>
     <key>com.apple.developer.team-identifier</key>
-    <string>${escapeXml(configuration.teamId)}</string>
-    <key>com.apple.developer.associated-domains</key>
-    <array>
-${associatedDomains}
-    </array>${keychainAccessGroups}${browserPasskeys}
+    <string>${escapeXml(configuration.teamId)}</string>${associatedDomains}${keychainAccessGroups}${browserPasskeys}
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>

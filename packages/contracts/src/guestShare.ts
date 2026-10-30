@@ -7,22 +7,13 @@ import {
   IsoDateTime,
   ThreadId,
   TrimmedNonEmptyString,
-  TrimmedString,
 } from "./baseSchemas.ts";
-
-/**
- * A guest share lets one unauthenticated browser watch a thread over T3 Connect and propose
- * messages the owner must send or dismiss. The thread projection holds this public state; the
- * credentials are derived from the share id with a server key and never stored.
- */
 
 export const GUEST_MESSAGE_MAX_LENGTH = 4_000;
 export const GUEST_NAME_MAX_LENGTH = 40;
 export const GUEST_PENDING_MESSAGE_LIMIT = 3;
 /** Resolved messages kept so the guest can see what happened to what they sent. */
 export const GUEST_RESOLVED_MESSAGE_LIMIT = 20;
-/** Files a guest can attach to one message, and their total size. */
-
 /** Total size of the files in a share's waiting messages, so a guest cannot fill the disk. */
 export const GUEST_PENDING_ATTACHMENT_BYTES_LIMIT = 20 * 1024 * 1024;
 
@@ -102,35 +93,3 @@ export const GuestRedeemRequest = Schema.Struct({
   ),
 });
 export type GuestRedeemRequest = typeof GuestRedeemRequest.Type;
-
-/**
- * The fields of a guest message. The page posts them as multipart form data, with each file as a
- * `file` part; text can be empty when files are attached.
- */
-export const GuestSubmitRequest = Schema.Struct({
-  /** The share the page shows, so a message from a page for a replaced link is refused instead
-      of reaching the new one. */
-  shareId: GuestShareId,
-  text: TrimmedString.check(Schema.isMaxLength(GUEST_MESSAGE_MAX_LENGTH)),
-});
-export type GuestSubmitRequest = typeof GuestSubmitRequest.Type;
-/** Serves one HTML render in the shared thread: `?share=<share id>&item=<turn item id>`. */
-
-/** One item of the shared thread, as an expanded row loads it: `?share=<share id>&item=<id>`. */
-
-/**
- * Older turns of the shared thread, as the owner's "Load earlier turns" pages them:
- * `?share=<share id>&cursor=<history cursor>`.
- */
-
-/** Server-sent output frames of one command in the shared thread: `?share=<share id>&item=<id>`. */
-
-/**
- * A file in the shared thread or a guest's waiting message: `?share=<share id>&id=<attachment id>`.
- * Images load inline; other files download.
- */
-
-/**
- * An image file on the host that an agent message in the shared thread embeds:
- * `?share=<share id>&path=<absolute path>`.
- */

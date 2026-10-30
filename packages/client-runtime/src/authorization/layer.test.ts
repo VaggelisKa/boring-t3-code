@@ -21,6 +21,7 @@ import * as RemoteEnvironmentAuthorization from "./service.ts";
 import * as TokenStore from "./tokenStore.ts";
 import { BearerConnectionCredential, BearerConnectionProfile } from "../connection/catalog.ts";
 import * as ConnectionCredentialStore from "../connection/credentialStore.ts";
+import { ConnectionBlockedError } from "../connection/model.ts";
 import { BearerConnectionTarget } from "../connection/model.ts";
 import * as ConnectionProfileStore from "../connection/profileStore.ts";
 import * as ConnectionResolver from "../connection/resolver.ts";
@@ -858,6 +859,26 @@ describe("RemoteEnvironmentAuthorization", () => {
         expect(loaded.httpAuthorization.accessToken).toBe("loaded-token");
       }).pipe(Effect.provide(harness.layer));
       expect(yield* Ref.get(harness.bootstrapCalls)).toBe(1);
+    }),
+  );
+
+  it.effect("blocks instead of retrying when the build has no cloud session", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness({
+        responses: [],
+        clerkToken: Effect.fail(
+          new ConnectionBlockedError({ reason: "unsupported", detail: "No cloud session." }),
+        ),
+      });
+      yield* Ref.set(harness.session, Option.none());
+      const error = yield* Effect.gen(function* () {
+        const remote = yield* RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization;
+        return yield* remote
+          .authorizeDpopHttp({ expectedEnvironmentId: ENVIRONMENT_ID })
+          .pipe(Effect.flip);
+      }).pipe(Effect.provide(harness.layer));
+      expect(error).toMatchObject({ _tag: "ConnectionBlockedError", reason: "unsupported" });
+      expect(yield* Ref.get(harness.bootstrapCalls)).toBe(0);
     }),
   );
 

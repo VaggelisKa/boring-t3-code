@@ -338,6 +338,8 @@ export const make = Effect.gen(function* () {
   ) {
     const session = yield* cloudSession.identity;
     if (Option.isNone(session)) {
+      // A build without cloud sign-in fails here for good instead of waiting forever.
+      yield* cloudSession.clerkToken;
       return yield* sessionPending();
     }
     const identity = session.value;
