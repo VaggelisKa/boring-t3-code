@@ -1,5 +1,5 @@
 /**
- * `<img>`, `EventSource`, and `WebSocket` cannot set bearer or DPoP headers, so bearer and DPoP
+ * `<img>`, `EventSource`, and `WebSocket` cannot set bearer headers, so bearer
  * connections mint a short-lived WebSocket ticket and pass it as `wsTicket`, the same way the
  * app's own `/ws` upgrade authenticates. Callers fetch a fresh one each time they (re)connect a
  * stream.

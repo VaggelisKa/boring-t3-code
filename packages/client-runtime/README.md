@@ -7,7 +7,7 @@ subpath. The package intentionally has no root export.
 
 | Subpath               | Responsibility                                                   |
 | --------------------- | ---------------------------------------------------------------- |
-| `authorization`       | Bearer and DPoP authorization plus token persistence contracts   |
+| `authorization`       | Bearer authorization plus token persistence contracts            |
 | `connection`          | Targets, catalog, supervision, retries, registry, and onboarding |
 | `environment`         | Environment identity, descriptors, endpoints, and scoped keys    |
 | `errors`              | Shared client error inspection                                   |

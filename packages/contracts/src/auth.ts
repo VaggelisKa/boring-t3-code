@@ -23,7 +23,6 @@ export type ServerAuthBootstrapMethod = typeof ServerAuthBootstrapMethod.Type;
 export const ServerAuthSessionMethod = Schema.Literals([
   "browser-session-cookie",
   "bearer-access-token",
-  "dpop-access-token",
 ]);
 export type ServerAuthSessionMethod = typeof ServerAuthSessionMethod.Type;
 
@@ -235,7 +234,7 @@ export type AuthTokenExchangeRequest = typeof AuthTokenExchangeRequest.Type;
 export const AuthAccessTokenResult = Schema.Struct({
   access_token: TrimmedNonEmptyString,
   issued_token_type: Schema.Literal(AuthAccessTokenType),
-  token_type: Schema.Literals(["Bearer", "DPoP"]),
+  token_type: Schema.Literal("Bearer"),
   expires_in: Schema.Number,
   scope: TrimmedNonEmptyString,
 });
@@ -248,9 +247,8 @@ export const AuthWebSocketTicketResult = Schema.Struct({
 export type AuthWebSocketTicketResult = typeof AuthWebSocketTicketResult.Type;
 
 /**
- * Media routes share a ticket across requests; RPC uses a separate ticket.
- * Use a path segment so the DPoP mint proof covers it; `htu` excludes query parameters,
- * which could be stripped to change the ticket's use.
+ * Media routes repeat one ticket in `<img>` and `EventSource` URLs, so a ticket captured there
+ * must not open the RPC socket; RPC uses a separate ticket.
  * Older clients mint at the bare path and receive tickets valid for either use.
  */
 export const AuthWebSocketTicketUse = Schema.Literals(["rpc", "media"]);
