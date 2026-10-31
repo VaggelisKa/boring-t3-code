@@ -8,15 +8,11 @@ import {
   ClientSettingsPatch,
   AntigravitySettings,
   DEFAULT_SERVER_SETTINGS,
-  globalIdleCompaction,
-  idleCompactionPatch,
   requiredScopesForProjectMutation,
-  resolveIdleCompaction,
   resolveProjectProviderInstanceEnabled,
   resolveProviderInstanceEnabled,
   ServerSettings,
   ServerSettingsPatch,
-  withIdleCompaction,
 } from "./settings.ts";
 
 const decodeClientSettings = Schema.decodeUnknownSync(ClientSettingsSchema);
@@ -188,52 +184,18 @@ describe("custom model settings", () => {
   });
 });
 
-describe("resolveIdleCompaction", () => {
-  it("lets an instance override the global default", () => {
+describe("removed settings", () => {
+  it("still reads settings files saved with them", () => {
     const settings = decodeServerSettings({
-      idleCompaction: "off",
-      providerInstances: {
-        agy_work: { driver: "antigravity", config: { idleCompaction: "onReturn" } },
-        agy_personal: { driver: "antigravity" },
-      },
+      compactIdleThreads: "beforeCacheExpires",
+      idleCompaction: "beforeCacheExpires",
+      reviewGuidesEnabled: true,
+      defaultAutoPull: true,
     });
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_work"))).toBe("onReturn");
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("agy_personal"))).toBe("off");
-    expect(resolveIdleCompaction(settings, ProviderInstanceId.make("antigravity"))).toBe("off");
-  });
-
-  it("reads the mode from the legacy switch, in either form servers saved it", () => {
-    expect(globalIdleCompaction(decodeServerSettings({ compactIdleThreads: true }))).toBe(
-      "beforeCacheExpires",
-    );
-    expect(globalIdleCompaction(decodeServerSettings({ compactIdleThreads: "off" }))).toBe("off");
-    expect(globalIdleCompaction(decodeServerSettings({}))).toBe("onReturn");
-  });
-
-  it("keeps the legacy switch a boolean, as shipped clients decode it", () => {
-    const encode = Schema.encodeSync(Schema.toCodecJson(ServerSettings));
-    for (const mode of ["onReturn", "beforeCacheExpires", "off"] as const) {
-      const encoded = encode(withIdleCompaction(DEFAULT_SERVER_SETTINGS, mode)) as {
-        readonly compactIdleThreads: unknown;
-        readonly idleCompaction: unknown;
-      };
-      expect(encoded.compactIdleThreads).toBe(mode === "beforeCacheExpires");
-      expect(encoded.idleCompaction).toBe(mode);
-    }
-  });
-
-  it("patches the field the server reads", () => {
-    expect(
-      idleCompactionPatch({ compactIdleThreads: false, idleCompaction: "onReturn" }, "off"),
-    ).toEqual({
-      idleCompaction: "off",
-    });
-    expect(idleCompactionPatch({ compactIdleThreads: "onReturn" }, "off")).toEqual({
-      compactIdleThreads: "off",
-    });
-    expect(idleCompactionPatch({ compactIdleThreads: false }, "beforeCacheExpires")).toEqual({
-      compactIdleThreads: true,
-    });
+    expect(settings.defaultAutoPull).toBe(true);
+    expect(settings).not.toHaveProperty("idleCompaction");
+    expect(settings).not.toHaveProperty("reviewGuidesEnabled");
+    expect(decodeClientSettings({ loadBalancingEnabled: true }).chatWidth).toBe("comfortable");
   });
 });
 

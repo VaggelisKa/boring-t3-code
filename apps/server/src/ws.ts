@@ -13,7 +13,6 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
-import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
 import * as Stream from "effect/Stream";
 import { rpcInitialItems } from "./rpcInitialItems.ts";
@@ -24,15 +23,9 @@ import {
   AuthAccessStreamError,
   type AuthAccessStreamEvent,
   AuthSessionId,
-  ClientConnectionMethod,
-  ClientDeviceType,
-  ClientOs,
-  ClientSurface,
-  ClientWebDeployment,
   type DiscoveredLocalServerList,
   type EditorId,
   type FileManagerRevealKind,
-  type OrchestrationV2Command,
   type GitActionProgressEvent,
   type GitManagerServiceError,
   type MessageId,
@@ -211,13 +204,9 @@ import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/Rpc
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
-import * as HostResources from "./resourceTelemetry/HostResources.ts";
-import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
-import { commandFeatureUsage, featureUsage } from "./telemetry/FeatureUsage.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
-import * as PullRequestReviewGuideService from "./pullRequest/PullRequestReviewGuideService.ts";
 import { listLinkedPullRequestThreads } from "./pullRequest/linkedThreads.ts";
 import { pullRequestSyncKey } from "./pullRequest/pullRequestSyncKey.ts";
 import * as SqlClient from "effect/sql/SqlClient";
@@ -591,15 +580,6 @@ function toAuthAccessStreamEvent(
   }
 }
 
-const isClientSurface = Schema.is(ClientSurface);
-const isClientConnectionMethod = Schema.is(ClientConnectionMethod);
-const isClientDeviceType = Schema.is(ClientDeviceType);
-const isClientOs = Schema.is(ClientOs);
-const isClientWebDeployment = Schema.is(ClientWebDeployment);
-const MAX_CLIENT_APP_VERSION_LENGTH = 64;
-const MAX_CLIENT_BROWSER_LENGTH = 64;
-const MAX_CLIENT_DEVICE_MODEL_LENGTH = 80;
-
 function hasCompatibleOrchestrationProtocol(url: URL): boolean {
   return (
     url.searchParams.get(ORCHESTRATION_PROTOCOL_QUERY_PARAM) ===
@@ -612,51 +592,6 @@ function shouldUseBoundedThreadSnapshot(input: {
   readonly acceptDeferredWork?: boolean;
 }): boolean {
   return input.acceptBoundedSnapshot === true;
-}
-
-// Keep telemetry per socket; several client types can connect simultaneously.
-function readClientAnalyticsProps(request: HttpServerRequest.HttpServerRequest) {
-  const url = HttpServerRequest.toURL(request);
-  if (Option.isNone(url)) {
-    return {};
-  }
-
-  const surface = url.value.searchParams.get("clientSurface");
-  const appVersion = url.value.searchParams.get("clientAppVersion")?.trim() ?? "";
-  const deviceType = url.value.searchParams.get("clientDeviceType");
-  const os = url.value.searchParams.get("clientOs");
-  const webDeployment = url.value.searchParams.get("clientWebDeployment");
-  const browser = url.value.searchParams.get("clientBrowser")?.trim() ?? "";
-  const connectionMethod = url.value.searchParams.get("connectionMethod");
-  const rawOsMajorVersion = url.value.searchParams.get("clientOsMajorVersion") ?? "";
-  const osMajorVersion = Number(rawOsMajorVersion);
-  const deviceModel = url.value.searchParams.get("clientDeviceModel")?.trim() ?? "";
-  const isMobile = surface === "mobile";
-  const hasOsMajorVersion =
-    isMobile && rawOsMajorVersion !== "" && Number.isInteger(osMajorVersion) && osMajorVersion > 0;
-  const hasDeviceModel =
-    isMobile && deviceModel !== "" && deviceModel.length <= MAX_CLIENT_DEVICE_MODEL_LENGTH;
-
-  return {
-    ...(isClientSurface(surface) ? { surface } : {}),
-    ...(appVersion !== "" && appVersion.length <= MAX_CLIENT_APP_VERSION_LENGTH
-      ? { appVersion, clientAppVersion: appVersion }
-      : {}),
-    ...(isClientOs(os)
-      ? {
-          clientOs: os,
-          ...(isMobile && (os === "iOS" || os === "Android") ? { os } : {}),
-        }
-      : {}),
-    ...(isClientDeviceType(deviceType) ? { clientDeviceType: deviceType } : {}),
-    ...(surface === "web" && isClientWebDeployment(webDeployment) ? { webDeployment } : {}),
-    ...(surface === "web" && browser !== "" && browser.length <= MAX_CLIENT_BROWSER_LENGTH
-      ? { clientBrowser: browser }
-      : {}),
-    ...(hasOsMajorVersion ? { osMajorVersion, clientOsMajorVersion: osMajorVersion } : {}),
-    ...(hasDeviceModel ? { deviceModel, clientDeviceModel: deviceModel } : {}),
-    ...(isClientConnectionMethod(connectionMethod) ? { connectionMethod } : {}),
-  };
 }
 
 const canReplayPersistedRange = Effect.fnUntraced(function* (
@@ -1167,7 +1102,6 @@ export const subscribeOrchestrationV2Shell = Effect.fn("ws.orchestrationV2.subsc
 
 export const layerWsRpc = (
   currentSession: EnvironmentAuth.AuthenticatedSession,
-  clientAnalyticsProps: Readonly<Record<string, unknown>>,
   serverBrowser: ServerBrowser.ServerBrowser["Service"],
 ) =>
   Layer.effectContext(
@@ -1192,31 +1126,11 @@ export const layerWsRpc = (
       const threadSearch = yield* ThreadSearch.ThreadSearch;
 
       const mcpAppRequests = yield* McpAppRequests.McpAppRequests;
-      const analytics = yield* AnalyticsService.AnalyticsService;
-      const originProps = clientAnalyticsProps;
-      const recordClientCommandAnalytics = (command: OrchestrationV2Command) => {
-        const usage = commandFeatureUsage(command);
-        return Effect.all(
-          [
-            command.type === "message.dispatch"
-              ? analytics.record("client.turn.requested", originProps)
-              : Effect.void,
-            usage === undefined
-              ? Effect.void
-              : analytics.record("feature.used", {
-                  ...usage,
-                  ...(originProps.surface === undefined ? {} : { surface: originProps.surface }),
-                }),
-          ],
-          { discard: true },
-        ).pipe(Effect.ignore);
-      };
       const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
       const commandOutputHub = yield* CommandOutputHub.CommandOutputHub;
       const providerSessionManager = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const secretRequests = yield* SecretRequests.SecretRequests;
       const pullRequests = yield* PullRequestService.PullRequestService;
-      const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
       const orchestrationEngine = yield* Orchestrator.OrchestratorV2;
       const crypto = yield* Crypto.Crypto;
@@ -1299,7 +1213,6 @@ export const layerWsRpc = (
       const bootstrapCredentials = yield* PairingGrantStore.PairingGrantStore;
       const sessions = yield* SessionStore.SessionStore;
       const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
-      const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
       const resourceTelemetry = yield* ResourceTelemetry.ResourceTelemetry;
       const acpRegistryProject = Effect.fn("ws.acpRegistry.project")(function* (
@@ -1807,9 +1720,6 @@ export const layerWsRpc = (
                   ).pipe(Effect.provide(intakeContext)),
                 )
                 .pipe(
-                  Effect.tap((result) =>
-                    result.replayed ? Effect.void : recordClientCommandAnalytics(command),
-                  ),
                   Effect.map((result) => ({ sequence: result.sequence })),
                   Effect.mapError((cause) => {
                     const detail = userFacingDispatchErrorMessage(cause);
@@ -1980,24 +1890,6 @@ export const layerWsRpc = (
                   }).pipe(Effect.provide(intakeContext)),
                 )
                 .pipe(
-                  // A resumed launch is a retry of one already counted.
-                  Effect.tap((result) =>
-                    result.resumed
-                      ? Effect.void
-                      : analytics
-                          .record("client.thread.started", {
-                            ...originProps,
-                            workspaceStrategy: input.workspaceStrategy.type,
-                          })
-                          .pipe(
-                            Effect.andThen(
-                              input.initialMessage === undefined
-                                ? Effect.void
-                                : analytics.record("client.turn.requested", originProps),
-                            ),
-                            Effect.ignore,
-                          ),
-                  ),
                   Effect.map((result) => ({
                     ...result,
                     projection: projectThreadProjectionForWire(result.projection),
@@ -2323,7 +2215,6 @@ export const layerWsRpc = (
             maxFiles: config.traceMaxFiles,
           }),
         [WS_METHODS.serverGetProcessDiagnostics]: (_input) => processDiagnostics.read,
-        [WS_METHODS.serverGetHostResources]: (_input) => hostResources.read,
         [WS_METHODS.serverGetProcessResourceHistory]: (input) =>
           processResourceMonitor.readHistory(input),
         [WS_METHODS.serverGetResourceTelemetryHistory]: (input) =>
@@ -2374,10 +2265,6 @@ export const layerWsRpc = (
           withPullRequestViewer(input, pullRequests.checks(input)),
         [WS_METHODS.pullRequestsActivity]: (input) =>
           withPullRequestViewer(input, pullRequests.activity(input)),
-        [WS_METHODS.pullRequestsReviewGuide]: (input) =>
-          withPullRequestViewer(input, reviewGuides.get(input)),
-        [WS_METHODS.pullRequestsGenerateReviewGuide]: (input) =>
-          withPullRequestViewer(input, reviewGuides.generate(input)),
         [WS_METHODS.pullRequestsThreadComments]: (input) =>
           withPullRequestViewer(input, pullRequests.threadComments(input)),
         [WS_METHODS.pullRequestsDiffFileContents]: (input) =>
@@ -2989,7 +2876,6 @@ export const layer = Layer.unwrap(
   Effect.gen(function* () {
     const serverBrowser = yield* ServerBrowser.ServerBrowser;
     const pullRequests = yield* PullRequestService.PullRequestService;
-    const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
     const sql = yield* SqlClient.SqlClient;
     return HttpRouter.add(
       "GET",
@@ -3009,7 +2895,6 @@ export const layer = Layer.unwrap(
         }
         const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
         const sessions = yield* SessionStore.SessionStore;
-        const analytics = yield* AnalyticsService.AnalyticsService;
         const session = yield* serverAuth.authenticateWebSocketUpgrade(request, "rpc").pipe(
           Effect.catchIf(EnvironmentAuth.isServerAuthCredentialError, (error) =>
             failEnvironmentAuthInvalid(EnvironmentAuth.serverAuthCredentialReason(error)),
@@ -3018,37 +2903,19 @@ export const layer = Layer.unwrap(
             failEnvironmentInternal("internal_error", error),
           ),
         );
-        const clientAnalyticsProps = readClientAnalyticsProps(request);
         const rpcWebSocketHttpEffect = yield* Effect.gen(function* () {
           const { protocol, httpEffect } = yield* RpcServer.makeProtocolWithHttpEffectWebsocket;
           yield* RpcServer.make(ServerWsRpcGroup, WS_RPC_SERVER_OPTIONS).pipe(
             Effect.provideService(RpcServer.Protocol, withTerminalOutputWindow(protocol)),
             Effect.provide(
-              Layer.merge(
-                RpcAuthorization.layer(session.scopes, (method, payload) => {
-                  // Anonymous product signal: the feature and its enum variant,
-                  // credited to the connecting client's surface only.
-                  const usage = featureUsage(method, payload);
-                  return usage === undefined
-                    ? Effect.void
-                    : analytics
-                        .record("feature.used", {
-                          ...usage,
-                          ...(clientAnalyticsProps.surface === undefined
-                            ? {}
-                            : { surface: clientAnalyticsProps.surface }),
-                        })
-                        .pipe(Effect.ignore);
-                }),
-                rpcInstrumentationLayer,
-              ),
+              Layer.merge(RpcAuthorization.layer(session.scopes), rpcInstrumentationLayer),
             ),
             Effect.forkScoped,
           );
           return httpEffect;
         }).pipe(
           Effect.provide(
-            layerWsRpc(session, clientAnalyticsProps, serverBrowser).pipe(
+            layerWsRpc(session, serverBrowser).pipe(
               Layer.provideMerge(RpcSerialization.layerJson),
               // Handler-context reporters see only request defects, not server-wide defects.
               Layer.provide(DefectReporter.layer),
@@ -3057,12 +2924,6 @@ export const layer = Layer.unwrap(
               // Share server-lifetime PR caches so WS mutations invalidate every client's HTTP diffs.
               Layer.provide(Layer.succeed(PullRequestService.PullRequestService, pullRequests)),
               Layer.provide(OtlpEndpointCheck.layer),
-              Layer.provide(
-                Layer.succeed(
-                  PullRequestReviewGuideService.PullRequestReviewGuideService,
-                  reviewGuides,
-                ),
-              ),
               Layer.provide(
                 SourceControlDiscovery.layer.pipe(
                   Layer.provide(

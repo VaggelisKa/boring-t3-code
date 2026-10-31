@@ -132,15 +132,6 @@ export const writes = <P, A, E, R>(
     ),
   );
 
-/** Requires handler capability checks, not thread control; linked work is refused the same way. */
-export const writesWithCapability = <P, A, E, R>(handle: (params: P) => Effect.Effect<A, E, R>) =>
-  declare((params: P) =>
-    writingCaller.pipe(
-      Effect.tap((caller) => assertNotLinked(caller, "start work here that is not its link's")),
-      Effect.flatMap(() => handle(params)),
-    ),
-  );
-
 export const writesThreads = <P, A, E, R>(
   threads: (params: P) => ReadonlyArray<ThreadId | undefined>,
   handle: (params: P) => Effect.Effect<A, E, R>,

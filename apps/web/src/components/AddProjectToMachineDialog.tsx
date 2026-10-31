@@ -164,11 +164,7 @@ function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRe
       draft.environmentId === request.projectRef.environmentId &&
       draft.projectId === request.projectRef.projectId
     ) {
-      drafts.setDraftThreadContext(draftId, {
-        projectRef: targetRef,
-        environmentSelection: "manual",
-        loadBalancedEnvironmentId: null,
-      });
+      drafts.setDraftThreadContext(draftId, { projectRef: targetRef });
       return;
     }
     void handleNewThread(targetRef);

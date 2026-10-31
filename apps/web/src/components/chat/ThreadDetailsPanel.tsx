@@ -59,8 +59,6 @@ interface ThreadDetailsPanelProps extends Pick<
   isGitRepo: boolean;
   envLocked: boolean;
   availableEnvironments: readonly EnvironmentOption[];
-  autoEnvironmentLabel?: string | undefined;
-  onAutoEnvironment?: (() => void) | undefined;
   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
   onEnvModeChange: (mode: EnvMode) => void;
   envMode: EnvMode;
@@ -173,8 +171,6 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         {...(props.onEnvironmentChange
                           ? { onEnvironmentChange: props.onEnvironmentChange }
                           : {})}
-                        autoEnvironmentLabel={props.autoEnvironmentLabel}
-                        onAutoEnvironment={props.onAutoEnvironment}
                         {...branchToolbarProps}
                       />
                     ) : null}

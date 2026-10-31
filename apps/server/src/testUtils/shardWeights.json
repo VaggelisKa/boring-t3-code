@@ -124,7 +124,6 @@
   "src/provider/providerCompatibility.test.ts": 1.6,
   "src/provider/providerInstallation.test.ts": 1.1,
   "src/provider/providerMaintenanceRunner.test.ts": 0.5,
-  "src/pullRequest/PullRequestReviewGuideService.test.ts": 0.7,
   "src/pullRequest/PullRequestService.test.ts": 4.6,
   "src/resourceTelemetry/ResourceTelemetry.test.ts": 0.5,
   "src/secrets/SecretRequests.test.ts": 2.6,

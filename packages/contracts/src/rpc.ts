@@ -132,7 +132,6 @@ import {
 import { KeybindingsConfigError } from "./keybindings.ts";
 import { OrchestrationSearchThreadsError } from "./threadSearch.ts";
 import { ProviderInstanceId, ProviderInstanceMutation } from "./providerInstance.ts";
-import { PullRequestReviewGuideResult } from "./pullRequestReviewGuide.ts";
 import {
   PullRequestActionInput,
   PullRequestActivity,
@@ -264,7 +263,6 @@ import {
   ServerUpsertKeybindingResult,
 } from "./server.ts";
 import {
-  HostResourcesSnapshot,
   ResourceTelemetryHistory,
   ResourceTelemetryHistoryInput,
   ResourceTelemetryRetryResult,
@@ -406,7 +404,6 @@ export const WS_METHODS = {
   serverLogoutAcpRegistry: "server.logoutAcpRegistry",
   serverGetTraceDiagnostics: "server.getTraceDiagnostics",
   serverGetProcessDiagnostics: "server.getProcessDiagnostics",
-  serverGetHostResources: "server.getHostResources",
   serverGetProcessResourceHistory: "server.getProcessResourceHistory",
   serverGetResourceTelemetryHistory: "server.getResourceTelemetryHistory",
   serverRetryResourceTelemetry: "server.retryResourceTelemetry",
@@ -430,8 +427,6 @@ export const WS_METHODS = {
   pullRequestsPreview: "pullRequests.preview",
   pullRequestsChecks: "pullRequests.checks",
   pullRequestsActivity: "pullRequests.activity",
-  pullRequestsReviewGuide: "pullRequests.reviewGuide",
-  pullRequestsGenerateReviewGuide: "pullRequests.generateReviewGuide",
   pullRequestsThreadComments: "pullRequests.threadComments",
   pullRequestsDiffFileContents: "pullRequests.diffFileContents",
   pullRequestsFilesViewed: "pullRequests.filesViewed",
@@ -715,12 +710,6 @@ const WsServerGetProcessDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetProcessDia
   error: EnvironmentAuthorizationError,
 });
 
-const WsServerGetHostResourcesRpc = Rpc.make(WS_METHODS.serverGetHostResources, {
-  payload: Schema.Struct({}),
-  success: HostResourcesSnapshot,
-  error: EnvironmentAuthorizationError,
-});
-
 const WsServerGetProcessResourceHistoryRpc = Rpc.make(WS_METHODS.serverGetProcessResourceHistory, {
   payload: ServerProcessResourceHistoryInput,
   success: ServerProcessResourceHistoryResult,
@@ -847,18 +836,6 @@ const WsPullRequestsChecksRpc = Rpc.make(WS_METHODS.pullRequestsChecks, {
 const WsPullRequestsActivityRpc = Rpc.make(WS_METHODS.pullRequestsActivity, {
   payload: PullRequestRef,
   success: PullRequestActivity,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsReviewGuideRpc = Rpc.make(WS_METHODS.pullRequestsReviewGuide, {
-  payload: PullRequestRef,
-  success: PullRequestReviewGuideResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsGenerateReviewGuideRpc = Rpc.make(WS_METHODS.pullRequestsGenerateReviewGuide, {
-  payload: PullRequestRef,
-  success: PullRequestReviewGuideResult,
   error: PullRequestRpcError,
 });
 
@@ -1618,7 +1595,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerLogoutAcpRegistryRpc,
   WsServerGetTraceDiagnosticsRpc,
   WsServerGetProcessDiagnosticsRpc,
-  WsServerGetHostResourcesRpc,
   WsServerGetProcessResourceHistoryRpc,
   WsServerGetResourceTelemetryHistoryRpc,
   WsServerRetryResourceTelemetryRpc,
@@ -1640,8 +1616,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsPullRequestsPreviewRpc,
   WsPullRequestsChecksRpc,
   WsPullRequestsActivityRpc,
-  WsPullRequestsReviewGuideRpc,
-  WsPullRequestsGenerateReviewGuideRpc,
   WsPullRequestsThreadCommentsRpc,
   WsPullRequestsDiffFileContentsRpc,
   WsPullRequestsFilesViewedRpc,

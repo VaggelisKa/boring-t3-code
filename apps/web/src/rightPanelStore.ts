@@ -23,7 +23,7 @@ const RIGHT_PANEL_KINDS = [
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
 
-export type PullRequestDetailTab = "summary" | "guide" | "timeline" | "code";
+export type PullRequestDetailTab = "summary" | "timeline" | "code";
 
 export type RightPanelSurface =
   | { id: `browser:${string}`; kind: "preview"; resourceId: string }
@@ -68,7 +68,7 @@ export type RightPanelSurface =
   | { id: "pull-requests"; kind: "pull-requests" };
 
 const RIGHT_PANEL_STORAGE_KEY = "t3code:right-panel-state:v2";
-const RIGHT_PANEL_STORAGE_VERSION = 15;
+const RIGHT_PANEL_STORAGE_VERSION = 16;
 
 export const PULL_REQUESTS_PANEL_REF = scopeThreadRef(
   EnvironmentId.make("pull-requests-panel"),
@@ -451,11 +451,17 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                       ) {
                         return [];
                       }
-                      const { environmentId, ...rest } = surface;
+                      const { environmentId, detailTab, ...rest } = surface;
                       return [
                         pullRequestSurface({
                           ...rest,
                           ...(typeof environmentId === "string" ? { environmentId } : {}),
+                          // Older saves can name the removed Guide tab.
+                          ...(detailTab === "summary" ||
+                          detailTab === "timeline" ||
+                          detailTab === "code"
+                            ? { detailTab }
+                            : {}),
                         }),
                       ];
                     }

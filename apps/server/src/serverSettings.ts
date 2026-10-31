@@ -17,8 +17,6 @@ import {
   ServerSettings,
   ServerSettingsError,
   type ServerSettingsPatch,
-  globalIdleCompaction,
-  withIdleCompaction,
 } from "@t3tools/contracts";
 import * as Cache from "effect/Cache";
 import * as Cause from "effect/Cause";
@@ -60,10 +58,7 @@ import {
 
 import { mapSettingsSecrets, SECRET_REDACTED, type SettingsSecret } from "./settingsSecrets.ts";
 
-export {
-  resolveReviewGuideModelSelection,
-  resolveSourceControlWriterModelSelection,
-} from "@t3tools/shared/serverSettings";
+export { resolveSourceControlWriterModelSelection } from "@t3tools/shared/serverSettings";
 
 const encodeServerSettings = Schema.encodeEffect(ServerSettings);
 const encodeServerSettingsJson = Schema.encodeUnknownEffect(fromJsonStringPretty(ServerSettings));
@@ -117,7 +112,6 @@ const normalizeServerSettings = (
   encodeServerSettings(settings).pipe(
     Effect.flatMap(decodeServerSettings),
     Effect.map(foldProviderInstanceEnabledFlags),
-    Effect.map((next) => withIdleCompaction(next, globalIdleCompaction(next))),
     Effect.map((next) => ({ ...next, ...deriveLegacyProjectOverrides(next) })),
     Effect.mapError(
       (cause) =>
@@ -406,7 +400,6 @@ const ATOMIC_SETTINGS_KEYS: ReadonlySet<string> = new Set([
   "automaticGitFetchInterval",
   "providerHealthRefreshInterval",
   "sourceControlWriterModelSelection",
-  "reviewGuideModelSelection",
   "textGenerationModelSelection",
   "fallbackModelSelection",
   "pullRequestMergeMethod",
@@ -648,11 +641,6 @@ const make = Effect.gen(function* () {
         settings = decoded.value;
       }
     }
-    // Settings saved by a server that kept the mode in `compactIdleThreads` move
-    // it to `idleCompaction`, so that switch goes to clients as a boolean. The
-    // defaults gain the field too, which tells clients this server reads modes.
-    settings = withIdleCompaction(settings, globalIdleCompaction(settings));
-
     // A file that failed to decode must stay on disk for the user to repair.
     const settingsFileTrusted = Option.isNone(parseFailure);
     const legacyProjectRows =

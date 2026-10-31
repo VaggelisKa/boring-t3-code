@@ -112,7 +112,6 @@ const ProbeToolkit = Toolkit.make(
   Tool.make("reads_as_caller", probe),
   Tool.make("acts_as_caller", probe),
   Tool.make("writes", probe),
-  Tool.make("writes_with_capability", probe),
   Tool.make("writes_threads", {
     ...probe,
     parameters: Schema.Struct({ threadId: Schema.optional(ThreadId) }),
@@ -132,7 +131,6 @@ const probeHandlers: McpToolAccess.Handlers<typeof ProbeToolkit.tools> = {
   reads_as_caller: McpToolAccess.readsAsCaller(() => ran),
   acts_as_caller: McpToolAccess.actsAsCaller(() => ran),
   writes: McpToolAccess.writes(() => ran),
-  writes_with_capability: McpToolAccess.writesWithCapability(() => ran),
   writes_threads: McpToolAccess.writesThreads(
     (input) => [input.threadId],
     () => ran,
@@ -178,7 +176,6 @@ export const refusedAtCompileTime = () => {
       reads_as_caller: unchecked,
       acts_as_caller: unchecked,
       writes: unchecked,
-      writes_with_capability: unchecked,
       writes_threads: unchecked,
       starts_threads: unchecked,
       writes_environment: unchecked,
@@ -268,13 +265,8 @@ it.effect.each([
   ["writes", previewOnly, {}, "capability_denied"],
   ["writes_environment", previewOnly, {}, "capability_denied"],
 
-  ["writes_with_capability", previewOnly, {}, "ran"],
-  ["writes_with_capability", readOnlyClient, {}, "capability_denied"],
-  ["writes_with_capability", ended, {}, "parent_not_active"],
   ["writes", linkedClient, {}, "capability_denied"],
-  ["writes_with_capability", linkedClient, {}, "capability_denied"],
   ["writes", fullAccessLinkedClient, {}, "ran"],
-  ["writes_with_capability", fullAccessLinkedClient, {}, "ran"],
 
   ["writes_threads", supervised, {}, "ran"],
   ["writes_threads", supervised, { threadId: planThreadId }, "ran"],

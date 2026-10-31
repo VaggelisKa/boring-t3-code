@@ -63,12 +63,10 @@ import {
   type MessageId,
   type ModelSelection,
   type PreviewAnnotationPayload,
-  ProviderInstanceId,
   type ServerProvider,
   type ScopedThreadRef,
   type ThreadId,
   ProviderInteractionMode,
-  resolveIdleCompaction,
   RuntimeMode,
 } from "@t3tools/contracts";
 import {
@@ -113,7 +111,6 @@ import { assistantCitationFromLocation } from "../lib/assistantCitationNavigatio
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { useStore } from "zustand";
 import { shallow } from "zustand/vanilla/shallow";
-import { useShallow } from "zustand/react/shallow";
 import {
   isAtomCommandInterrupted,
   mapAtomCommandResult,
@@ -186,11 +183,7 @@ import {
   resolveProjectDefaultProviderModelSelection,
   shouldShowInstanceBadge,
 } from "../providerInstances";
-import {
-  useClientSettings,
-  useClientSettingsHydrated,
-  useEnvironmentSettings,
-} from "../hooks/useSettings";
+import { useClientSettingsHydrated, useEnvironmentSettings } from "../hooks/useSettings";
 import { useNowMinute } from "../hooks/useNowMinute";
 import { usePanelAnimationSettings, usePanelPresence } from "../panelAnimations";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
@@ -214,7 +207,6 @@ import {
   DraftId,
 } from "../composerDraftStore";
 import { type TerminalContextDraft } from "../lib/terminalContext";
-import { collectInlineContextIds } from "../lib/composerContextReferences";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { useKnownTerminalSessions, useThreadRunningTerminalIds } from "../state/terminalSessions";
 import { useEnvironmentQuery } from "../state/query";
@@ -301,11 +293,7 @@ import { ComposerBannerStack, type ComposerBannerStackItem } from "./chat/Compos
 import { modelFallbackBannerItem } from "./chat/ComposerUsageLimits";
 import { ComposerSurface } from "./chat/ComposerSurface";
 import { resolveThreadSyncPhase } from "../threadSync";
-import {
-  hasAvailableCompactionProvider,
-  hasDismissedResumeCompaction,
-  shouldOfferResumeCompaction,
-} from "./chat/ContextWindowMeter.logic";
+import { hasAvailableCompactionProvider } from "./chat/ContextWindowMeter.logic";
 import {
   deriveLatestContextWindowSnapshot,
   latestProviderTurnTokenUsage,
@@ -586,15 +574,6 @@ export default function ChatView(props: ChatViewProps) {
     const draft = store.getComposerDraft(composerDraftTarget);
     return (draft?.images.length ?? 0) > 0 || (draft?.files.length ?? 0) > 0;
   });
-  const referencedThreadContexts = useComposerDraftStore(
-    useShallow((store) => {
-      const draft = store.getComposerDraft(composerDraftTarget);
-      if (!draft?.threadContexts.length) return [];
-      // Linked prompts can replace text without pruning stored context records.
-      const referenced = new Set(collectInlineContextIds(draft.prompt));
-      return draft.threadContexts.filter((record) => referenced.has(record.contextId));
-    }),
-  );
   const composerHasNonPromptContent = useComposerDraftStore((store) => {
     const draft = store.getComposerDraft(composerDraftTarget);
     return draft ? composerDraftHasUserContent({ ...draft, prompt: "" }) : false;
@@ -1146,7 +1125,6 @@ export default function ChatView(props: ChatViewProps) {
     activeProjectIsScratch && draftId !== null,
   );
   const hasMultipleEnvironments = logicalProjectEnvironments.length > 1;
-  const canAutoBalanceEnvironments = hasMultipleEnvironments && !activeProjectIsScratch;
   const activeEnvironmentOption =
     logicalProjectEnvironments.find(
       (environment) => environment.environmentId === activeThread?.environmentId,
@@ -1207,21 +1185,6 @@ export default function ChatView(props: ChatViewProps) {
   const canChangeEnvironment =
     hasMultipleEnvironments && !envLocked && draftId !== null && !draftThread?.promotedTo;
 
-  const loadBalancingSettings = useClientSettings((settings) => ({
-    loadBalancingEnabled: settings.loadBalancingEnabled,
-    loadBalancingWeights: settings.loadBalancingWeights,
-  }));
-  const automaticEnvironment = Boolean(
-    clientSettingsHydrated &&
-    draftId &&
-    !envLocked &&
-    canAutoBalanceEnvironments &&
-    loadBalancingSettings.loadBalancingEnabled &&
-    draftThread?.environmentSelection !== "manual" &&
-    (!composerHasAttachments || Boolean(draftThread?.loadBalancedEnvironmentId)) &&
-    (!draftThread?.branch || draftThread.environmentSelection === "auto") &&
-    !draftThread?.worktreePath,
-  );
   const systemComposerBannerItems = useSystemComposerBanners({
     activeEnvironment,
     activeEnvironmentUnavailable,
@@ -1591,30 +1554,6 @@ export default function ChatView(props: ChatViewProps) {
       ? (activeRuntime?.providerInstanceId ?? activeThread?.modelSelection.instanceId ?? null)
       : null,
   });
-  const [resumeCompactionPermanentlyDismissed, setResumeCompactionPermanentlyDismissed] =
-    useLocalStorage(
-      `t3code:resume-compaction-dismissed:${environmentId}:${activeProviderInstanceId ?? "claudeAgent"}`,
-      false,
-      Schema.Boolean,
-    );
-  const nativeResumeCompactionDismissed = hasDismissedResumeCompaction(
-    (serverProjection?.runtimeRequests ?? [])
-      .filter((request) => request.kind === "user_input" && request.status === "resolved")
-      .map((request) => ({
-        kind: "user-input.resolved",
-        payload: { answers: request.answers },
-      })),
-  );
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- persists the server-reported resume compaction dismissal to localStorage
-  useEffect(() => {
-    if (nativeResumeCompactionDismissed && !resumeCompactionPermanentlyDismissed) {
-      setResumeCompactionPermanentlyDismissed(true);
-    }
-  }, [
-    nativeResumeCompactionDismissed,
-    resumeCompactionPermanentlyDismissed,
-    setResumeCompactionPermanentlyDismissed,
-  ]);
   const [dismissedFallbackWindow, setDismissedFallbackWindow] = useLocalStorage(
     `t3code:fallback-notice-dismissed:${environmentId}`,
     null,
@@ -1707,32 +1646,16 @@ export default function ChatView(props: ChatViewProps) {
     terminalShortcutLabelOptions,
   );
 
-  const {
-    needsLoadBalancing,
-    loadBalancing,
-    onAutoEnvironmentStable,
-    autoEnvironmentLabel,
-    isEnvironmentChanging,
-    readPendingEnvironmentChange,
-    onEnvironmentChangeStable,
-  } = useDraftEnvironmentRouting({
-    draftId,
-    draftThread,
-    envLocked,
-    automaticEnvironment,
-    logicalProjectEnvironments,
-    environmentById,
-    providersByEnvironment,
-    loadBalancingSettings,
-    referencedThreadContexts,
-    activeProviderInstanceId,
-    selectedProvider,
-    composerHasAttachments,
-    activeProjectKey,
-    activeProjectIsScratch,
-    projectGroupingSettings,
-    sendInFlightRef,
-  });
+  const { isEnvironmentChanging, readPendingEnvironmentChange, onEnvironmentChangeStable } =
+    useDraftEnvironmentRouting({
+      draftId,
+      envLocked,
+      logicalProjectEnvironments,
+      activeProjectKey,
+      activeProjectIsScratch,
+      projectGroupingSettings,
+      sendInFlightRef,
+    });
 
   const focusComposer = () => {
     composerRef.current?.focusAtEnd();
@@ -2386,41 +2309,6 @@ export default function ChatView(props: ChatViewProps) {
           ? "Compaction is unavailable for this provider"
           : "Compacting is unavailable right now"
     : null;
-  const resumeCompactionTokens =
-    activeContextWindow &&
-    resolveIdleCompaction(
-      settings,
-      activeProviderInstanceId ?? ProviderInstanceId.make("claudeAgent"),
-    ) !== "off" &&
-    !resumeCompactionPermanentlyDismissed &&
-    !nativeResumeCompactionDismissed &&
-    !compactDisabled &&
-    !hasHeldQueuedRuns &&
-    multipleModelSelections === null &&
-    shouldOfferResumeCompaction({
-      provider: selectedProvider,
-      usedTokens: activeContextWindow.usedTokens,
-      updatedAt: activeContextWindow.updatedAt,
-      promptCacheTtlMs: activeThreadLiveTokenUsage?.promptCacheTtlMs,
-      now: `${nowMinute}:00.000Z`,
-    })
-      ? activeContextWindow.usedTokens
-      : null;
-  const [fullHistoryThreadKeys, setFullHistoryThreadKeys] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const keepFullHistory = fullHistoryThreadKeys.has(routeThreadKey);
-  const setKeepFullHistory = (threadKey: string, keep: boolean) => {
-    setFullHistoryThreadKeys((current) => {
-      if (current.has(threadKey) === keep) return current;
-      const next = new Set(current);
-      if (keep) next.add(threadKey);
-      else next.delete(threadKey);
-      return next;
-    });
-  };
-  const toggleKeepFullHistory = () => setKeepFullHistory(routeThreadKey, !keepFullHistory);
-  const toggleKeepFullHistoryStable = useStableCallback(toggleKeepFullHistory);
   const handleRestoreThreadBranch = () => {
     if (!canWriteSourceControl) return;
     if (gitStatusQuery.data?.hasWorkingTreeChanges) {
@@ -2751,7 +2639,6 @@ export default function ChatView(props: ChatViewProps) {
     sendEnvMode,
     startFromOrigin,
     localCheckoutBranchMismatch,
-    logicalProjectEnvironments,
     providerInstanceEntries,
     composerRef,
     composerDraftTarget,
@@ -2768,15 +2655,11 @@ export default function ChatView(props: ChatViewProps) {
     isDraftHeroState,
     panelAnimationsActive,
     panelAnimationDurationMs,
-    keepFullHistory,
-    resumeCompactionTokens,
     showPlanFollowUpPrompt,
     usageLimitsKey,
     usageLimitsOffered,
     openUsageLimits,
     clearUsageLimitsFor,
-    needsLoadBalancing,
-    loadBalancing,
     readPendingEnvironmentChange,
     pendingApprovals,
     respondingRequestIds,
@@ -2795,7 +2678,6 @@ export default function ChatView(props: ChatViewProps) {
       release: (message) => optimisticBlobPreviews.release(threadId, message),
     },
     setThreadError,
-    setKeepFullHistory,
     anchorNewTurn,
     acknowledgeActiveThreadWoke,
     handleInteractionModeChange,
@@ -2861,7 +2743,6 @@ export default function ChatView(props: ChatViewProps) {
     !isRevertingCheckpoint &&
     !threadDetailLoading &&
     clientSettingsHydrated &&
-    !needsLoadBalancing &&
     !activeEnvironmentUnavailable &&
     !activePendingProgress;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- switches the draft to local mode, then resends the waiting message once sending is idle
@@ -3398,9 +3279,6 @@ export default function ChatView(props: ChatViewProps) {
                               }
                               isPreparingWorktree={isPreparingWorktree && !sendQueuesBehindSetup}
                               bannerItems={isDraftHeroState ? [] : composerBannerItems}
-                              resumeCompactionTokens={resumeCompactionTokens}
-                              keepFullHistory={keepFullHistory}
-                              onToggleKeepFullHistory={toggleKeepFullHistoryStable}
                               onUsageLimitsCommand={
                                 usageLimitsOffered &&
                                 usageLimitsKey !== null &&
@@ -3533,15 +3411,6 @@ export default function ChatView(props: ChatViewProps) {
                                 {...(canChangeEnvironment
                                   ? { onEnvironmentChange: onEnvironmentChangeStable }
                                   : {})}
-                                autoEnvironmentLabel={autoEnvironmentLabel}
-                                onAutoEnvironment={
-                                  draftId &&
-                                  !envLocked &&
-                                  canAutoBalanceEnvironments &&
-                                  loadBalancingSettings.loadBalancingEnabled
-                                    ? onAutoEnvironmentStable
-                                    : undefined
-                                }
                                 availableEnvironments={logicalProjectEnvironments}
                                 {...(isServerThread
                                   ? {}
@@ -3626,15 +3495,6 @@ export default function ChatView(props: ChatViewProps) {
               isGitRepo={isGitRepo}
               envLocked={envLocked}
               availableEnvironments={logicalProjectEnvironments}
-              autoEnvironmentLabel={autoEnvironmentLabel}
-              onAutoEnvironment={
-                draftId &&
-                !envLocked &&
-                canAutoBalanceEnvironments &&
-                loadBalancingSettings.loadBalancingEnabled
-                  ? onAutoEnvironmentStable
-                  : undefined
-              }
               {...(canChangeEnvironment ? { onEnvironmentChange: onEnvironmentChangeStable } : {})}
               onEnvModeChange={onEnvModeChangeStable}
               envMode={envMode}

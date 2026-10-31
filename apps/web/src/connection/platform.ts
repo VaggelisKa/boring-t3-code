@@ -43,7 +43,6 @@ import {
   type PrimaryEnvironmentTarget,
 } from "../environments/primary/target";
 import { clearComposerDraftsEnvironment } from "../composerDraftStore";
-import { randomUUID } from "../lib/utils";
 import { acknowledgeRpcRequest, trackRpcRequestSent } from "../rpc/requestLatencyState";
 import {
   desktopLocalConnectionId,
@@ -150,19 +149,6 @@ function currentClientMetadata() {
   });
 }
 
-const ANALYTICS_DEVICE_ID_KEY = "t3code:analytics-device-id";
-
-// Lives as long as this browser profile's site data. Storage can be blocked, which only drops the id.
-const analyticsDevice = {
-  id: Effect.try(() => {
-    const existing = window.localStorage.getItem(ANALYTICS_DEVICE_ID_KEY);
-    if (existing) return existing;
-    const created = randomUUID();
-    window.localStorage.setItem(ANALYTICS_DEVICE_ID_KEY, created);
-    return created;
-  }).pipe(Effect.option),
-};
-
 const layerCapabilities = Layer.effectContext(
   Effect.sync(() => {
     const presentation = ClientCapabilities.ClientPresentation.of({
@@ -179,8 +165,7 @@ const layerCapabilities = Layer.effectContext(
       }).pipe(Effect.map(Option.fromNullishOr)),
     });
 
-    return Context.make(ClientCapabilities.AnalyticsDevice, analyticsDevice).pipe(
-      Context.add(ClientCapabilities.PrimaryEnvironmentAuth, primaryAuth),
+    return Context.make(ClientCapabilities.PrimaryEnvironmentAuth, primaryAuth).pipe(
       Context.add(ClientCapabilities.ClientPresentation, presentation),
     );
   }),

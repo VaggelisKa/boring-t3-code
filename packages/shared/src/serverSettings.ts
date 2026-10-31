@@ -4,8 +4,6 @@ import {
   ANTIGRAVITY_DEFAULT_MODEL,
   DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
-  globalIdleCompaction,
-  type IdleCompactionMode,
   isProviderAvailable,
   isUnconfiguredDefaultInstanceEnabled,
   resolveProjectProviderInstanceEnabled,
@@ -20,7 +18,6 @@ import {
   type ServerProvider,
   ServerSettings,
   type ServerSettingsPatch,
-  withIdleCompaction,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -125,29 +122,6 @@ export function resolveSourceControlWriterModelSelection(
     isProviderTextGenerationCapable(provider)
     ? selection
     : settings.textGenerationModelSelection;
-}
-
-export function resolveReviewGuideModelSelection(
-  settings: ServerSettings,
-  providers: ReadonlyArray<ServerProvider> | undefined,
-  projectId: ProjectId | null,
-): ModelSelection {
-  const selection = settings.reviewGuideModelSelection;
-  if (
-    selection &&
-    resolveProjectProviderInstanceEnabled(settings, projectId, selection.instanceId)
-  ) {
-    const provider = providers?.find((candidate) => candidate.instanceId === selection.instanceId);
-    if (
-      providers === undefined ||
-      (provider?.enabled === true &&
-        isProviderAvailable(provider) &&
-        isProviderTextGenerationCapable(provider))
-    ) {
-      return selection;
-    }
-  }
-  return resolveSourceControlWriterModelSelection(settings, providers, projectId);
 }
 
 export interface PersistedServerObservabilitySettings {
@@ -332,22 +306,6 @@ function translateLegacyProjectOverridePatch(
     ...rest,
     projectSettingsOverrides: Object.fromEntries(entries),
   } as ServerSettingsPatch;
-}
-
-/**
- * A client from before `idleCompaction` patches the old boolean switch. Turning
- * it off keeps "Never" rather than reverting to the default.
- */
-function patchedIdleCompaction(
-  current: ServerSettings,
-  patch: ServerSettingsPatch,
-): IdleCompactionMode {
-  if (patch.idleCompaction !== undefined) return patch.idleCompaction;
-  const legacy = patch.compactIdleThreads;
-  if (legacy === undefined) return globalIdleCompaction(current);
-  if (typeof legacy === "string") return legacy;
-  if (legacy) return "beforeCacheExpires";
-  return globalIdleCompaction(current) === "off" ? "off" : "onReturn";
 }
 
 export function applyServerSettingsPatch(
@@ -580,9 +538,6 @@ export function applyServerSettingsPatch(
     ...(patch.sourceControlWriterModelSelection !== undefined
       ? { sourceControlWriterModelSelection: patch.sourceControlWriterModelSelection }
       : {}),
-    ...(patch.reviewGuideModelSelection !== undefined
-      ? { reviewGuideModelSelection: patch.reviewGuideModelSelection }
-      : {}),
     ...(automaticGitFetchInterval !== undefined ? { automaticGitFetchInterval } : {}),
     ...(providerHealthRefreshInterval !== undefined ? { providerHealthRefreshInterval } : {}),
   };
@@ -593,7 +548,7 @@ export function applyServerSettingsPatch(
     normalizedBackgroundActivity,
   );
   const nextWithReplacements = {
-    ...withIdleCompaction(nextWithReplacementsBase, patchedIdleCompaction(current, patch)),
+    ...nextWithReplacementsBase,
     ...deriveLegacyProjectOverrides(nextWithReplacementsBase),
     backgroundActivity: normalizedBackgroundActivity,
     automaticGitFetchInterval: resolvedBackgroundActivity.automaticGitFetchInterval,

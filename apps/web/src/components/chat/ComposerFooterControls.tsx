@@ -277,9 +277,6 @@ export const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryA
   onCompactContext?: (() => void) | undefined;
   compactDisabled: boolean;
   compactDisabledReason: string | null;
-  compactBeforeSendTokens: number | null;
-  keepFullHistory: boolean;
-  onToggleKeepFullHistory: () => void;
 }) {
   return (
     <>
@@ -318,9 +315,6 @@ export const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryA
         onPreviousPendingQuestion={props.onPreviousPendingQuestion}
         onInterrupt={props.onInterrupt}
         onImplementPlanInNewThread={props.onImplementPlanInNewThread}
-        compactBeforeSendTokens={props.compactBeforeSendTokens}
-        keepFullHistory={props.keepFullHistory}
-        onToggleKeepFullHistory={props.onToggleKeepFullHistory}
       />
     </>
   );

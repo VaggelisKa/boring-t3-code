@@ -32,15 +32,7 @@ import {
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide";
 import { useAtomRefresh } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
-import {
-  createContext,
-  use,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { observeIntersection } from "~/lib/observeIntersection";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -270,7 +262,6 @@ function PullRequestCodeTab({
   onRefresh,
   refreshToken = 0,
   backgroundRefreshToken = 0,
-  revealRequest = null,
 }: {
   scrollerRef: (node: HTMLDivElement | null) => void;
   environmentId: EnvironmentId;
@@ -285,7 +276,6 @@ function PullRequestCodeTab({
   onRefresh: () => void;
   refreshToken?: number;
   backgroundRefreshToken?: number;
-  revealRequest?: { readonly path: string; readonly nonce: number } | null;
 }) {
   const resolvedTheme = useRenderedAppearance();
   // Initialize the shared tokenizer and workers while the diff request is still pending.
@@ -471,7 +461,6 @@ function PullRequestCodeTab({
   }, [backgroundRefreshToken, refreshFirstDiffPage, refreshFilesViewed]);
 
   const codeViewReveal = useCodeViewFileReveal();
-  const answeredRevealNonce = useRef<number | null>(null);
 
   const loadDiffFiles = createPullRequestDiffFileContentsLoader(getDiffFileContents, {
     environmentId,
@@ -508,12 +497,8 @@ function PullRequestCodeTab({
   const testFileCount = loadedFiles.filter((file) =>
     isTestChangedFile(resolveFileDiffPath(file)),
   ).length;
-  // A requested file stays visible so a jump to a hidden test still lands.
   const files = hideTestFiles
-    ? loadedFiles.filter((file) => {
-        const path = resolveFileDiffPath(file);
-        return path === revealRequest?.path || !isTestChangedFile(path);
-      })
+    ? loadedFiles.filter((file) => !isTestChangedFile(resolveFileDiffPath(file)))
     : loadedFiles;
   const hiddenTestFileCount = loadedFiles.length - files.length;
   const filePaths = files.map((file) => resolveFileDiffPath(file));
@@ -1348,23 +1333,6 @@ function PullRequestCodeTab({
       </div>
     </div>
   );
-  // A file not loaded yet pages forward each time a slice arrives; once loaded, the viewer
-  // positions it when it renders it.
-  const answerReveal = useEffectEvent(() => {
-    if (revealRequest === null || answeredRevealNonce.current === revealRequest.nonce) return;
-    if (!items.some((item) => resolveFileDiffPath(item.fileDiff) === revealRequest.path)) {
-      if (canLoadNextSlice) loadNextSlice();
-      return;
-    }
-    answeredRevealNonce.current = revealRequest.nonce;
-    revealFile(revealRequest.path);
-  });
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- scrolls the code view to a requested file once loaded, or pages forward until it arrives
-  useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- A reveal for a file not loaded yet pages forward, which sets the slice cursor.
-    answerReveal();
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Re-checked as pages load until the requested file arrives.
-  }, [canLoadNextSlice, items, revealRequest]);
   const withToolbar = (body: ReactNode) => (
     <div className="flex h-full min-h-0 flex-col">
       {toolbar}

@@ -69,7 +69,7 @@ const decodePnpmModulesManifest = Schema.decodeUnknownEffect(
 const DAY_MS = 86_400_000;
 // Give settle scripts time to open terminals that protect the worktree.
 const SETTLE_SCRIPT_GRACE_MS = 60_000;
-// Worktree creation can precede its thread row, including review-guide checkouts.
+// Worktree creation can precede its thread row.
 const ORPHAN_WORKTREE_GRACE_MS = 60 * 60 * 1_000;
 
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

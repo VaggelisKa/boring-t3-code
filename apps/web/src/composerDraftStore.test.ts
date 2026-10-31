@@ -1216,55 +1216,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(file?.uploadEnvironmentId).toBeUndefined();
     expect(file && composerFileNeedsReattach(file)).toBe(true);
   });
-
-  it("rechecks balancing when an empty draft is remapped to another project member", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectRef, draftId, {
-      threadId,
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: TEST_ENVIRONMENT_ID,
-    });
-    store.setProjectDraftThreadId(remoteProjectRef, draftId, { threadId });
-    expect(store.getDraftThread(draftId)).toMatchObject({
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: null,
-    });
-    store.setDraftThreadContext(draftId, { loadBalancedEnvironmentId: OTHER_TEST_ENVIRONMENT_ID });
-    store.setDraftThreadContext(draftId, { projectRef });
-    expect(store.getDraftThread(draftId)).toMatchObject({
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: null,
-    });
-  });
-
-  it("pins manual workspace choices and can return to automatic routing without losing the prompt", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectRef, draftId, { threadId });
-    store.setPrompt(draftId, "keep this prompt");
-    store.setDraftThreadContext(draftId, {
-      projectRef: remoteProjectRef,
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: OTHER_TEST_ENVIRONMENT_ID,
-    });
-    expect(store.getDraftThread(draftId)).toMatchObject({
-      environmentId: OTHER_TEST_ENVIRONMENT_ID,
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: OTHER_TEST_ENVIRONMENT_ID,
-    });
-    store.setDraftThreadContext(draftId, { branch: "feature/pinned" });
-    expect(store.getDraftThread(draftId)?.environmentSelection).toBe("manual");
-    store.setDraftThreadContext(draftId, {
-      branch: null,
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: null,
-    });
-    expect(store.getDraftThread(draftId)).toMatchObject({
-      branch: null,
-      environmentSelection: "auto",
-      loadBalancedEnvironmentId: null,
-    });
-    expect(store.getComposerDraft(draftId)?.prompt).toBe("keep this prompt");
-  });
 });
 
 function modelReconciliationHarness(

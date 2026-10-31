@@ -29,8 +29,6 @@ export type {
   CommitMessageGenerationResult,
   PrContentGenerationInput,
   PrContentGenerationResult,
-  ReviewGuideGenerationInput,
-  ReviewGuideGenerationResult,
   ThreadTitleGenerationInput,
   ThreadTitleGenerationResult,
 } from "@t3tools/provider-core/server/textGeneration";
@@ -43,8 +41,7 @@ type TextGenerationOp =
   | "generateCommitMessage"
   | "generatePrContent"
   | "generateBranchName"
-  | "generateThreadTitle"
-  | "generateReviewGuide";
+  | "generateThreadTitle";
 
 const resolveInstance = (
   registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"],
@@ -63,9 +60,6 @@ const resolveInstance = (
           ),
     ),
   );
-
-// Review guides investigate the checkout read-only; the other drivers reject that request.
-const INVESTIGATING_DRIVERS = new Set(["codex", "claudeAgent"]);
 
 /** @public */
 export const make = Effect.gen(function* () {
@@ -115,7 +109,6 @@ export const make = Effect.gen(function* () {
               provider.auth.status !== "unauthenticated" &&
               isProviderAvailable(provider) &&
               isProviderTextGenerationCapable(provider) &&
-              (operation !== "generateReviewGuide" || INVESTIGATING_DRIVERS.has(driver)) &&
               !exhaustedUsageWindow(provider, now, defaultTextGenerationModel(driver))
             );
           },
@@ -140,11 +133,6 @@ export const make = Effect.gen(function* () {
     generateBranchName: Effect.fn("TextGeneration.generateBranchName")(function (input) {
       return generate("generateBranchName", input.modelSelection, (service, modelSelection) =>
         service.generateBranchName({ ...input, modelSelection }),
-      );
-    }),
-    generateReviewGuide: Effect.fn("TextGeneration.generateReviewGuide")(function (input) {
-      return generate("generateReviewGuide", input.modelSelection, (service, modelSelection) =>
-        service.generateReviewGuide({ ...input, modelSelection }),
       );
     }),
     generateThreadTitle: Effect.fn("TextGeneration.generateThreadTitle")(function (input) {

@@ -374,9 +374,6 @@ export interface ChatComposerProps {
   isPreparingWorktree: boolean;
   isCompacting: boolean;
   bannerItems: readonly ComposerBannerStackItem[];
-  resumeCompactionTokens: number | null;
-  keepFullHistory: boolean;
-  onToggleKeepFullHistory: () => void;
   onUsageLimitsCommand?: (() => void) | undefined;
   environmentUnavailable: {
     readonly label: string;
@@ -1192,11 +1189,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     projectSelectionRequired ||
     environmentUnavailable !== null ||
     (!composerSendState.hasSendableContent && !showResumeAction);
-  const collapsedComposerPrimaryActionLabel = showResumeAction
-    ? "Resume thread"
-    : props.resumeCompactionTokens !== null && !props.keepFullHistory
-      ? "Open composer to compact and send"
-      : "Send message";
+  const collapsedComposerPrimaryActionLabel = showResumeAction ? "Resume thread" : "Send message";
   const showMobilePendingAnswerActions =
     isMobileViewport && !isComposerCollapsedMobile && pendingPrimaryAction !== null;
 
@@ -3181,8 +3174,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   onClick={(event) => {
                     event.stopPropagation();
                     if (showResumeAction) onResume();
-                    else if (props.resumeCompactionTokens !== null && !props.keepFullHistory)
-                      expandMobileComposer();
                     else submitComposer();
                   }}
                 >
@@ -3453,9 +3444,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
                     onInterrupt={handleInterruptPrimaryActionStable}
                     onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryActionStable}
-                    compactBeforeSendTokens={props.resumeCompactionTokens}
-                    keepFullHistory={props.keepFullHistory}
-                    onToggleKeepFullHistory={props.onToggleKeepFullHistory}
                     compactDisabled={compactDisabled || noProviderAvailable || isSendBusy}
                     compactDisabledReason={resolvedCompactDisabledReason}
                     {...(compactCommandAvailable
