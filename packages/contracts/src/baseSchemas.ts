@@ -257,10 +257,6 @@ export const RunAttemptId = makeEntityId("RunAttemptId");
 export type RunAttemptId = typeof RunAttemptId.Type;
 export const NodeId = makeEntityId("NodeId");
 export type NodeId = typeof NodeId.Type;
-export const GuestShareId = makeEntityId("GuestShareId");
-export type GuestShareId = typeof GuestShareId.Type;
-export const GuestMessageId = makeEntityId("GuestMessageId");
-export type GuestMessageId = typeof GuestMessageId.Type;
 export const AuthSessionId = makeEntityId("AuthSessionId");
 export type AuthSessionId = typeof AuthSessionId.Type;
 export const RpcClientId = NonNegativeInt.pipe(Schema.brand("RpcClientId"));
@@ -284,10 +280,10 @@ export type ClientOs = typeof ClientOs.Type;
 export const ClientDeviceType = Schema.Literals(["desktop", "phone", "tablet", "unknown"]);
 export type ClientDeviceType = typeof ClientDeviceType.Type;
 
-export const ClientWebDeployment = Schema.Literals(["hosted", "server"]);
+export const ClientWebDeployment = Schema.Literals(["server"]);
 export type ClientWebDeployment = typeof ClientWebDeployment.Type;
 
-export const ClientConnectionMethod = Schema.Literals(["direct", "ssh", "relay", "unknown"]);
+export const ClientConnectionMethod = Schema.Literals(["direct", "unknown"]);
 export type ClientConnectionMethod = typeof ClientConnectionMethod.Type;
 
 export const ProviderItemId = makeEntityId("ProviderItemId");

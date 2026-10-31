@@ -41,7 +41,6 @@ import {
   SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
   SnapShotAttachmentDetails,
 } from "./SnapShotAttachmentDetails";
-import { GuestMessageName, guestBubbleClassName } from "./guestMessageStyle";
 import { MessageCopyButton } from "./MessageCopyButton";
 import { promptLinkFor } from "../promptLinks/copyPromptLink";
 import { PierreEntryIcon } from "./PierreEntryIcon";
@@ -314,7 +313,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   // Images or videos sent without words show as media, not as a bubble around them.
   const mediaOnly =
     !folded &&
-    userMessage.attribution !== "guest" &&
     resolvedContext.text.trim() === "" &&
     userAudio.length === 0 &&
     unchippedFiles.length === 0 &&
@@ -447,12 +445,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
           Sent by T3 Code
         </p>
       ) : null}
-      {/* The row's heading already names the guest for screen readers. */}
-      {userMessage.guestName !== undefined ? (
-        <div aria-hidden>
-          <GuestMessageName name={userMessage.guestName} />
-        </div>
-      ) : null}
       {row.message.inputIntent === "steer" ||
       row.message.inputIntent === "promoted_queued_to_steer" ? (
         <UserMessageIntentMarker intent={row.message.inputIntent} />
@@ -461,21 +453,13 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
         className={cn(
           "relative min-w-0 max-w-[80%] rounded-2xl text-message-foreground",
           BUBBLE_CHIP_CLASS_NAME,
-          userMessage.attribution === "guest"
-            ? guestBubbleClassName(false)
-            : !mediaOnly && "bg-message",
+          !mediaOnly && "bg-message",
           !folded && !mediaOnly && "p-3",
           folded && expanded && "w-full",
         )}
       >
         {/* Outside the fold so a collapsed message still has a heading to navigate to. */}
-        <MessageAuthorHeading>
-          {folded
-            ? senderLabel
-            : userMessage.guestName === undefined
-              ? "You"
-              : `${userMessage.guestName} (guest)`}
-        </MessageAuthorHeading>
+        <MessageAuthorHeading>{folded ? senderLabel : "You"}</MessageAuthorHeading>
         {folded ? (
           <FoldedMessageHeader
             icon={MessagesSquareIcon}

@@ -123,22 +123,13 @@ describe("DesktopConnectionCatalogStore", () => {
     ),
   );
 
-  it.effect("migrates legacy bearer profile and credential data and drops relay records", () =>
+  it.effect("migrates legacy bearer profile and credential data", () =>
     withStore(
       Effect.gen(function* () {
         const store = yield* DesktopConnectionCatalogStore.DesktopConnectionCatalogStore;
         const environment = yield* DesktopEnvironment.DesktopEnvironment;
         const fileSystem = yield* FileSystem.FileSystem;
         const records: readonly PersistedSavedEnvironmentRecord[] = [
-          {
-            environmentId: EnvironmentId.make("relay-environment"),
-            label: "Relay",
-            httpBaseUrl: "https://relay.example.com/",
-            wsBaseUrl: "wss://relay.example.com/",
-            createdAt: "2026-06-01T00:00:00.000Z",
-            lastConnectedAt: null,
-            relayManaged: { relayUrl: "https://relay-control.example.com/" },
-          },
           {
             environmentId: EnvironmentId.make("bearer-environment"),
             label: "Bearer",

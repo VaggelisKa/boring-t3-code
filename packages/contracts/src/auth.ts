@@ -42,9 +42,6 @@ export const AuthFilesystemWriteScope = "filesystem:write" as const;
 const AuthReviewWriteScope = "review:write" as const;
 export const AuthAccessReadScope = "access:read" as const;
 export const AuthAccessWriteScope = "access:write" as const;
-/** Retained for decoding existing credentials; the relay they governed is gone. */
-const AuthRelayReadScope = "relay:read" as const;
-const AuthRelayWriteScope = "relay:write" as const;
 export const AuthEnvironmentScope = Schema.Literals([
   AuthOrchestrationReadScope,
   AuthOrchestrationOperateScope,
@@ -61,18 +58,12 @@ export const AuthEnvironmentScope = Schema.Literals([
   AuthSourceControlWriteScope,
   AuthAccessReadScope,
   AuthAccessWriteScope,
-  AuthRelayReadScope,
-  AuthRelayWriteScope,
 ]);
 export type AuthEnvironmentScope = typeof AuthEnvironmentScope.Type;
 export const AuthEnvironmentScopes = Schema.Array(AuthEnvironmentScope);
 export type AuthEnvironmentScopes = typeof AuthEnvironmentScopes.Type;
 
-const retiredScopes: ReadonlySet<AuthEnvironmentScope> = new Set([
-  AuthReviewWriteScope,
-  AuthRelayReadScope,
-  AuthRelayWriteScope,
-]);
+const retiredScopes: ReadonlySet<AuthEnvironmentScope> = new Set([AuthReviewWriteScope]);
 export const AuthGrantScope = Schema.Literals(
   AuthEnvironmentScope.literals.filter((scope) => !retiredScopes.has(scope)),
 );
@@ -87,8 +78,6 @@ const legacyScopes = new Set<AuthEnvironmentScope>([
   AuthReviewWriteScope,
   AuthAccessReadScope,
   AuthAccessWriteScope,
-  AuthRelayReadScope,
-  AuthRelayWriteScope,
 ]);
 
 export function authScopeResponse(scopes: ReadonlyArray<AuthEnvironmentScope>) {

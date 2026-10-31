@@ -147,7 +147,7 @@ const withSavedEnvironments = <A, E, R>(
   }).pipe(Effect.provide(NodeServices.layer), Effect.scoped);
 
 describe("DesktopSavedEnvironments", () => {
-  it.effect("loads lenient saved environment registry documents and skips SSH ones", () =>
+  it.effect("loads lenient saved environment registry documents and skips SSH and relay ones", () =>
     withSavedEnvironments(
       Effect.gen(function* () {
         const environment = yield* DesktopEnvironment.DesktopEnvironment;
@@ -181,6 +181,15 @@ describe("DesktopSavedEnvironments", () => {
                   "username": "julius",
                   "port": 22,
                 },
+              },
+              {
+                "environmentId": "environment-relay",
+                "label": "Relay environment",
+                "httpBaseUrl": "https://relay.example.com/",
+                "wsBaseUrl": "wss://relay.example.com/",
+                "createdAt": "2026-04-09T00:00:00.000Z",
+                "lastConnectedAt": null,
+                "relayManaged": { "relayUrl": "https://relay-control.example.com/" },
               },
             ],
           }\n`,
