@@ -1,7 +1,6 @@
 import { projectComposerContextForProvider } from "@t3tools/shared/composerContextReferences";
 import {
   MessageId,
-  type NodeId,
   ProviderSessionId,
   ProviderThreadId,
   ProviderTurnId,
@@ -9,14 +8,12 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
-import type * as DateTime from "effect/DateTime";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ProjectionStore from "./ProjectionStore.ts";
 import * as ProviderSessionManager from "./ProviderSessionManager.ts";
 
@@ -48,19 +45,11 @@ const isProviderTurnControlError = Schema.is(ProviderTurnControlError);
 
 export interface ProviderTurnControlServiceV2Shape {
   readonly interrupt: (input: {
-    readonly subagent?: {
-      readonly id: NodeId;
-      readonly nativeTaskId: string;
-      readonly requestedAt?: DateTime.Utc;
-    };
     readonly threadId: ThreadId;
     readonly providerSessionId: ProviderSessionId;
     readonly providerThreadId: ProviderThreadId;
     readonly providerTurnId: ProviderTurnId;
-  }) => Effect.Effect<
-    void | ProviderAdapter.ProviderAdapterV2SubagentOutcome,
-    ProviderTurnControlError
-  >;
+  }) => Effect.Effect<void, ProviderTurnControlError>;
   readonly steer: (input: {
     readonly threadId: ThreadId;
     readonly providerSessionId: ProviderSessionId;
@@ -191,34 +180,7 @@ export const layer: Layer.Layer<
           const session = Option.isSome(loaded.session)
             ? loaded.session
             : yield* sessions.get(input.providerSessionId);
-          if (Option.isNone(session)) {
-            if (input.subagent !== undefined) {
-              return yield* new ProviderTurnControlError({
-                threadId: input.threadId,
-                operation: "interrupt",
-                providerTurnId: input.providerTurnId,
-                cause: "No live provider session can confirm this subagent's outcome.",
-              });
-            }
-            return;
-          }
-          if (input.subagent !== undefined) {
-            if (session.value.stopSubagent === undefined) {
-              return yield* new ProviderTurnControlError({
-                threadId: input.threadId,
-                operation: "interrupt",
-                providerTurnId: input.providerTurnId,
-                cause: "The provider does not support stopping a native subagent.",
-              });
-            }
-            return yield* session.value.stopSubagent({
-              providerThread: loaded.providerThread,
-              nativeTaskId: input.subagent.nativeTaskId,
-              ...(input.subagent.requestedAt === undefined
-                ? {}
-                : { requestedAt: input.subagent.requestedAt }),
-            });
-          }
+          if (Option.isNone(session)) return;
           // Settled turns still reach adapters, which alone know whether background work remains.
           yield* session.value
             .interruptTurn({

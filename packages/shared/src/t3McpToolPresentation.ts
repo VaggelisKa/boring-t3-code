@@ -21,8 +21,6 @@ export type T3McpToolSummaryAction =
   | "thread-send"
   | "thread-wait"
   | "thread-interrupt"
-  | "workflow-stop"
-  | "background-wait"
   | "thread-configuration"
   | "thread-configure"
   | "thread-fork"
@@ -142,14 +140,6 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_thread_read: tool(["Read", "Reading", "Read", "a T3 thread"], "thread-read"),
   t3_thread_send: tool(["Send", "Sending", "Sent", "to a T3 thread"], "thread-send"),
   t3_thread_wait: tool(["Wait", "Waiting", "Waited", "for a T3 thread"], "thread-wait"),
-  t3_workflow_stop: tool(
-    ["Stop", "Stopping", "Requested a stop for", "a workflow"],
-    "workflow-stop",
-  ),
-  t3_background_wait: tool(
-    ["Update", "Updating", "Updated", "background waits"],
-    "background-wait",
-  ),
   t3_thread_interrupt: tool(
     ["Interrupt", "Interrupting", "Requested an interrupt of", "a T3 thread"],
     "thread-interrupt",

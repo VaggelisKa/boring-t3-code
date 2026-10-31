@@ -1,4 +1,3 @@
-import { useAtomValue } from "@effect/atom-react";
 import { ThreadDetailsControl } from "./ThreadDetailsControl";
 import { ThreadHoverCardPopup } from "../ThreadHoverCard";
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
@@ -30,7 +29,6 @@ import {
 import {
   isOrchestrationV2WorkActive,
   isProviderNativeSubagentThread,
-  NodeId,
   type EnvironmentId,
   type OrchestrationV2DelegatedFrom,
   type OrchestrationV2RemoteTaskChild,
@@ -66,7 +64,6 @@ import {
 } from "../../state/entities";
 import { useEnvironment, useEnvironmentProviders } from "../../state/environments";
 import { threadEnvironment } from "../../state/threads";
-import { orchestrationEnvironment } from "../../state/orchestration";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { AgentElapsed } from "./AgentElapsed";
 import { ThreadRelationshipIcon, threadRelationshipStatusLabel } from "./ThreadRelationshipIcon";
@@ -380,10 +377,6 @@ export function ThreadRelationshipsPanel(props: {
   const mergeBack = useAtomCommand(threadEnvironment.mergeBack);
   const stopSession = useAtomCommand(threadEnvironment.stopSession);
   const interruptTurn = useAtomCommand(threadEnvironment.interruptTurn);
-  const stopWorkflowCommand = useAtomCommand(orchestrationEnvironment.stopWorkflow);
-  const canOperateWorkflow = useAtomValue(
-    orchestrationEnvironment.stopWorkflow.permissionAtom(props.environmentId),
-  );
   const [busyAction, setBusyAction] = useState<"merge" | "detach" | null>(null);
   const [stoppingId, setStoppingId] = useState<string | null>(null);
   // Derive graphs after hooks to preserve their compiler cache.
@@ -531,19 +524,6 @@ export function ThreadRelationshipsPanel(props: {
     }
   };
 
-  const stopWorkflow = async (subagentId: string) => {
-    if (stoppingId !== null) return;
-    setStoppingId(subagentId);
-    const result = await stopWorkflowCommand({
-      environmentId: props.environmentId,
-      input: { threadId: props.threadId, subagentId: NodeId.make(subagentId) },
-    });
-    setStoppingId(null);
-    if (result._tag === "Failure") {
-      toastManager.add({ type: "error", title: "Could not stop workflow" });
-    }
-  };
-
   const parentTitle =
     mergeTargetThreadId === null
       ? null
@@ -626,13 +606,7 @@ export function ThreadRelationshipsPanel(props: {
               const failed = rowStatus === "failed" || rowStatus === "error";
               const canStop =
                 agent &&
-                (agent.origin === "app_owned" ||
-                  (agent.origin === "provider_native" &&
-                    agent.driver === "claudeAgent" &&
-                    agent.runId != null &&
-                    agent.nativeTaskRef?.strength === "strong" &&
-                    agent.nativeTaskRef.nativeId !== null &&
-                    ["pending", "running", "waiting"].includes(agent.nativeStatus))) &&
+                agent.origin === "app_owned" &&
                 agent.startedAt &&
                 ["pending", "running", "waiting"].includes(agent.status);
               const threadTitle = relationshipThreadTitle({
@@ -649,14 +623,10 @@ export function ThreadRelationshipsPanel(props: {
                   (agent?.providerInstanceId ?? node?.thread?.providerInstanceId),
               );
               const providerDriver = agent?.driver ?? provider?.driver;
-              const canStopWorkflow =
-                canOperateWorkflow &&
-                workflowGroup?.workflow.status === "running" &&
-                agent?.origin === "provider_native" &&
-                providerDriver === "claudeAgent";
-              const trailingVisibilityClass = (workflowGroup ? canStopWorkflow : canStop)
-                ? "group-hover:opacity-0 group-focus-within:opacity-0 pointer-coarse:opacity-0 [@media(hover:none)]:opacity-0"
-                : "";
+              const trailingVisibilityClass =
+                !workflowGroup && canStop
+                  ? "group-hover:opacity-0 group-focus-within:opacity-0 pointer-coarse:opacity-0 [@media(hover:none)]:opacity-0"
+                  : "";
               const project = projects.find((project) => project.id === node?.thread?.projectId);
               const relationshipHint = node?.missing
                 ? "This related thread is unavailable"
@@ -700,11 +670,9 @@ export function ThreadRelationshipsPanel(props: {
                   {agent ? null : (
                     <ArrowRightIcon className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                   )}
-                  {agent &&
-                  !failed &&
-                  (deriveSubagentElapsedMs(agent, 0) !== null || canStopWorkflow) ? (
+                  {agent && !failed && deriveSubagentElapsedMs(agent, 0) !== null ? (
                     <span
-                      className={`shrink-0 text-2xs font-normal tabular-nums text-muted-foreground ${canStopWorkflow ? "min-w-6 text-end" : ""} ${trailingVisibilityClass}`}
+                      className={`shrink-0 text-2xs font-normal tabular-nums text-muted-foreground ${trailingVisibilityClass}`}
                     >
                       <AgentElapsed agent={agent} compact />
                     </span>
@@ -753,9 +721,6 @@ export function ThreadRelationshipsPanel(props: {
                     isThreadAvailable={(memberThreadId) =>
                       graph.nodes.get(memberThreadId as ThreadId)?.missing === false
                     }
-                    onStop={canStopWorkflow ? () => void stopWorkflow(agent.id) : undefined}
-                    stopping={stoppingId === agent.id}
-                    stopDisabled={stoppingId !== null}
                     header={relationshipLink}
                   />
                 );

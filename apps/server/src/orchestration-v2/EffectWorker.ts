@@ -153,47 +153,32 @@ export const layerExecutor: Layer.Layer<
               );
           case "provider-turn.interrupt": {
             const request = effect.request;
+            // Outbox rows from the removed native subagent Stop must not interrupt the whole turn.
+            if (request.subagent !== undefined) return Effect.void;
             return providerTurnControl
               .interrupt({
                 threadId: effect.threadId,
                 providerSessionId: request.providerSessionId,
                 providerThreadId: request.providerThreadId,
                 providerTurnId: request.providerTurnId,
-                ...(request.subagent === undefined
-                  ? {}
-                  : {
-                      subagent: {
-                        ...request.subagent,
-                        requestedAt: DateTime.makeUnsafe(effect.createdAt),
-                      },
-                    }),
               })
               .pipe(
-                Effect.tapError((cause) =>
-                  request.subagent === undefined
-                    ? Effect.void
-                    : Effect.logWarning("orchestration-v2.subagent-stop-failed", {
-                        effectId: effect.id,
-                        cause,
-                      }),
-                ),
-                Effect.map((outcome) => ({ unresponsive: false, outcome }) as const),
+                Effect.as({ unresponsive: false }),
                 // Settling here would end the run while the agent may still be running; the
                 // user decides with Force stop instead.
                 Effect.catchIf(
-                  (cause) => request.subagent === undefined && cause.unresponsive === true,
-                  () => Effect.succeed({ unresponsive: true, outcome: undefined } as const),
+                  (cause) => cause.unresponsive === true,
+                  () => Effect.succeed({ unresponsive: true }),
                 ),
                 Effect.catchIf(
                   (cause) =>
-                    request.subagent === undefined &&
                     isNonRetryableProviderTurnControlFailure(
                       request.type,
                       Cause.pretty(Cause.fail(cause)),
                     ),
-                  () => Effect.succeed({ unresponsive: false, outcome: undefined } as const),
+                  () => Effect.succeed({ unresponsive: false }),
                 ),
-                Effect.andThen(({ unresponsive, outcome }) =>
+                Effect.andThen(({ unresponsive }) =>
                   unresponsive
                     ? threads.dispatch({
                         type: "thread.interrupt.unresponsive",
@@ -202,24 +187,13 @@ export const layerExecutor: Layer.Layer<
                         providerThreadId: request.providerThreadId,
                         providerTurnId: request.providerTurnId,
                       })
-                    : request.subagent !== undefined && outcome === undefined
-                      ? Effect.void
-                      : threads.dispatch({
-                          type: "thread.background-work.settle",
-                          commandId: CommandId.make(`${effect.id}:background-work-settled`),
-                          ...(request.subagent === undefined || outcome === undefined
-                            ? {}
-                            : {
-                                subagent: {
-                                  id: request.subagent.id,
-                                  stoppedAt: DateTime.makeUnsafe(effect.createdAt),
-                                  outcome,
-                                },
-                              }),
-                          threadId: effect.threadId,
-                          providerThreadId: request.providerThreadId,
-                          providerTurnId: request.providerTurnId,
-                        }),
+                    : threads.dispatch({
+                        type: "thread.background-work.settle",
+                        commandId: CommandId.make(`${effect.id}:background-work-settled`),
+                        threadId: effect.threadId,
+                        providerThreadId: request.providerThreadId,
+                        providerTurnId: request.providerTurnId,
+                      }),
                 ),
                 Effect.mapError(
                   (cause) =>

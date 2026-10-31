@@ -1,7 +1,6 @@
 import {
   OrchestratorMcpCapabilitiesInput,
   OrchestratorMcpCapabilitiesResult,
-  OrchestrationV2StopWorkflowInput,
   OrchestratorMcpCreateThreadsInput,
   OrchestratorMcpCreateThreadsResult,
   OrchestratorMcpDelegateTaskInput,
@@ -24,10 +23,8 @@ import {
   OrchestratorMcpThreadWaitResult,
   ThreadMetadataMcpUpdateInput,
   ThreadMetadataMcpUpdateResult,
-  TrimmedNonEmptyString,
 } from "@t3tools/contracts";
 import { Tool, Toolkit } from "effect/ai";
-import * as Schema from "effect/Schema";
 
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -97,37 +94,6 @@ const TaskCancelTool = Tool.make("task_cancel", {
 })
   .annotate(Tool.Title, "Cancel delegated task")
   .annotate(Tool.Destructive, true);
-
-const WorkflowStopTool = Tool.make("t3_workflow_stop", {
-  description:
-    "Stop a running Claude workflow in a thread. `subagentId`: coordinator from `t3_thread_read` 'activity'. Stops only the workflow, not the thread.",
-  parameters: OrchestrationV2StopWorkflowInput,
-  success: Schema.Struct({}),
-  failure: OrchestratorMcpFailure,
-  failureMode: "return",
-  dependencies,
-})
-  .annotate(Tool.Title, "Stop a workflow")
-  .annotate(Tool.Destructive, true);
-
-const BackgroundWaitTool = Tool.make("t3_background_wait", {
-  description:
-    "Keep this thread in Working while background work runs. Pass its task ID after starting it. Not for work left running (dev server, watcher). `waiting=false` clears. Does not stop the task. Claude only.",
-  parameters: Schema.Struct({
-    taskIds: Schema.Array(TrimmedNonEmptyString).check(
-      Schema.isMinLength(1),
-      Schema.isMaxLength(20),
-    ),
-    waiting: Schema.optional(Schema.Boolean),
-  }),
-  success: Schema.Struct({
-    matched: Schema.Array(Schema.String),
-    unmatched: Schema.Array(Schema.String),
-  }),
-  failure: OrchestratorMcpFailure,
-  failureMode: "return",
-  dependencies,
-}).annotate(Tool.Title, "Wait on background work");
 
 const RequestSecretTool = Tool.make("request_secret", {
   description:
@@ -240,8 +206,6 @@ export const OrchestratorToolkit = Toolkit.make(
   DelegateTaskTool,
   TaskStatusTool,
   TaskCancelTool,
-  WorkflowStopTool,
-  BackgroundWaitTool,
   RequestSecretTool,
   CreateThreadsTool,
   ThreadListTool,

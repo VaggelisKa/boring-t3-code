@@ -550,12 +550,6 @@ export interface ProviderAdapterV2McpApps {
   }) => Effect.Effect<{ readonly contents: ReadonlyArray<unknown> }, ProviderAdapterV2Error>;
 }
 
-export type ProviderAdapterV2SubagentOutcome = {
-  readonly status: "completed" | "failed" | "cancelled";
-  readonly completedAt: NonNullable<OrchestrationV2Subagent["completedAt"]>;
-  readonly result: OrchestrationV2Subagent["result"];
-};
-
 export interface ProviderAdapterV2SessionRuntime {
   readonly instanceId: ProviderInstanceId;
   readonly driver: ProviderDriverKind;
@@ -601,28 +595,9 @@ export interface ProviderAdapterV2SessionRuntime {
   readonly steerTurn: (
     input: ProviderAdapterV2SteerInput,
   ) => Effect.Effect<void, ProviderAdapterV2Error>;
-  readonly stopTask?: (input: {
-    readonly providerThread: OrchestrationV2ProviderThread;
-    readonly taskId: string;
-  }) => Effect.Effect<void, ProviderAdapterV2Error>;
-  /**
-   * Marks or unmarks background tasks the agent will resume from, using the ids the agent saw.
-   * Ids not running on this provider thread come back unmatched and change nothing.
-   */
-  readonly awaitBackgroundTasks?: (input: {
-    readonly providerThread: OrchestrationV2ProviderThread;
-    readonly taskIds: ReadonlyArray<string>;
-    readonly awaited: boolean;
-  }) => Effect.Effect<{ readonly matched: ReadonlyArray<string> }, ProviderAdapterV2Error>;
   readonly interruptTurn: (
     input: ProviderAdapterV2InterruptInput,
   ) => Effect.Effect<void, ProviderAdapterV2Error>;
-  readonly stopSubagent?: (input: {
-    readonly providerThread: OrchestrationV2ProviderThread;
-    readonly nativeTaskId: string;
-    /** A delayed Stop must not interrupt a task resumed after this request. */
-    readonly requestedAt?: NonNullable<OrchestrationV2Subagent["startedAt"]>;
-  }) => Effect.Effect<void | ProviderAdapterV2SubagentOutcome, ProviderAdapterV2Error>;
   readonly unloadThread?: (input: {
     readonly providerThread: OrchestrationV2ProviderThread;
   }) => Effect.Effect<void, ProviderAdapterV2Error>;

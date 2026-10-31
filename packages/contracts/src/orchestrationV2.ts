@@ -530,37 +530,6 @@ export function isCompactionCommandMessage(message: CompactionMessageFields): bo
   );
 }
 
-export type OrchestrationV2GoalCommand =
-  | { readonly type: "show" }
-  | { readonly type: "clear" }
-  | { readonly type: "pause" }
-  | { readonly type: "resume" }
-  | { readonly type: "set"; readonly objective: string };
-
-/** Reads a `/goal` control message. Messages with attachments are ordinary prompts. */
-export function parseGoalCommand(message: {
-  readonly text: string;
-  readonly attachments?: ReadonlyArray<unknown> | undefined;
-}): OrchestrationV2GoalCommand | null {
-  if ((message.attachments?.length ?? 0) > 0) return null;
-  const match = /^\/goal(?:\s+([\s\S]*))?$/u.exec(message.text.trim());
-  if (match === null) return null;
-  const argument = (match[1] ?? "").trim();
-  switch (argument.toLowerCase()) {
-    case "":
-    case "edit":
-      return { type: "show" };
-    case "clear":
-      return { type: "clear" };
-    case "pause":
-      return { type: "pause" };
-    case "resume":
-      return { type: "resume" };
-    default:
-      return { type: "set", objective: argument };
-  }
-}
-
 /** Why T3 Code sent this `/compact` on its own, or undefined for one someone asked for. */
 export function idleCompactionOf(
   message: CompactionMessageFields,
@@ -1011,33 +980,9 @@ export const OrchestrationV2ProviderThreadNativeMetadata = Schema.Struct({
   updatedAt: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   itemIdentityVersion: Schema.optional(Schema.Literal(2)),
   forkHeadMessageId: Schema.optional(TrimmedNonEmptyString),
-  claudeAttachmentBudget: Schema.optional(
-    Schema.Struct({ bytesUsed: NonNegativeInt, pagesUsed: NonNegativeInt }),
-  ),
 });
 export type OrchestrationV2ProviderThreadNativeMetadata =
   typeof OrchestrationV2ProviderThreadNativeMetadata.Type;
-
-export const OrchestrationV2ProviderGoalStatus = Schema.Literals([
-  "active",
-  "paused",
-  "blocked",
-  "usage_limited",
-  "budget_limited",
-  "complete",
-]);
-export type OrchestrationV2ProviderGoalStatus = typeof OrchestrationV2ProviderGoalStatus.Type;
-
-export const OrchestrationV2ProviderGoal = Schema.Struct({
-  objective: TrimmedNonEmptyString,
-  status: OrchestrationV2ProviderGoalStatus,
-  tokensUsed: Schema.optional(NonNegativeInt),
-  tokenBudget: Schema.optional(Schema.NullOr(NonNegativeInt)),
-  timeUsedSeconds: Schema.optional(NonNegativeInt),
-  checks: Schema.optional(NonNegativeInt),
-  lastCheck: Schema.optional(Schema.String),
-});
-export type OrchestrationV2ProviderGoal = typeof OrchestrationV2ProviderGoal.Type;
 
 export const OrchestrationV2ProviderThread = Schema.Struct({
   id: ProviderThreadId,
@@ -1066,9 +1011,6 @@ export const OrchestrationV2ProviderThread = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   nativeMetadata: Schema.optional(Schema.NullOr(OrchestrationV2ProviderThreadNativeMetadata)).pipe(
-    Schema.withDecodingDefault(Effect.succeed(null)),
-  ),
-  goal: Schema.optional(Schema.NullOr(OrchestrationV2ProviderGoal)).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   createdAt: Schema.DateTimeUtc,
@@ -2074,7 +2016,6 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   providerInstanceHistory: Schema.optional(Schema.Array(ProviderInstanceId)).pipe(
     Schema.withDecodingDefault(Effect.succeed([])),
   ),
-  goal: Schema.optional(Schema.NullOr(OrchestrationV2ProviderGoal)),
   itemCount: NonNegativeInt,
   visibleItemCount: NonNegativeInt,
   createdAt: Schema.DateTimeUtc,
@@ -3408,17 +3349,6 @@ const OrchestrationV2InternalCommand = Schema.Union([
     providerTurnId: ProviderTurnId,
     /** Replaces the Stop's own reason on the result, as Force stop does. */
     reason: Schema.optional(Schema.String),
-    subagent: Schema.optional(
-      Schema.Struct({
-        id: NodeId,
-        stoppedAt: Schema.DateTimeUtc,
-        outcome: Schema.Struct({
-          status: Schema.Literals(["completed", "failed", "cancelled"]),
-          completedAt: Schema.DateTimeUtc,
-          result: Schema.NullOr(Schema.String),
-        }),
-      }),
-    ),
   }),
   /**
    * Internal so no client can mark a request saved without the value being
@@ -3486,7 +3416,6 @@ export const ORCHESTRATION_V2_WS_METHODS = {
   getOlderSettledThreads: "orchestration.getOlderSettledThreads",
   getThreadProjection: "orchestration.getThreadProjection",
   getWorkflowScript: "orchestration.getWorkflowScript",
-  stopWorkflow: "orchestration.stopWorkflow",
   forceStopThread: "orchestration.forceStopThread",
   getTurnItem: "orchestration.getTurnItem",
   launchThread: "orchestration.launchThread",
@@ -3846,35 +3775,6 @@ export class OrchestrationV2ThreadLaunchError extends Schema.TaggedError<Orchest
   },
 ) {}
 
-export const OrchestrationV2StopWorkflowInput = Schema.Struct({
-  threadId: ThreadId,
-  subagentId: NodeId,
-});
-export type OrchestrationV2StopWorkflowInput = typeof OrchestrationV2StopWorkflowInput.Type;
-
-export class OrchestrationV2StopWorkflowError extends Schema.TaggedError<OrchestrationV2StopWorkflowError>()(
-  "OrchestrationV2StopWorkflowError",
-  {
-    threadId: ThreadId,
-    subagentId: NodeId,
-    reason: Schema.Literals(["not-running", "unsupported", "unavailable", "stop-failed"]),
-    cause: Schema.optional(Schema.Defect()),
-  },
-) {
-  override get message(): string {
-    switch (this.reason) {
-      case "not-running":
-        return "This workflow is no longer running.";
-      case "unsupported":
-        return "This provider cannot stop a workflow.";
-      case "unavailable":
-        return "This workflow has no live provider task.";
-      case "stop-failed":
-        return "Failed to stop the workflow.";
-    }
-  }
-}
-
 export const OrchestrationV2ForceStopThreadInput = Schema.Struct({
   threadId: ThreadId,
   /** The run the user saw ignore Stop; Force stop refuses once a newer run has started. */
@@ -4091,10 +3991,6 @@ export const OrchestrationV2RpcSchemas = {
   getThreadProjection: {
     input: OrchestrationV2GetThreadProjectionInput,
     output: OrchestrationV2ThreadProjection,
-  },
-  stopWorkflow: {
-    input: OrchestrationV2StopWorkflowInput,
-    output: Schema.Void,
   },
   forceStopThread: {
     input: OrchestrationV2ForceStopThreadInput,
