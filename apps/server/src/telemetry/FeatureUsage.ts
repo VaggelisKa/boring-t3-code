@@ -14,16 +14,14 @@ const use = (feature: string, variant?: string): FeatureUsage =>
   variant === undefined ? { feature } : { feature, variant };
 
 /**
- * Exclude housekeeping. `client.turn.requested` counts every `message.dispatch`; only sending a
- * guest's message is also a feature. Record at command dispatch so retries do not count twice.
+ * Exclude housekeeping; `client.turn.requested` already counts every `message.dispatch`. Record
+ * at command dispatch so retries do not count twice.
  */
 const COMMAND_FEATURES: {
   readonly [Type in OrchestrationV2Command["type"]]?: (
     command: Extract<OrchestrationV2Command, { readonly type: Type }>,
   ) => FeatureUsage | undefined;
 } = {
-  "message.dispatch": (command) =>
-    command.guestMessageId === undefined ? undefined : { feature: "guest_message.send" },
   "checkpoint.rollback": (command) => ({
     feature: "checkpoint.rollback",
     variant: command.restoreFiles === false ? "conversation_only" : "with_files",
@@ -44,8 +42,6 @@ const COMMAND_FEATURES: {
   "run.interrupt": () => ({ feature: "run.interrupt" }),
   "queued-message.promote-to-steer": () => ({ feature: "queue.steer" }),
   "queued-run.edit": () => ({ feature: "queue.edit" }),
-  "thread.guest-share.close": () => ({ feature: "guest_share.close" }),
-  "thread.guest-message.dismiss": () => ({ feature: "guest_message.dismiss" }),
 };
 
 /**

@@ -60,7 +60,6 @@ export const ScheduledTaskWebhookSignature = Schema.Struct(
 ).annotate({ description: "HMAC-SHA256 check on the raw body." });
 export type ScheduledTaskWebhookSignature = typeof ScheduledTaskWebhookSignature.Type;
 
-/** Matches how long the relay holds a request for an offline environment. */
 const MAX_WEBHOOK_DELIVERY_AGE_MINUTES = 24 * 60;
 
 const WebhookMaxDeliveryAgeMinutes = Schema.Int.check(

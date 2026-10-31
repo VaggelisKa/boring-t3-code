@@ -12,8 +12,9 @@ import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as ElectronSafeStorage from "../electron/ElectronSafeStorage.ts";
 
 interface PersistedSavedEnvironmentStorageRecord extends PersistedSavedEnvironmentRecord {
-  // Legacy SSH environments; SSH support was removed, so these are skipped.
+  // Legacy SSH and relay-managed environments; both features were removed, so these are skipped.
   readonly desktopSsh?: unknown;
+  readonly relayManaged?: unknown;
   readonly encryptedBearerToken?: string;
 }
 
@@ -35,7 +36,7 @@ const PersistedSavedEnvironmentStorageRecordSchema = Schema.Struct({
   createdAt: Schema.String,
   lastConnectedAt: Schema.NullOr(Schema.String),
   desktopSsh: Schema.optionalKey(Schema.Unknown),
-  relayManaged: Schema.optionalKey(Schema.Struct({ relayUrl: Schema.String })),
+  relayManaged: Schema.optionalKey(Schema.Unknown),
   encryptedBearerToken: Schema.optionalKey(Schema.String),
 });
 
@@ -134,17 +135,13 @@ export class DesktopSavedEnvironments extends Context.Service<
 function toPersistedSavedEnvironmentRecord(
   record: PersistedSavedEnvironmentStorageRecord,
 ): PersistedSavedEnvironmentRecord {
-  const nextRecord = {
+  return {
     environmentId: record.environmentId,
     label: record.label,
     httpBaseUrl: record.httpBaseUrl,
     wsBaseUrl: record.wsBaseUrl,
     createdAt: record.createdAt,
     lastConnectedAt: record.lastConnectedAt,
-  };
-  return {
-    ...nextRecord,
-    ...(record.relayManaged ? { relayManaged: record.relayManaged } : {}),
   };
 }
 
@@ -153,7 +150,9 @@ function normalizeSavedEnvironmentRegistryDocument(
 ): SavedEnvironmentRegistryDocument {
   return {
     version: document.version ?? 1,
-    records: (document.records ?? []).filter((record) => record.desktopSsh === undefined),
+    records: (document.records ?? []).filter(
+      (record) => record.desktopSsh === undefined && record.relayManaged === undefined,
+    ),
   };
 }
 

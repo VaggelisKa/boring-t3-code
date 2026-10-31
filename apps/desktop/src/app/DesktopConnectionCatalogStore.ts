@@ -296,9 +296,6 @@ const migrateSavedEnvironmentRecords = Effect.fn(
   const credentials: Array<RuntimeConnectionCatalogDocumentType["credentials"][number]> = [];
 
   for (const record of records) {
-    // A relay-managed record has no credential of its own, so nothing can connect to it.
-    if (record.relayManaged !== undefined) continue;
-
     const id = connectionId("bearer", record.environmentId);
     targets.push(
       new BearerConnectionTarget({
