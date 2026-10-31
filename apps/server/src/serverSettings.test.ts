@@ -595,7 +595,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       }).pipe(Effect.provide(layerServerSettings())),
   );
 
-  it.effect.each(["codex"])(
+  it.effect.each(["antigravity"])(
     "falls back to enabled instance %s after disabling the selection",
     (fallbackId) =>
       Effect.scoped(
@@ -612,7 +612,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
               enabled: false,
             },
             [fallbackInstanceId]: {
-              driver: ProviderDriverKind.make("codex"),
+              driver: ProviderDriverKind.make("antigravity"),
               enabled: true,
               config: {},
             },
