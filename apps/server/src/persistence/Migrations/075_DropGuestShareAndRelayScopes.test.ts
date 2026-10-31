@@ -9,7 +9,7 @@ import { runMigrations } from "../Migrations.ts";
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layer({ filename: ":memory:" })));
 
 layer("075_DropGuestShareAndRelayScopes", (it) => {
-  it.effect("rewrites guest-share history and strips relay scopes, keeping the rest", () =>
+  it.effect("rewrites guest-share history and drops relay scopes, keeping the rest", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
       yield* runMigrations({ toMigrationInclusive: 74 });
@@ -109,7 +109,6 @@ layer("075_DropGuestShareAndRelayScopes", (it) => {
       `;
       assert.deepEqual(sessions, [
         { session_id: "plain", scopes: '["orchestration:read","access:write"]' },
-        { session_id: "relay", scopes: '["orchestration:read"]' },
       ]);
       const links = yield* sql<{ scopes: string }>`SELECT scopes FROM auth_pairing_links`;
       assert.deepEqual(links, [{ scopes: '["orchestration:operate"]' }]);

@@ -129,7 +129,6 @@ export function QueuedRunsControl({
       messageId: run.userMessageId,
       serverIndex,
       text,
-      editable: true,
       attachments,
       thumbnails: attachments
         .filter((attachment) => attachment.type === "image")
@@ -147,7 +146,6 @@ export function QueuedRunsControl({
       messageId: null,
       serverIndex: null,
       text: message.text,
-      editable: true,
       attachments: [] as ReadonlyArray<ContractChatAttachment>,
       thumbnails: (message.attachments ?? [])
         .filter(isImageAttachment)
@@ -315,7 +313,6 @@ export function QueuedRunsControl({
                           aria-label="Edit queued message"
                           disabled={
                             item.runId === null ||
-                            !item.editable ||
                             busyRunId !== null ||
                             props.editBlockedReason !== null
                           }
