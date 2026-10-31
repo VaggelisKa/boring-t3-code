@@ -1,8 +1,6 @@
-import { OrchestratorMcpFailure } from "@t3tools/contracts";
 import { OrchestratorToolkit } from "./tools.ts";
 import * as Effect from "effect/Effect";
 
-import { readCaller } from "../../threadAccess.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
@@ -35,47 +33,6 @@ const handlers = {
       const scope = yield* McpInvocationContext.McpInvocationContext;
       const service = yield* OrchestratorMcpService.OrchestratorMcpService;
       return yield* service.cancelTask(scope, input);
-    }),
-  ),
-  t3_workflow_stop: McpToolAccess.writesThreads(
-    (input) => [input.threadId],
-    (input) =>
-      Effect.gen(function* () {
-        const { threads } = yield* readCaller();
-        return yield* threads.stopWorkflow(input).pipe(
-          Effect.as({}),
-          Effect.mapError(
-            (cause) =>
-              new OrchestratorMcpFailure({
-                code:
-                  cause.reason === "unavailable" || cause.reason === "stop-failed"
-                    ? "orchestration_error"
-                    : "invalid_request",
-                message: cause.message,
-              }),
-          ),
-        );
-      }),
-  ),
-  t3_background_wait: McpToolAccess.actsAsCaller((input) =>
-    Effect.gen(function* () {
-      const { scope, threads } = yield* readCaller();
-      const caller = yield* McpInvocationContext.requireThreadScope(scope, "t3_background_wait");
-      return yield* threads
-        .awaitBackgroundTasks({
-          threadId: caller.thread.threadId,
-          taskIds: input.taskIds,
-          awaited: input.waiting ?? true,
-        })
-        .pipe(
-          Effect.mapError(
-            (cause) =>
-              new OrchestratorMcpFailure({
-                code: cause.reason === "unsupported" ? "invalid_request" : "orchestration_error",
-                message: cause.message,
-              }),
-          ),
-        );
     }),
   ),
   request_secret: McpToolAccess.actsAsCaller((input) =>

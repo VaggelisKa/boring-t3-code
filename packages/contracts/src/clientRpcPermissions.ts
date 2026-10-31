@@ -50,7 +50,6 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.vcsInit]: AuthSourceControlWriteScope,
 
   // Starts an agent session on this environment that can read its logs and database.
-  [ORCHESTRATION_V2_WS_METHODS.stopWorkflow]: AuthOrchestrationOperateScope,
   // Force stop kills agent processes, as Stop on a terminal does.
   [ORCHESTRATION_V2_WS_METHODS.forceStopThread]: AuthOrchestrationOperateScope,
 } as const;

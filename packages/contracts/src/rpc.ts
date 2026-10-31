@@ -177,7 +177,6 @@ import {
 import {
   ORCHESTRATION_V2_WS_METHODS,
   OrchestrationGetWorkflowScriptError,
-  OrchestrationV2StopWorkflowError,
   OrchestrationV2ForceStopThreadError,
   OrchestrationV2DispatchCommandError,
   OrchestrationV2GetShellSnapshotError,
@@ -1450,12 +1449,6 @@ const WsOrchestrationV2GetThreadProjectionRpc = Rpc.make(
   },
 );
 
-const WsOrchestrationV2StopWorkflowRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.stopWorkflow, {
-  payload: OrchestrationV2RpcSchemas.stopWorkflow.input,
-  success: OrchestrationV2RpcSchemas.stopWorkflow.output,
-  error: Schema.Union([OrchestrationV2StopWorkflowError, EnvironmentAuthorizationError]),
-});
-
 const WsOrchestrationV2ForceStopThreadRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.forceStopThread, {
   payload: OrchestrationV2RpcSchemas.forceStopThread.input,
   success: OrchestrationV2RpcSchemas.forceStopThread.output,
@@ -1709,7 +1702,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeResourceTelemetryRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
-  WsOrchestrationV2StopWorkflowRpc,
   WsOrchestrationV2ForceStopThreadRpc,
   WsOrchestrationV2GetTurnItemRpc,
   WsOrchestrationV2GetTurnDiffRpc,

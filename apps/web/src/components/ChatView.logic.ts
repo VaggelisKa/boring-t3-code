@@ -1504,10 +1504,6 @@ export function presentThreadShellFromProjection(
             .map((thread) => thread.providerInstanceId),
         ),
       ],
-      goal:
-        projection.providerThreads.find(
-          (thread) => thread.id === projection.thread.activeProviderThreadId,
-        )?.goal ?? null,
       itemCount: projection.turnItems.length,
       visibleItemCount: projection.visibleTurnItems.length,
       updatedAt,

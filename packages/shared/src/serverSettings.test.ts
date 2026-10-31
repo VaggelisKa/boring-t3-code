@@ -51,9 +51,9 @@ describe("fallbackTextGenerationModelSelection", () => {
     ).toBeNull();
   });
   it("ignores a configured non-default instance at machine scope, matching no fallback", () => {
-    const configured = ProviderInstanceId.make("codex_work");
+    const configured = ProviderInstanceId.make("antigravity_work");
     const providerInstances = {
-      [configured]: { driver: ProviderDriverKind.make("codex"), config: {} },
+      [configured]: { driver: ProviderDriverKind.make("antigravity"), config: {} },
     };
     const fallback = fallbackTextGenerationModelSelection(
       providerInstances,
@@ -63,9 +63,9 @@ describe("fallbackTextGenerationModelSelection", () => {
   });
 
   it("considers a configured non-default instance only when asked to", () => {
-    const configured = ProviderInstanceId.make("codex_work");
+    const configured = ProviderInstanceId.make("antigravity_work");
     const providerInstances = {
-      [configured]: { driver: ProviderDriverKind.make("codex"), config: {} },
+      [configured]: { driver: ProviderDriverKind.make("antigravity"), config: {} },
     };
     const fallback = fallbackTextGenerationModelSelection(
       providerInstances,
@@ -470,7 +470,7 @@ describe("serverSettings helpers", () => {
   });
 
   it("keeps a project's providerInstances override when a patch entry omits the key", () => {
-    const instanceId = ProviderInstanceId.make("codex_work");
+    const instanceId = ProviderInstanceId.make("antigravity_work");
     const projectId = ProjectId.make("project-a");
     const current = {
       ...DEFAULT_SERVER_SETTINGS,
@@ -526,7 +526,7 @@ describe("serverSettings helpers", () => {
   });
 
   it("clears a project's providerInstances override when a patch entry sends an empty map", () => {
-    const instanceId = ProviderInstanceId.make("codex_work");
+    const instanceId = ProviderInstanceId.make("antigravity_work");
     const projectId = ProjectId.make("project-a");
     const current = {
       ...DEFAULT_SERVER_SETTINGS,
@@ -797,7 +797,7 @@ describe("synchronized model preferences", () => {
     });
     expect(next.providerModelPreferences?.[provider]?.hiddenModels).toEqual(["example"]);
   });
-  const provider = ProviderInstanceId.make("codex_work");
+  const provider = ProviderInstanceId.make("antigravity_work");
   const legacy = {
     favorites: [{ provider, model: "sol" }],
     providerModelPreferences: { [provider]: { hiddenModels: ["astra"], modelOrder: ["sol"] } },

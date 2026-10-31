@@ -216,12 +216,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/**
- * Large catalogs (OpenCode, Cursor, Pi) can list hundreds of models, so agents
- * get a short list by default and search for the rest. These providers have
- * small official catalogs, so all their current models are listed.
- */
-const FULL_CATALOG_DRIVERS: ReadonlySet<string> = new Set(["codex", "claudeAgent", "muse", "grok"]);
 const LISTED_MODEL_LIMIT = 8;
 
 /**
@@ -254,11 +248,8 @@ function listCapabilityModels(input: {
     return { listed, omitted: matches.length - listed.length };
   }
   const current = visible.filter((model) => !model.isLegacy);
-  const shown = new Set(
-    FULL_CATALOG_DRIVERS.has(input.provider.driver)
-      ? current
-      : current.slice(0, LISTED_MODEL_LIMIT),
-  );
+  // Large catalogs can list hundreds of models, so agents get a short list and search for the rest.
+  const shown = new Set(current.slice(0, LISTED_MODEL_LIMIT));
   const listed = visible.filter((model) => input.isPinned(model) || shown.has(model));
   return { listed, omitted: visible.length - listed.length };
 }

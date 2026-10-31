@@ -58,12 +58,7 @@ import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { readEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
-import {
-  backgroundWorkNowItem,
-  childInputNowItem,
-  goalNowItem,
-  runStopNowItem,
-} from "./ThreadActivityBanners";
+import { backgroundWorkNowItem, childInputNowItem, runStopNowItem } from "./ThreadActivityBanners";
 import { useForceStopThread } from "./useForceStopThread";
 import { useAtomValue } from "@effect/atom-react";
 import type { RunStopPresentation } from "@t3tools/client-runtime/state/thread-execution";
@@ -510,18 +505,6 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
     }
     sendInFlightRef.current = false;
   };
-  const sendStandaloneCommandStable = useStableCallback(sendStandaloneCommand);
-  const activeGoal = activeThreadShell?.goal ?? null;
-  const goalNow =
-    activeThread && activeGoal !== null
-      ? goalNowItem({
-          threadId: activeThread.id,
-          goal: activeGoal,
-          isWorking,
-          onSendCommand: sendStandaloneCommandStable,
-        })
-      : null;
-
   const forceStop = useForceStopThread(environmentId);
   const anyRunStop = useAtomValue(
     activeThreadRef ? environmentThreadDetails.runStopAtom(activeThreadRef) : NO_RUN_STOP_ATOM,
@@ -625,7 +608,6 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
     attentionNow: runStop?.state === "unresponsive" ? runStopNow : childInputNow,
     workNow: runStop?.state === "stopping" ? runStopNow : backgroundWorkNow,
     childInputNow,
-    goalNow,
     handleSwitchCheckoutToThread,
     handleSwitchCheckoutToThreadStable,
     isRestoringThreadBranch,

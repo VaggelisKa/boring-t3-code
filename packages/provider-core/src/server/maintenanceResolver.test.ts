@@ -433,29 +433,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
   const userWinGetLink = "C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Links\\claude.exe";
   const userWinGetPackage =
     "C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe\\claude.exe";
-  const machineWinGetLink = "C:\\Program Files\\WinGet\\Links\\claude.exe";
-  const machineWinGetPackage =
-    "C:\\Program Files\\WinGet\\Packages\\Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe\\claude.exe";
   const nativeClaude = "C:\\Users\\me\\.local\\bin\\claude.exe";
-
-  it.effect.each([
-    { name: "a user-scope link", resolved: userWinGetLink, real: userWinGetPackage },
-    { name: "a user-scope package", resolved: userWinGetPackage, real: userWinGetPackage },
-    { name: "a machine-scope package", resolved: machineWinGetPackage, real: machineWinGetPackage },
-    { name: "a machine-scope link alone", resolved: machineWinGetLink, real: machineWinGetLink },
-    {
-      name: "a mixed-case link",
-      resolved: "c:\\USERS\\me\\appdata\\local\\MICROSOFT\\winget\\links\\Claude.EXE",
-      real: userWinGetPackage.toUpperCase(),
-    },
-    { name: "a native-looking alias", resolved: nativeClaude, real: userWinGetPackage },
-  ] as const)("keeps a WinGet Claude install manual-only through $name", (fixture) =>
-    Effect.gen(function* () {
-      const capabilities = yield* resolveInstall({ definition: claudeUpdate, ...fixture });
-
-      expect(capabilities.update).toBeNull();
-    }),
-  );
 
   it.effect.each([
     {

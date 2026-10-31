@@ -721,7 +721,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   const topStatus =
     status === "working"
       ? {
-          label: thread.goal?.status === "active" ? "Goal" : "Working",
+          label: "Working",
           icon: "working" as const,
           className: "text-info-foreground",
         }
