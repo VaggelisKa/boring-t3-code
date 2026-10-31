@@ -10438,6 +10438,12 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         now,
       });
     }
+    if (
+      subagent?.origin === "provider_native" &&
+      subagent.runId === command.runId &&
+      !isOrchestrationV2WorkActive(subagent.status)
+    )
+      return;
     return yield* new OrchestratorDispatchError({
       commandId: command.commandId,
       commandType: command.type,
@@ -10998,7 +11004,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     function* (input: {
       readonly command: Extract<
         OrchestrationV2Command,
-        { readonly type: "message.dispatch" | "queued-message.promote-to-steer" }
+        { readonly type: "queued-message.promote-to-steer" }
       >;
       readonly events: Ref.Ref<Array<OrchestrationV2DomainEvent>>;
       readonly effects: Ref.Ref<Array<PendingOrchestrationEffectV2>>;

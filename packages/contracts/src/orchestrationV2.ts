@@ -980,33 +980,9 @@ export const OrchestrationV2ProviderThreadNativeMetadata = Schema.Struct({
   updatedAt: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   itemIdentityVersion: Schema.optional(Schema.Literal(2)),
   forkHeadMessageId: Schema.optional(TrimmedNonEmptyString),
-  claudeAttachmentBudget: Schema.optional(
-    Schema.Struct({ bytesUsed: NonNegativeInt, pagesUsed: NonNegativeInt }),
-  ),
 });
 export type OrchestrationV2ProviderThreadNativeMetadata =
   typeof OrchestrationV2ProviderThreadNativeMetadata.Type;
-
-export const OrchestrationV2ProviderGoalStatus = Schema.Literals([
-  "active",
-  "paused",
-  "blocked",
-  "usage_limited",
-  "budget_limited",
-  "complete",
-]);
-export type OrchestrationV2ProviderGoalStatus = typeof OrchestrationV2ProviderGoalStatus.Type;
-
-export const OrchestrationV2ProviderGoal = Schema.Struct({
-  objective: TrimmedNonEmptyString,
-  status: OrchestrationV2ProviderGoalStatus,
-  tokensUsed: Schema.optional(NonNegativeInt),
-  tokenBudget: Schema.optional(Schema.NullOr(NonNegativeInt)),
-  timeUsedSeconds: Schema.optional(NonNegativeInt),
-  checks: Schema.optional(NonNegativeInt),
-  lastCheck: Schema.optional(Schema.String),
-});
-export type OrchestrationV2ProviderGoal = typeof OrchestrationV2ProviderGoal.Type;
 
 export const OrchestrationV2ProviderThread = Schema.Struct({
   id: ProviderThreadId,
@@ -1035,9 +1011,6 @@ export const OrchestrationV2ProviderThread = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   nativeMetadata: Schema.optional(Schema.NullOr(OrchestrationV2ProviderThreadNativeMetadata)).pipe(
-    Schema.withDecodingDefault(Effect.succeed(null)),
-  ),
-  goal: Schema.optional(Schema.NullOr(OrchestrationV2ProviderGoal)).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   createdAt: Schema.DateTimeUtc,

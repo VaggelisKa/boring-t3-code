@@ -26,7 +26,7 @@ export function providerPresentation(provider: UsageProviderKind): UsageProvider
     PROVIDER_PRESENTATION[provider] ?? {
       label: provider,
       color: "var(--muted-foreground)",
-      driverKind: ProviderDriverKind.make(provider),
+      driverKind: ProviderDriverKind.make(provider === "claude" ? "claudeAgent" : provider),
     }
   );
 }

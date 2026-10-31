@@ -27,15 +27,19 @@ const processCount = Metric.gauge("t3_process_group_count", {
 // Each direct child of the server names the group of its whole subtree. A fixed set keeps one
 // series per group per server, however many agents and processes come and go.
 const PROVIDER_GROUPS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/codex/, "codex"],
+  [/claude/, "claude"],
+  [/cursor/, "cursor"],
+  [/opencode/, "opencode"],
+  [/grok/, "grok"],
   [/antigravity|gemini/, "antigravity"],
-  [/copilot/, "copilot"],
 ];
 const OTHER_GROUPS: ReadonlyArray<readonly [RegExp, string]> = [
   [/chrom/, "browser"],
   [/^(?:ba|z|fi|da|c)?sh(?:\.exe)?$|^pwsh|^powershell|^cmd\.exe$/, "terminal"],
 ];
 // A CLI shipped as a script runs under a JavaScript runtime, so its process name is the
-// runtime's (Copilot runs `node .../@github/copilot/index.js`). Only those
+// runtime's (older Claude packages run `node .../@anthropic-ai/claude-code/cli.js`). Only those
 // are matched by command line; any other name is matched by name alone, so a shell or `git`
 // whose arguments mention a provider stays in its own group.
 const SCRIPT_RUNTIME = /^(?:node|bun|deno)(?:\.exe)?$/;
