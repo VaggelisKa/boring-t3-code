@@ -980,7 +980,7 @@ export default function GitActionsControl({
   const visibleInlineSuccess =
     inlineSuccess?.scopeKey === successScopeKey && !inlineSuccessExpired ? inlineSuccess : null;
 
-  const persistThreadBranchSync = (branch: string | null, manualSelection = false) => {
+  const persistThreadBranchSync = (branch: string | null) => {
     if (!activeThreadRef) {
       return;
     }
@@ -1011,10 +1011,6 @@ export default function GitActionsControl({
     setDraftThreadContext(draftId ?? activeThreadRef, {
       branch,
       worktreePath: activeDraftThread.worktreePath,
-      environmentSelection: manualSelection
-        ? "manual"
-        : (activeDraftThread.environmentSelection ??
-          (activeDraftThread.branch ? "manual" : "auto")),
     });
   };
   const persistLiveThreadBranch = useEffectEvent((branch: string | null) => {
@@ -1027,7 +1023,7 @@ export default function GitActionsControl({
       return;
     }
 
-    persistThreadBranchSync(branchUpdate.branch, true);
+    persistThreadBranchSync(branchUpdate.branch);
   };
 
   const gitStatusQuery = useEnvironmentQuery(

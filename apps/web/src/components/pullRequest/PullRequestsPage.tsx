@@ -1017,7 +1017,6 @@ export function PullRequestsPage() {
   const toggleRightPanelMaximized = () => {
     if (rightPanelState.isOpen) setMaximized((value) => !value);
   };
-  const onGuideShown = () => setMaximized(true);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- opens the URL-linked pull request in the right panel store
   useEffect(() => {
     if (!pullRequestsSupported || rightPanelRef === null || linkedSelection === null) return;
@@ -1507,7 +1506,6 @@ export function PullRequestsPage() {
               shortcutsEnabled={activePullRequestSurface?.id === renderedPullRequestSurface.id}
               key={renderedPullRequestSurface.id}
               environmentId={panelEnvironmentId}
-              onGuideShown={onGuideShown}
               onSelectPullRequest={(reference) => {
                 if (rightPanelRef === null) return;
                 useRightPanelStore.getState().openPullRequest(rightPanelRef, {
@@ -1539,7 +1537,13 @@ export function PullRequestsPage() {
                 ) ?? null
               }
               refreshToken={detailRefreshToken}
-              tabOnPage
+              initialTab={renderedPullRequestSurface.detailTab ?? "summary"}
+              onTabChange={(tab) => {
+                if (rightPanelRef === null) return;
+                useRightPanelStore
+                  .getState()
+                  .setPullRequestDetailTab(rightPanelRef, renderedPullRequestSurface.id, tab);
+              }}
               onActed={(action, phase = "done") => {
                 // From every row held, not the ones on screen: a pull request closed from an open
                 // list has left the screen, and reopening it has to find it anyway.

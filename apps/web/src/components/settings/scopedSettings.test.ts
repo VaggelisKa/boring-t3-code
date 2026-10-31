@@ -188,22 +188,6 @@ describe("scoped settings writes", () => {
     ]);
   });
 
-  it("sends an idle compaction mode in the form each environment's server reads", () => {
-    const targets = [
-      environment("Fixed", { settings: { compactIdleThreads: false, idleCompaction: "onReturn" } }),
-      environment("Modes", { settings: { compactIdleThreads: "onReturn" } }),
-      environment("Switch", { settings: { compactIdleThreads: false } }),
-    ];
-    const plan = planScopedSettingsPatch(resolveSettingsScope({}, [], targets), targets, {
-      idleCompaction: "beforeCacheExpires",
-    });
-    expect(plan.serverWrites.map((write) => write.patch)).toEqual([
-      { idleCompaction: "beforeCacheExpires" },
-      { compactIdleThreads: "beforeCacheExpires" },
-      { compactIdleThreads: true },
-    ]);
-  });
-
   it("writes an aggregate preference only to connected environments with loaded configuration", async () => {
     const persistServer = vi.fn().mockResolvedValue({ _tag: "Success" });
     const persistClient = vi.fn();
@@ -248,8 +232,8 @@ describe("scoped settings writes", () => {
     it("reports a dropped toggle", async () => {
       expect(
         await outcome(
-          planScopedSettingsPatch(all, environments, { reviewGuidesEnabled: true }),
-          upgradedLaptop({ reviewGuidesEnabled: true }),
+          planScopedSettingsPatch(all, environments, { removeAgentCreditsOnMerge: true }),
+          upgradedLaptop({ removeAgentCreditsOnMerge: true }),
         ),
       ).toEqual({ saved: [laptop.label], failed: unsupported });
     });
@@ -257,8 +241,8 @@ describe("scoped settings writes", () => {
     it("reports dropped text but accepts the server trimming it", async () => {
       expect(
         await outcome(
-          planScopedSettingsPatch(all, environments, { reviewGuideInstructions: " Read tests " }),
-          upgradedLaptop({ reviewGuideInstructions: "Read tests" }),
+          planScopedSettingsPatch(all, environments, { branchNameInstructions: " Read tests " }),
+          upgradedLaptop({ branchNameInstructions: "Read tests" }),
         ),
       ).toEqual({ saved: [laptop.label], failed: unsupported });
     });
@@ -278,7 +262,7 @@ describe("scoped settings writes", () => {
     it("accepts a write that matches what the environment already had", async () => {
       expect(
         await outcome(
-          planScopedSettingsPatch(all, environments, { reviewGuidesEnabled: false }),
+          planScopedSettingsPatch(all, environments, { removeAgentCreditsOnMerge: false }),
           upgradedLaptop({}),
         ),
       ).toEqual({ saved: [laptop.label, server.label], failed: [] });
@@ -705,7 +689,6 @@ describe("model selection patches at project scope", () => {
         [projectId]: {
           defaultModelSelection: saved,
           sourceControlWriterModelSelection: saved,
-          reviewGuideModelSelection: saved,
           textGenerationModelSelection: saved,
         },
       },
@@ -717,13 +700,11 @@ describe("model selection patches at project scope", () => {
     const plan = planScopedSettingsPatch(checkout, [customized], {
       defaultModelSelection: { instanceId: claude, model: "claude-opus-4-8" },
       sourceControlWriterModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
-      reviewGuideModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
       textGenerationModelSelection: { instanceId: claude, model: "claude-sonnet-4-6" },
     });
     expect(plan.serverWrites[0]?.patch.projectSettingsOverrides?.[projectId]).toEqual({
       defaultModelSelection: { instanceId: claude, model: "claude-opus-4-8" },
       sourceControlWriterModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
-      reviewGuideModelSelection: { instanceId: antigravity, model: "gpt-5.6-mini" },
       textGenerationModelSelection: { instanceId: claude, model: "claude-sonnet-4-6" },
     });
   });

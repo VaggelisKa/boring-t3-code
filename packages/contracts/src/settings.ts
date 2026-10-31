@@ -5,7 +5,6 @@ import {
   type AuthEnvironmentScope,
 } from "./auth.ts";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
 import * as Duration from "effect/Duration";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
@@ -248,11 +247,6 @@ export const BrowserCustomSearchUrl = Schema.String.check(
   Schema.isMaxLength(BROWSER_CUSTOM_SEARCH_URL_MAX_LENGTH),
 );
 
-export const LoadBalancingWeights = Schema.Record(
-  TrimmedNonEmptyString,
-  Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
-);
-
 export const DiffColorScheme = Schema.Literals(["red-green", "blue-orange"]);
 
 export const ChatWidth = Schema.Literals(["comfortable", "wide", "full"]);
@@ -289,8 +283,6 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   chatWidth: ChatWidth.pipe(Schema.withDecodingDefault(Effect.succeed("comfortable" as const))),
   effortDisplay: EffortDisplay.pipe(Schema.withDecodingDefault(Effect.succeed("label" as const))),
-  loadBalancingEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  loadBalancingWeights: LoadBalancingWeights.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   appearanceContrast: AppearanceContrast.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_APPEARANCE_CONTRAST)),
   ),
@@ -529,26 +521,6 @@ export function makeProviderSettingsSchema<const Fields extends Schema.Struct.Fi
     }),
   );
 }
-
-const IDLE_COMPACTION_MODES = [
-  { value: "onReturn", label: "When you return" },
-  { value: "beforeCacheExpires", label: "Before the cache expires (beta)" },
-  { value: "off", label: "Never" },
-] as const;
-export const IdleCompactionMode = Schema.Literals(IDLE_COMPACTION_MODES.map((mode) => mode.value));
-export type IdleCompactionMode = typeof IdleCompactionMode.Type;
-
-// Shipped clients reject the whole server config unless `compactIdleThreads` is boolean.
-// Keep the mode in `idleCompaction`, but accept strings from older servers.
-const LegacyCompactIdleThreads = Schema.Union([Schema.Boolean, IdleCompactionMode]);
-
-const INSTANCE_IDLE_COMPACTION_MODES = [
-  { value: "default", label: "Use default" },
-  ...IDLE_COMPACTION_MODES,
-] as const;
-const InstanceIdleCompaction = Schema.Literals(
-  INSTANCE_IDLE_COMPACTION_MODES.map((mode) => mode.value),
-);
 
 export const ANTIGRAVITY_AUTH_METHODS = [
   { value: "oauth-personal", label: "Google account" },
@@ -848,8 +820,6 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "textGenerationModelSelection",
   "threadTitleInstructions",
   "sourceControlWriterModelSelection",
-  "reviewGuideModelSelection",
-  "reviewGuideInstructions",
   "sourceControlWritingStyle",
   "removeAgentCreditsOnMerge",
   "branchNamingMode",
@@ -884,8 +854,6 @@ export const ProjectSettingsOverrides = Schema.Struct({
   textGenerationModelSelection: Schema.optionalKey(ModelSelection),
   threadTitleInstructions: Schema.optionalKey(TrimmedString),
   sourceControlWriterModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
-  reviewGuideModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
-  reviewGuideInstructions: Schema.optionalKey(TrimmedString),
   sourceControlWritingStyle: Schema.optionalKey(SourceControlWritingStyleSetting),
   removeAgentCreditsOnMerge: Schema.optionalKey(Schema.Boolean),
   branchNamingMode: Schema.optionalKey(BranchNamingMode),
@@ -924,7 +892,6 @@ const NULLABLE_PROJECT_SETTINGS_OVERRIDES: ReadonlySet<ProjectScopedServerSettin
 >([
   "defaultModelSelection",
   "sourceControlWriterModelSelection",
-  "reviewGuideModelSelection",
   "pullRequestMergeMethod",
   "sidebarAutoSettleAfterDays",
 ]);
@@ -1049,10 +1016,6 @@ export const ServerSettings = Schema.Struct({
   sidebarAutoSettleAfterDays: Schema.NullOr(SidebarAutoSettleAfterDays).pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_SIDEBAR_AUTO_SETTLE_AFTER_DAYS)),
   ),
-  compactIdleThreads: LegacyCompactIdleThreads.pipe(
-    Schema.withDecodingDefault(Effect.succeed(false)),
-  ),
-  idleCompaction: Schema.optionalKey(IdleCompactionMode),
   snoozeLimitedThreads: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   autoResumeLimitedThreads: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   snoozePresets: SnoozePresetSettings.pipe(
@@ -1116,11 +1079,6 @@ export const ServerSettings = Schema.Struct({
   sourceControlWriterModelSelection: Schema.NullOr(ModelSelection).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
-  reviewGuidesEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  reviewGuideModelSelection: Schema.NullOr(ModelSelection).pipe(
-    Schema.withDecodingDefault(Effect.succeed(null)),
-  ),
-  reviewGuideInstructions: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
 
   pullRequestMergeMethod: Schema.NullOr(PullRequestMergeMethod).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
@@ -1191,61 +1149,6 @@ export const resolveProjectProviderInstanceEnabled = (
   return instanceConfig !== undefined
     ? resolveProviderInstanceEnabled(instanceConfig)
     : isUnconfiguredDefaultInstanceEnabled(instanceId);
-};
-
-const decodeInstanceIdleCompaction = Schema.decodeUnknownOption(
-  Schema.Struct({
-    idleCompaction: InstanceIdleCompaction.pipe(
-      Schema.withDecodingDefault(Effect.succeed("default" as const)),
-    ),
-  }),
-);
-
-type IdleCompactionSettings = Pick<ServerSettings, "compactIdleThreads" | "idleCompaction">;
-
-/** The environment-wide idle compaction mode, from whichever field the settings carry. */
-export const globalIdleCompaction = (settings: IdleCompactionSettings): IdleCompactionMode =>
-  settings.idleCompaction ??
-  (typeof settings.compactIdleThreads === "string"
-    ? settings.compactIdleThreads
-    : settings.compactIdleThreads
-      ? "beforeCacheExpires"
-      : "onReturn");
-
-/** Sets the mode, and the legacy switch shipped clients still read alongside it. */
-export const withIdleCompaction = <S extends IdleCompactionSettings>(
-  settings: S,
-  mode: IdleCompactionMode,
-): S => ({ ...settings, idleCompaction: mode, compactIdleThreads: mode === "beforeCacheExpires" });
-
-/** Whether a server reads modes, rather than only the boolean switch from before them. */
-const readsIdleCompactionModes = (settings: IdleCompactionSettings) =>
-  settings.idleCompaction !== undefined || typeof settings.compactIdleThreads === "string";
-
-/**
- * The patch that sets `mode` in the form the server's settings show it reads:
- * the mode for a server that has `idleCompaction` or kept the mode in the legacy
- * field, the boolean switch for a server from before modes.
- */
-export const idleCompactionPatch = (settings: IdleCompactionSettings, mode: IdleCompactionMode) =>
-  settings.idleCompaction !== undefined
-    ? { idleCompaction: mode }
-    : readsIdleCompactionModes(settings)
-      ? { compactIdleThreads: mode }
-      : { compactIdleThreads: mode === "beforeCacheExpires" };
-
-export const resolveIdleCompaction = (
-  settings: Pick<ServerSettings, "providerInstances" | "compactIdleThreads" | "idleCompaction">,
-  instanceId: ProviderInstanceId,
-): IdleCompactionMode => {
-  const instance = Object.hasOwn(settings.providerInstances, instanceId)
-    ? settings.providerInstances[instanceId]
-    : undefined;
-  const override = decodeInstanceIdleCompaction(instance?.config ?? {}).pipe(
-    Option.map((config) => config.idleCompaction),
-    Option.getOrElse(() => "default" as const),
-  );
-  return override === "default" ? globalIdleCompaction(settings) : override;
 };
 
 export const ServerSettingsOperation = Schema.Literals([
@@ -1380,8 +1283,6 @@ export const ServerSettingsPatch = Schema.Struct({
     ),
   ),
   sidebarAutoSettleAfterDays: Schema.optionalKey(Schema.NullOr(SidebarAutoSettleAfterDays)),
-  compactIdleThreads: Schema.optionalKey(LegacyCompactIdleThreads),
-  idleCompaction: Schema.optionalKey(IdleCompactionMode),
   sidebarAutoSettleKeepPullRequests: Schema.optionalKey(Schema.Boolean),
   sidebarAutoSettleOnMerge: Schema.optionalKey(Schema.Boolean),
   autoResumeLimitedThreads: Schema.optionalKey(Schema.Boolean),
@@ -1417,9 +1318,6 @@ export const ServerSettingsPatch = Schema.Struct({
     }),
   ),
   sourceControlWriterModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
-  reviewGuidesEnabled: Schema.optionalKey(Schema.Boolean),
-  reviewGuideModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
-  reviewGuideInstructions: Schema.optionalKey(TrimmedString),
   pullRequestMergeMethod: Schema.optionalKey(Schema.NullOr(PullRequestMergeMethod)),
   observability: Schema.optionalKey(
     Schema.Struct({
@@ -1484,8 +1382,6 @@ export const ClientSettingsPatch = Schema.Struct({
   diffColorScheme: Schema.optionalKey(DiffColorScheme),
   chatWidth: Schema.optionalKey(ChatWidth),
   effortDisplay: Schema.optionalKey(EffortDisplay),
-  loadBalancingEnabled: Schema.optionalKey(Schema.Boolean),
-  loadBalancingWeights: Schema.optionalKey(LoadBalancingWeights),
   appearanceContrast: Schema.optionalKey(AppearanceContrast),
   panelAnimationDurationMs: Schema.optionalKey(PanelAnimationDurationMs),
   browserDefaultViewport: Schema.optionalKey(PreviewViewportSetting),

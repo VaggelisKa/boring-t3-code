@@ -1,7 +1,4 @@
-import type {
-  AuthClientPresentationMetadata,
-  ExecutionEnvironmentDescriptor,
-} from "@t3tools/contracts";
+import type { ExecutionEnvironmentDescriptor } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -9,11 +6,6 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as HttpClient from "effect/http/HttpClient";
 
-import {
-  appendClientConnectionParams,
-  type ClientOwnerParams,
-  readClientOwnerParams,
-} from "../authorization/remote.ts";
 import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
 import * as ClientCapabilities from "../platform/capabilities.ts";
 import {
@@ -54,22 +46,16 @@ export class ConnectionResolver extends Context.Service<
 const isBearerProfile = Schema.is(BearerConnectionProfile);
 const isBearerCredential = Schema.is(BearerConnectionCredential);
 
-function primarySocketUrl(
-  target: PrimaryConnectionTarget,
-  clientMetadata: AuthClientPresentationMetadata | undefined,
-  owners: ClientOwnerParams,
-): string {
+function primarySocketUrl(target: PrimaryConnectionTarget): string {
   const url = new URL(target.wsBaseUrl);
   if (url.pathname === "" || url.pathname === "/") {
     url.pathname = "/ws";
   }
-  appendClientConnectionParams(url, clientMetadata, "direct", owners);
   return url.toString();
 }
 
 const makePrimaryBroker = Effect.fn("clientRuntime.connection.broker.makePrimary")(function* () {
   const auth = yield* ClientCapabilities.PrimaryEnvironmentAuth;
-  const presentation = yield* ClientCapabilities.ClientPresentation;
   const remote = yield* RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization;
 
   return Effect.fn("clientRuntime.connection.broker.primary")(function* (
@@ -81,7 +67,7 @@ const makePrimaryBroker = Effect.fn("clientRuntime.connection.broker.makePrimary
         environmentId: target.environmentId,
         label: target.label,
         httpBaseUrl: target.httpBaseUrl,
-        socketUrl: primarySocketUrl(target, presentation.metadata, yield* readClientOwnerParams),
+        socketUrl: primarySocketUrl(target),
         httpAuthorization: null,
         target,
       } satisfies PreparedConnection;
@@ -92,7 +78,6 @@ const makePrimaryBroker = Effect.fn("clientRuntime.connection.broker.makePrimary
       httpBaseUrl: target.httpBaseUrl,
       wsBaseUrl: target.wsBaseUrl,
       bearerToken: bearerToken.value,
-      connectionMethod: "direct",
     });
     return {
       ...authorized,
@@ -140,7 +125,6 @@ const makeBearerBroker = Effect.fn("clientRuntime.connection.broker.makeBearer")
       httpBaseUrl: profile.httpBaseUrl,
       wsBaseUrl: profile.wsBaseUrl,
       bearerToken: credential.token,
-      connectionMethod: "direct",
     });
     return {
       ...authorized,

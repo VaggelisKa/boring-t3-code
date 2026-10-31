@@ -48,7 +48,6 @@ export function threadErrorSummary(
       currentFailure?.class === "usage_limit" ? (currentFailure.resetAt ?? null) : null,
     lastError: sessionError ?? failure?.message ?? null,
     lastErrorClass: currentFailure?.class ?? null,
-    lastErrorCode: currentFailure?.code ?? null,
   };
 }
 

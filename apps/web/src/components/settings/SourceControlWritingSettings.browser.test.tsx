@@ -23,9 +23,7 @@ vi.mock(import("./useScopedSettings"), async (original) => ({
     ...DEFAULT_UNIFIED_SETTINGS,
     sourceControlWritingStyle: state.styles[0],
   })) as never,
-  useScopedSettingsMixed: (keys) =>
-    !keys.includes("reviewGuidesEnabled") &&
-    JSON.stringify(state.styles[0]) !== JSON.stringify(state.styles[1]),
+  useScopedSettingsMixed: () => JSON.stringify(state.styles[0]) !== JSON.stringify(state.styles[1]),
   useUpdateScopedSettings: () => state.updateSettings,
 }));
 vi.mock(import("./SettingsScopeContext"), async (original) => ({

@@ -3,11 +3,7 @@ import { normalizeThreadPullRequestKey } from "@t3tools/client-runtime/thread-pu
 import { changeRequestReferenceAutolinker } from "@t3tools/client-runtime/pull-request-markdown";
 import { useAtomValue } from "@effect/atom-react";
 import { usePullRequestStack } from "~/state/usePullRequestStack";
-import {
-  scopedThreadKey,
-  scopeProjectRef,
-  scopeThreadRef,
-} from "@t3tools/client-runtime/environment";
+import { scopedThreadKey, scopeProjectRef } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -22,7 +18,6 @@ import {
   type PullRequestListEntry,
   type PullRequestUpdateMethod,
   type PullRequestRef,
-  type PullRequestReviewGuideStop,
   resolveEnvironmentMachineKind,
   type ScopedThreadRef,
 } from "@t3tools/contracts";
@@ -46,7 +41,7 @@ import {
 } from "react";
 
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
-import { type PullRequestDetailTab, useRightPanelStore } from "~/rightPanelStore";
+import type { PullRequestDetailTab } from "~/rightPanelStore";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { isCommandPaletteOpen } from "~/commandPaletteBus";
@@ -110,7 +105,6 @@ import { PullRequestSummaryTab } from "./PullRequestSummaryTab";
 import { PullRequestTimelineTab } from "./PullRequestTimelineTab";
 import {
   buildAddSelectionToAgentHandoff,
-  buildAskAboutGuideStopHandoff,
   buildAskAboutPullRequestHandoff,
   buildExplainPullRequestHandoff,
   buildFixFindingHandoff,
@@ -153,9 +147,6 @@ import {
   resolvePullRequestState,
   summarizePullRequestChecks,
 } from "./pullRequestPresentation";
-import { PullRequestGuideTab } from "./PullRequestGuideTab";
-import { guideRunKey, useGuideRunStore } from "./guide/guideRunStore";
-import { useReviewGuideWriter } from "./guide/useReviewGuideWriter";
 
 const actionFailureLabels = (term: string): Record<PullRequestAction, string> => ({
   merge: `Could not merge this ${term}`,
@@ -197,7 +188,6 @@ const UPDATE_BRANCH_REBASE_FAILURE_HINT =
 
 const TABS: ReadonlyArray<{ value: PullRequestDetailTab; label: string }> = [
   { value: "summary", label: "Summary" },
-  { value: "guide", label: "Guide" },
   { value: "timeline", label: "Timeline" },
   { value: "code", label: "Code" },
 ];
@@ -262,14 +252,12 @@ export function PullRequestDetailPanel({
   reference: requestedReference,
   listEntry = null,
   refreshToken: forcedRefreshToken = 0,
-  tabOnPage = false,
   onActed,
   onClose,
   context = "page",
   composerDraftTarget,
   onBack,
   onSelectPullRequest,
-  onGuideShown,
   initialTab = "summary",
   onTabChange,
 }: {
@@ -281,17 +269,11 @@ export function PullRequestDetailPanel({
   reference: PullRequestRef;
   listEntry?: PullRequestListEntry | null;
   refreshToken?: number;
-  /**
-   * The pull requests page's panel: its tab lives in the guide run store, where a review guide
-   * notification can switch it.
-   */
-  tabOnPage?: boolean;
   onActed?: (action?: PullRequestAction, phase?: "sent" | "done" | "failed") => void;
   onClose?: () => void;
   context?: "page" | "thread";
   composerDraftTarget?: ScopedThreadRef | DraftId;
   onBack?: (() => void) | undefined;
-  onGuideShown?: (() => void) | undefined;
   initialTab?: PullRequestDetailTab;
   onTabChange?: ((tab: PullRequestDetailTab) => void) | undefined;
 }) {
@@ -340,7 +322,6 @@ export function PullRequestDetailPanel({
   );
   useEnvironmentQuery(pullRequestEnvironment.changeBreakdown({ environmentId, input: reference }));
   const [threadPickerOpen, setThreadPickerOpen] = useState(false);
-  const [openReviewRequest, setOpenReviewRequest] = useState(0);
   const {
     canWriteSourceControl,
     detailQuery,
@@ -351,21 +332,12 @@ export function PullRequestDetailPanel({
     detail,
   } = usePullRequestDetail(environmentId, reference, matchingListEntry);
   const [selectedTab, setTab] = useState<PullRequestDetailTab>(initialTab);
-  // Only Codex and Claude can write review guides, so the Guide tab stays hidden.
-  const reviewGuidesEnabled = false;
-  const guideKey = guideRunKey(environmentId, reference);
-  const pageTab = useGuideRunStore((state) =>
-    tabOnPage && state.pageDetailTab?.key === guideKey ? state.pageDetailTab.tab : null,
-  );
-  const requestedTab = tabOnPage ? (pageTab ?? initialTab) : selectedTab;
   const isTabAvailable = (value: PullRequestDetailTab) =>
-    (value !== "code" || detail === null || detail.capabilities.diff) &&
-    (value !== "guide" || reviewGuidesEnabled);
+    value !== "code" || detail === null || detail.capabilities.diff;
   // An unavailable tab falls back without overwriting the saved selection.
-  const tab = isTabAvailable(requestedTab) ? requestedTab : "summary";
+  const tab = isTabAvailable(selectedTab) ? selectedTab : "summary";
   const selectTab = (next: PullRequestDetailTab) => {
-    if (tabOnPage) useGuideRunStore.getState().showPageDetailTab(guideKey, next);
-    else setTab(next);
+    setTab(next);
     onTabChange?.(next);
   };
   const [timelineOrder, setTimelineOrder] = useState<"newest" | "oldest">("newest");
@@ -380,16 +352,6 @@ export function PullRequestDetailPanel({
   };
   const openCommit = (oid: string) => {
     selectCodeCommit(oid);
-    selectTab("code");
-  };
-  const [codeRevealRequest, setCodeRevealRequest] = useState<{
-    readonly path: string;
-    readonly nonce: number;
-  } | null>(null);
-  const openFileInCode = (path: string) => {
-    selectCodeCommit(null);
-    setCodeRevealRequest((previous) => ({ path, nonce: (previous?.nonce ?? 0) + 1 }));
-    void loadCodeTab();
     selectTab("code");
   };
   const tabScopeKey = `${environmentId}:${pullRequestKey}`;
@@ -726,15 +688,6 @@ export function PullRequestDetailPanel({
   const canPrepareWorktree = prepareThread.isAllowed && canOperateThread;
   const canFixFindings = attachTarget !== null || canPrepareWorktree;
   const handoffLabels = pullRequestHandoffLabels(attachTarget !== null);
-  const guideWriter = useReviewGuideWriter({
-    environmentId,
-    reference,
-    title: detail?.title ?? null,
-  });
-  const writeGuide = () => {
-    void guideWriter.write();
-    if (guideWriter.data?.guide == null) selectTab("guide");
-  };
 
   const writeTaskToComposer = (target: ScopedThreadRef | DraftId, task: ThreadTask) => {
     const store = useComposerDraftStore.getState();
@@ -790,11 +743,7 @@ export function PullRequestDetailPanel({
     return session;
   };
 
-  const startAsk = async (
-    kind: string,
-    task: ThreadTask,
-    options?: { readonly keepGuide?: boolean },
-  ) => {
+  const startAsk = async (kind: string, task: ThreadTask) => {
     if (!detail || handoff !== null) return;
     if (attachTarget !== null) {
       writeTaskToComposer(attachTarget, task);
@@ -812,22 +761,6 @@ export function PullRequestDetailPanel({
     const projectRef = scopeProjectRef(actingEnvironmentId, acting?.projectId ?? detail.projectId);
     const opened = await openThreadWithTask(projectRef, task);
     setHandoff(null);
-    if (opened !== null && options?.keepGuide === true) {
-      const draft = useComposerDraftStore.getState().getDraftSession(opened.draftId);
-      if (draft !== null) {
-        useRightPanelStore
-          .getState()
-          .openPullRequest(scopeThreadRef(draft.environmentId, draft.threadId), {
-            environmentId,
-            projectId: reference.projectId,
-            ...(reference.host === undefined ? {} : { host: reference.host }),
-            repository: reference.repository,
-            number: reference.number,
-            url: detail.url,
-            detailTab: "guide",
-          });
-      }
-    }
     if (opened === null) {
       toastManager.add({
         type: "error",
@@ -991,35 +924,7 @@ export function PullRequestDetailPanel({
     });
   };
 
-  const askAboutGuideStop = (stop: PullRequestReviewGuideStop, index: number, question: string) => {
-    if (!detail) return;
-    void startAsk(
-      `guide-stop:${index}`,
-      buildAskAboutGuideStopHandoff({
-        number: detail.number,
-        title: detail.title,
-        url: detail.url,
-        headBranch: detail.headBranch,
-        baseBranch: detail.baseBranch,
-        state: detail.state,
-        isDraft: detail.isDraft,
-        stop: {
-          index,
-          title: stop.title,
-          summary: stop.summary,
-          attention: stop.attention?.note ?? null,
-          excerpts: stop.excerpts,
-        },
-        question,
-      }),
-      { keepGuide: true },
-    );
-  };
-
-  const addSelectionToAgent = (
-    selection: PullRequestAgentSelectionInput,
-    options?: { readonly keepGuide?: boolean },
-  ) => {
+  const addSelectionToAgent = (selection: PullRequestAgentSelectionInput) => {
     if (!detail) return;
     void startAsk(
       `selection:${selection.comment.id}`,
@@ -1034,7 +939,6 @@ export function PullRequestDetailPanel({
         comment: selection.comment,
         request: selection.request,
       }),
-      options,
     );
   };
 
@@ -1360,10 +1264,6 @@ export function PullRequestDetailPanel({
                 canFixFindings={canFixFindings}
                 startFixFindings={startFixFindings}
                 handoffLabels={handoffLabels}
-                canWriteGuide={reviewGuidesEnabled && guideWriter.canWrite}
-                guideRunning={guideWriter.running}
-                guideWritten={guideWriter.data?.guide != null}
-                writeGuide={writeGuide}
                 pickableEnvironments={pickableEnvironments}
                 actingEnvironmentId={actingEnvironmentId}
                 onActingEnvironmentChange={selectActingEnvironment}
@@ -1750,38 +1650,6 @@ export function PullRequestDetailPanel({
                 />
               </div>
             ) : null}
-            {mountedTabs.has("guide") ? (
-              <div
-                className={cn("absolute inset-0", tab !== "guide" && "invisible")}
-                // Read by the guide run notifier, which stays quiet for a guide on screen.
-                data-guide-shown={tab === "guide" ? guideKey : undefined}
-              >
-                <PullRequestGuideTab
-                  environmentId={environmentId}
-                  reference={reference}
-                  active={tab === "guide"}
-                  title={detail.title}
-                  workspaceRoot={detail.workspaceRoot}
-                  canComment={
-                    detail.capabilities.review.inlineComment && detail.viewerPermissions.comment
-                  }
-                  rangeComments={detail.capabilities.review.rangeComment === true}
-                  onAskAboutLines={(comment, request) =>
-                    addSelectionToAgent({ comment, request }, { keepGuide: true })
-                  }
-                  onAskAboutStop={askAboutGuideStop}
-                  onFinishReview={
-                    detail.capabilities.review.verdicts.some((verdict) =>
-                      detail.viewerPermissions.verdicts.includes(verdict),
-                    )
-                      ? () => setOpenReviewRequest((count) => count + 1)
-                      : null
-                  }
-                  onOpenFile={openFileInCode}
-                  onTourShown={onGuideShown}
-                />
-              </div>
-            ) : null}
             {mountedTabs.has("timeline") ? (
               <div className={cn("absolute inset-0", tab !== "timeline" && "invisible")}>
                 {activityPending ? (
@@ -1827,7 +1695,6 @@ export function PullRequestDetailPanel({
                     onRefresh={refreshDetail}
                     refreshToken={refreshToken}
                     backgroundRefreshToken={turnRefresh ?? 0}
-                    revealRequest={codeRevealRequest}
                   />
                 </Suspense>
               </div>
@@ -1853,7 +1720,6 @@ export function PullRequestDetailPanel({
             onCommentAction={performCommentAction}
             onCommented={refreshDetail}
             onReviewSubmitted={refreshDetail}
-            openReviewRequest={openReviewRequest}
           />
         </div>
       ) : null}
